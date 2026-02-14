@@ -1,0 +1,49 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+psycopg2-binary
+pydantic
+python-dotenv
+pytest
+hypothesis
+requests
+fuzzywuzzy
+python-Levenshtein
+Pillow
+
+# ML for Personalization
+scikit-learn>=1.0.0
+joblib>=1.2.0
+numpy>=1.21.0
+pandas>=1.3.0
+
+# Deep Learning (PyTorch)
+torch>=2.0.0
+torchvision>=0.15.0
+
+# Google Gemini API (for photo scanning)
+google-generativeai>=0.3.0
+
+# Auth
+python-jose[cryptography]
+bcrypt
+python-multipart
+
+# Phase 1: Computer Vision (YOLOv8, ResNet, Portion Estimation)
+ultralytics>=8.0.0  # YOLOv8
+opencv-python>=4.7.0
+opencv-python-headless>=4.7.0
+albumentations>=1.3.0
+timm>=0.9.0  # PyTorch Image Models (for ResNet)
+
+# Phase 2: NLP & Language Models (BERT, CLIP)
+transformers>=4.30.0  # BERT, T5, other transformers
+sentence-transformers>=2.2.0  # Sentence embeddings
+clip-anytorch>=2.5.0  # CLIP for multi-modal
+tokenizers>=0.13.0  # Fast tokenization
+
+# Phase 3: Time-Series Forecasting (LSTM, Prophet)
+prophet>=1.1.0  # Facebook Prophet for trend analysis
+
+# Phase 6: Explainability
+shap>=0.42.0  # SHAP values for model explanations
