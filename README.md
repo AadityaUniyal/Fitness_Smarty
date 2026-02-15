@@ -28,6 +28,27 @@ A comprehensive full-stack fitness application with AI-powered meal analysis, pe
 - **State Management**: React hooks
 - **API Communication**: Axios
 
+## 📦 Key Packages
+
+### Backend (Python)
+| Category | Package | Purpose |
+|----------|---------|---------|
+| **Core** | `fastapi`, `uvicorn` | High-performance API server |
+| **Data** | `sqlalchemy`, `pydantic` | ORM and Data Validation |
+| **Vision** | `ultralytics` (YOLOv8), `opencv-python` | Real-time Object Detection |
+| **AI/LLM** | `google-generativeai` | Gemini 1.5 Flash Integration |
+| **ML** | `torch`, `scikit-learn`, `prophet` | LSTM, Neural Networks, Forecasting |
+| **Auth** | `python-jose`, `bcrypt` | Security and Hashing |
+
+### Frontend (TypeScript)
+| Category | Package | Purpose |
+|----------|---------|---------|
+| **Framework** | `react`, `vite` | UI Library and Build Tool |
+| **Styling** | `tailwindcss`, `lucide-react` | Utility CSS and Icons |
+| **Visualization** | `recharts` | Analytics Charts |
+| **Auth** | `@clerk/clerk-react` | User Authentication |
+| **AI** | `@google/genai` | Google AI SDK |
+
 ## Project Structure
 
 ```
