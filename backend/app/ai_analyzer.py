@@ -1,7 +1,7 @@
 
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from . import db_models
+from . import models
 import math
 
 def forecast_performance(db: Session, user_id: str, days_ahead: int = 30):

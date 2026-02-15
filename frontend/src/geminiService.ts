@@ -1,9 +1,10 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { MealAnalysis, WorkoutPlan, BodyTypeAdvice, BodyGoal, BioProfile, DailyTask } from "../types";
+import { MealAnalysis, WorkoutPlan, BodyTypeAdvice, BodyGoal, BioProfile, DailyTask } from "./types";
 
 export const generateDailyTasks = async (profile: BioProfile): Promise<DailyTask[]> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || ''; // Ensure string
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: `Based on this Bio-Profile: Age ${profile.age}, ${profile.gender}, Weight ${profile.weight}kg, Height ${profile.height}cm, Goal ${profile.goal}.
@@ -36,7 +37,8 @@ export const generateDailyTasks = async (profile: BioProfile): Promise<DailyTask
 };
 
 export const generateWorkoutPlan = async (goal: string, level: string, duration: number): Promise<WorkoutPlan> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || '';
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-3-pro-preview',
     contents: `Generate a training protocol. Goal: ${goal}. Profile: ${level}. Time: ${duration}min.`,
@@ -75,7 +77,8 @@ export const generateWorkoutPlan = async (goal: string, level: string, duration:
 };
 
 export const analyzeMealImage = async (base64Image: string): Promise<MealAnalysis> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || '';
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
@@ -105,7 +108,8 @@ export const analyzeMealImage = async (base64Image: string): Promise<MealAnalysi
 };
 
 export const getBodyTypeAdvice = async (goal: BodyGoal): Promise<BodyTypeAdvice> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || '';
+  const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Compute optimal biofuel for: ${goal}.`,
@@ -134,7 +138,8 @@ export const getBodyTypeAdvice = async (goal: BodyGoal): Promise<BodyTypeAdvice>
 };
 
 export const createChat = () => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = process.env.API_KEY || '';
+  const ai = new GoogleGenAI({ apiKey });
   return ai.chats.create({
     model: 'gemini-3-pro-preview',
     config: {

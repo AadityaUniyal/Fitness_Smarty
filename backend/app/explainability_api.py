@@ -36,7 +36,7 @@ async def explain_recommendation(
     Uses SHAP to show feature contributions
     """
     try:
-        from app.models.shap_explainer import get_shap_explainer
+        from app.ml_models.shap_explainer import get_shap_explainer
         explainer = get_shap_explainer()
         
         explanation = explainer.explain_recommendation(
@@ -58,7 +58,7 @@ async def get_feature_importance(model_name: str):
     Shows which features matter most for predictions
     """
     try:
-        from app.models.shap_explainer import get_shap_explainer
+        from app.ml_models.shap_explainer import get_shap_explainer
         explainer = get_shap_explainer()
         
         importance = explainer.feature_importance(model_name)
@@ -77,7 +77,7 @@ async def get_decision_path(prediction: Dict[str, Any]):
     Explains how the model arrived at its prediction
     """
     try:
-        from app.models.shap_explainer import get_shap_explainer
+        from app.ml_models.shap_explainer import get_shap_explainer
         explainer = get_shap_explainer()
         
         path = explainer.decision_path(prediction)

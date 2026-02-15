@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  Dumbbell, 
-  Sparkles, 
-  Loader2, 
-  PlayCircle, 
-  CheckCircle2, 
-  Cpu, 
+import {
+  Dumbbell,
+  Sparkles,
+  Loader2,
+  PlayCircle,
+  CheckCircle2,
+  Cpu,
   Database,
   Timer,
   BarChart3,
@@ -23,12 +23,12 @@ import {
   ShieldCheck,
   Cloud
 } from 'lucide-react';
-import { useUser } from '@clerk/clerk-react';
+// Clerk auth is optional - user ID comes from context when available
 import { generateWorkoutPlan } from './geminiService';
 import { WorkoutPlan, BodyGoal } from './types';
 
 const WorkoutAssistant: React.FC = () => {
-  const { user } = useUser();
+  // Dev mode: no Clerk auth, use guest ID
   const [goal, setGoal] = useState<BodyGoal>(BodyGoal.ATHLETIC);
   const [level, setLevel] = useState('Intermediate');
   const [duration, setDuration] = useState(45);
@@ -60,7 +60,7 @@ const WorkoutAssistant: React.FC = () => {
       // Backend workout logging endpoint would be implemented in future tasks
       localStorage.setItem('last_workout', JSON.stringify({
         plan,
-        userId: user?.id || 'guest-user',
+        userId: 'dev-user',
         timestamp: new Date().toISOString()
       }));
       setSynced(true);
@@ -80,7 +80,7 @@ const WorkoutAssistant: React.FC = () => {
       {/* Configuration HUD */}
       <div className="glass-panel p-10 rounded-[3.5rem] border border-emerald-500/20 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[100px] -mr-32 -mt-32"></div>
-        
+
         <div className="flex flex-col lg:grid lg:grid-cols-12 gap-12 items-start">
           <div className="lg:col-span-8 space-y-8 w-full">
             <div className="flex items-center space-x-4">
@@ -98,7 +98,7 @@ const WorkoutAssistant: React.FC = () => {
                 <label className="flex items-center text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   <BarChart3 size={14} className="mr-2" /> Objective
                 </label>
-                <select 
+                <select
                   value={goal}
                   onChange={(e) => setGoal(e.target.value as BodyGoal)}
                   className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs font-black tracking-widest focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-emerald-400 uppercase"
@@ -113,7 +113,7 @@ const WorkoutAssistant: React.FC = () => {
                 <label className="flex items-center text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">
                   <Zap size={14} className="mr-2" /> Proficiency
                 </label>
-                <select 
+                <select
                   value={level}
                   onChange={(e) => setLevel(e.target.value)}
                   className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs font-black tracking-widest focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-emerald-400 uppercase"
@@ -130,8 +130,8 @@ const WorkoutAssistant: React.FC = () => {
                   <Timer size={14} className="mr-2" /> Sync Time
                 </label>
                 <div className="relative">
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     value={duration}
                     onChange={(e) => setDuration(Number(e.target.value))}
                     className="w-full bg-slate-950 border border-white/10 rounded-2xl px-6 py-4 text-xs font-black tracking-widest focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all text-emerald-400 uppercase"
@@ -141,7 +141,7 @@ const WorkoutAssistant: React.FC = () => {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={handleGenerate}
               disabled={loading}
               className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 text-slate-950 font-black py-6 rounded-[2rem] transition-all flex items-center justify-center space-x-4 shadow-[0_15px_40px_rgba(16,185,129,0.2)] group active:scale-[0.98]"
@@ -158,10 +158,10 @@ const WorkoutAssistant: React.FC = () => {
           <div className="lg:col-span-4 hidden lg:flex flex-col items-center justify-center space-y-4">
             <div className="w-64 h-64 relative group">
               <div className="absolute -inset-2 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-[3rem] blur-2xl opacity-20 group-hover:opacity-40 transition-opacity duration-700"></div>
-              <img 
-                src={`https://api.dicebear.com/7.x/identicon/svg?seed=${goal}`} 
-                className="relative w-full h-full bg-slate-950 rounded-[3rem] border border-white/10 p-8 grayscale group-hover:grayscale-0 transition-all duration-700" 
-                alt="Neural Profile" 
+              <img
+                src={`https://api.dicebear.com/7.x/identicon/svg?seed=${goal}`}
+                className="relative w-full h-full bg-slate-950 rounded-[3rem] border border-white/10 p-8 grayscale group-hover:grayscale-0 transition-all duration-700"
+                alt="Neural Profile"
               />
             </div>
             <p className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em]">Adaptive Neural Identity</p>
@@ -194,16 +194,15 @@ const WorkoutAssistant: React.FC = () => {
                 <h3 className="text-4xl font-black italic text-white tracking-tighter uppercase leading-none">{plan.title}</h3>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-4">
-              <button 
+              <button
                 onClick={handleSyncToCore}
                 disabled={syncing || synced}
-                className={`px-8 py-4 rounded-2xl flex items-center space-x-3 transition-all font-black text-[10px] uppercase tracking-widest border group shadow-lg relative overflow-hidden ${
-                  synced 
-                    ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.6)] animate-success-glow' 
+                className={`px-8 py-4 rounded-2xl flex items-center space-x-3 transition-all font-black text-[10px] uppercase tracking-widest border group shadow-lg relative overflow-hidden ${synced
+                    ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.6)] animate-success-glow'
                     : 'bg-white/5 border-white/10 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400'
-                }`}
+                  }`}
               >
                 {syncing ? (
                   <Loader2 className="animate-spin" size={16} />
@@ -215,12 +214,12 @@ const WorkoutAssistant: React.FC = () => {
                   <Database size={16} className="group-hover:animate-pulse" />
                 )}
                 <span>{syncing ? 'Synchronizing...' : synced ? 'Neural Sync Complete' : 'Sync to Neural Core'}</span>
-                
+
                 {synced && (
                   <div className="absolute inset-0 bg-emerald-500/10 animate-pulse pointer-events-none"></div>
                 )}
               </button>
-              
+
               <button className="bg-emerald-500 text-slate-950 px-8 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-500/10 flex items-center space-x-3 hover:bg-emerald-400 transition-colors">
                 <PlayCircle size={18} />
                 <span>Execute Session</span>
@@ -241,7 +240,7 @@ const WorkoutAssistant: React.FC = () => {
             <div className="divide-y divide-white/5">
               {plan.exercises.map((ex, idx) => (
                 <div key={idx}>
-                  <div 
+                  <div
                     onClick={() => toggleExpand(idx)}
                     className={`group hover:bg-emerald-500/[0.04] transition-all cursor-pointer p-8 md:p-10 ${expandedIdx === idx ? 'bg-emerald-500/[0.06]' : ''}`}
                   >
@@ -293,10 +292,10 @@ const WorkoutAssistant: React.FC = () => {
                       <div className="md:col-span-2 flex flex-col items-end justify-center h-full">
                         <div className="md:hidden text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Session Volume</div>
                         <div className="text-right">
-                            <p className="text-xl font-black text-white italic tracking-tighter leading-none">{ex.reps}</p>
-                            <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1">
-                              {ex.sets} SETS <span className="mx-1">•</span> SYNCHRONIZED
-                            </p>
+                          <p className="text-xl font-black text-white italic tracking-tighter leading-none">{ex.reps}</p>
+                          <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest mt-1">
+                            {ex.sets} SETS <span className="mx-1">•</span> SYNCHRONIZED
+                          </p>
                         </div>
                       </div>
                     </div>
@@ -307,43 +306,43 @@ const WorkoutAssistant: React.FC = () => {
                     <div className="bg-emerald-500/[0.03] border-t border-emerald-500/10 animate-in slide-in-from-top-4 duration-500 overflow-hidden">
                       <div className="p-8 md:p-12 grid grid-cols-1 lg:grid-cols-12 gap-10">
                         <div className="lg:col-span-7 space-y-6">
-                           <div className="flex items-center space-x-3 text-emerald-400">
-                             <Info size={16} />
-                             <span className="text-[10px] font-black uppercase tracking-[0.2em]">Full Bio-mechanical Description</span>
-                           </div>
-                           <p className="text-sm text-slate-300 leading-relaxed italic">
-                             {ex.description}
-                           </p>
-                           <div className="p-6 rounded-2xl bg-slate-950/50 border border-emerald-500/10 space-y-3">
-                              <h5 className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Neural Cues for Form</h5>
-                              <ul className="text-xs text-slate-400 space-y-2 font-medium">
-                                <li className="flex items-start"><Sparkles size={12} className="mr-2 mt-0.5 text-emerald-400 shrink-0" /> Maintain constant core tension to stabilize the {ex.targeted_muscle} complex.</li>
-                                <li className="flex items-start"><Sparkles size={12} className="mr-2 mt-0.5 text-emerald-400 shrink-0" /> Optimize force distribution through the mid-foot throughout the entire kinetic chain.</li>
-                              </ul>
-                           </div>
+                          <div className="flex items-center space-x-3 text-emerald-400">
+                            <Info size={16} />
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em]">Full Bio-mechanical Description</span>
+                          </div>
+                          <p className="text-sm text-slate-300 leading-relaxed italic">
+                            {ex.description}
+                          </p>
+                          <div className="p-6 rounded-2xl bg-slate-950/50 border border-emerald-500/10 space-y-3">
+                            <h5 className="text-[9px] font-black text-emerald-500 uppercase tracking-widest">Neural Cues for Form</h5>
+                            <ul className="text-xs text-slate-400 space-y-2 font-medium">
+                              <li className="flex items-start"><Sparkles size={12} className="mr-2 mt-0.5 text-emerald-400 shrink-0" /> Maintain constant core tension to stabilize the {ex.targeted_muscle} complex.</li>
+                              <li className="flex items-start"><Sparkles size={12} className="mr-2 mt-0.5 text-emerald-400 shrink-0" /> Optimize force distribution through the mid-foot throughout the entire kinetic chain.</li>
+                            </ul>
+                          </div>
                         </div>
 
                         <div className="lg:col-span-5 flex flex-col justify-center space-y-6">
-                           <div className="aspect-video bg-slate-950 rounded-[2rem] border border-white/5 flex flex-col items-center justify-center relative group overflow-hidden">
-                              <div className="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors"></div>
-                              <Video size={48} className="text-slate-800 mb-4 group-hover:scale-110 transition-transform duration-500" />
-                              <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Visual Stream Pending</p>
-                              
-                              <a 
-                                href={ex.video_url || `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' exercise')}`} 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="mt-4 px-6 py-3 bg-cyan-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center space-x-2 hover:bg-cyan-400 transition-all shadow-[0_10px_20px_rgba(6,182,212,0.3)] z-10"
-                              >
-                                <span>Launch Visual Link</span>
-                                <ExternalLink size={14} />
-                              </a>
-                           </div>
-                           
-                           <button className="w-full flex items-center justify-center space-x-3 py-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest">
-                             <CheckCircle2 size={16} />
-                             <span>Mark Node Optimized</span>
-                           </button>
+                          <div className="aspect-video bg-slate-950 rounded-[2rem] border border-white/5 flex flex-col items-center justify-center relative group overflow-hidden">
+                            <div className="absolute inset-0 bg-emerald-500/5 group-hover:bg-emerald-500/10 transition-colors"></div>
+                            <Video size={48} className="text-slate-800 mb-4 group-hover:scale-110 transition-transform duration-500" />
+                            <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest">Visual Stream Pending</p>
+
+                            <a
+                              href={ex.video_url || `https://www.youtube.com/results?search_query=${encodeURIComponent(ex.name + ' exercise')}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="mt-4 px-6 py-3 bg-cyan-500 text-slate-950 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center space-x-2 hover:bg-cyan-400 transition-all shadow-[0_10px_20px_rgba(6,182,212,0.3)] z-10"
+                            >
+                              <span>Launch Visual Link</span>
+                              <ExternalLink size={14} />
+                            </a>
+                          </div>
+
+                          <button className="w-full flex items-center justify-center space-x-3 py-4 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-2xl transition-all font-black text-[10px] uppercase tracking-widest">
+                            <CheckCircle2 size={16} />
+                            <span>Mark Node Optimized</span>
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -352,25 +351,25 @@ const WorkoutAssistant: React.FC = () => {
               ))}
             </div>
           </div>
-          
+
           <div className="flex justify-center pt-8">
             <div className="flex items-center space-x-4 text-slate-600 bg-slate-950/50 px-8 py-4 rounded-3xl border border-white/5">
-               <div className="flex -space-x-2">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="w-6 h-6 rounded-full border border-slate-900 bg-emerald-500/20 flex items-center justify-center">
-                      <Zap size={10} className="text-emerald-500" />
-                    </div>
-                  ))}
-               </div>
-               <div className="w-px h-6 bg-white/10 mx-2"></div>
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">
-                 Metabolic Trajectory: ~{Number(plan.duration.split(' ')[0]) * 9} KCAL
-               </span>
-               <div className="w-px h-6 bg-white/10 mx-2"></div>
-               <div className="flex items-center space-x-2 text-cyan-400">
-                  <Flame size={14} className="animate-pulse" />
-                  <span className="text-[9px] font-black uppercase">Fat Oxidation Optimized</span>
-               </div>
+              <div className="flex -space-x-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="w-6 h-6 rounded-full border border-slate-900 bg-emerald-500/20 flex items-center justify-center">
+                    <Zap size={10} className="text-emerald-500" />
+                  </div>
+                ))}
+              </div>
+              <div className="w-px h-6 bg-white/10 mx-2"></div>
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] italic">
+                Metabolic Trajectory: ~{Number(plan.duration.split(' ')[0]) * 9} KCAL
+              </span>
+              <div className="w-px h-6 bg-white/10 mx-2"></div>
+              <div className="flex items-center space-x-2 text-cyan-400">
+                <Flame size={14} className="animate-pulse" />
+                <span className="text-[9px] font-black uppercase">Fat Oxidation Optimized</span>
+              </div>
             </div>
           </div>
         </div>

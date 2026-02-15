@@ -11,7 +11,11 @@ Provides comprehensive exercise database management including:
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
-from .models import Exercise, ExerciseItem
+try:
+    from .models import Exercise, ExerciseItem
+except ImportError:
+    from .models import ExerciseItem
+    Exercise = ExerciseItem  # Use ExerciseItem as fallback
 from decimal import Decimal
 import uuid
 

@@ -1,6 +1,6 @@
 
 from sqlalchemy.orm import Session
-from . import db_models
+from . import models
 
 def search_biofuels(db: Session, query: str = None, category_id: int = None):
     """

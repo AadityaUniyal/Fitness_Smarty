@@ -37,7 +37,7 @@ async def optimize_meal_plan(
     Returns optimal meal plan for next N days
     """
     try:
-        from app.models.reinforcement_learning import get_dqn_sequencer
+        from app.ml_models.reinforcement_learning import get_dqn_sequencer
         dqn = get_dqn_sequencer()
         
         # Mock current nutrition
@@ -72,7 +72,7 @@ async def suggest_next_meal(
     Given current state, what should you eat next?
     """
     try:
-        from app.models.reinforcement_learning import get_dqn_sequencer
+        from app.ml_models.reinforcement_learning import get_dqn_sequencer
         dqn = get_dqn_sequencer()
         
         remaining_targets = {
@@ -101,7 +101,7 @@ async def build_habit_plan(
     Create personalized habit-building strategy
     """
     try:
-        from app.models.reinforcement_learning import get_habit_former
+        from app.ml_models.reinforcement_learning import get_habit_former
         habit_former = get_habit_former()
         
         plan = habit_former.build_habit_plan(target_habit, current_streak)

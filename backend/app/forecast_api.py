@@ -46,7 +46,7 @@ async def predict_future_weight(
     """
     try:
         # Get LSTM predictor
-        from app.models.lstm_predictor import get_weight_predictor
+        from app.ml_models.lstm_predictor import get_weight_predictor
         predictor = get_weight_predictor()
         
         # Convert Pydantic models to dicts
@@ -76,7 +76,7 @@ async def analyze_nutrition_trends(
     """
     try:
         # Get Prophet analyzer
-        from app.models.prophet_analyzer import get_trend_analyzer
+        from app.ml_models.prophet_analyzer import get_trend_analyzer
         analyzer = get_trend_analyzer()
         
         # Convert to dicts
@@ -110,7 +110,7 @@ async def project_goal_achievement(
             for i in range(1, 15)
         ]
         
-        from app.models.lstm_predictor import get_weight_predictor
+        from app.ml_models.lstm_predictor import get_weight_predictor
         predictor = get_weight_predictor()
         
         # Predict next 30 days

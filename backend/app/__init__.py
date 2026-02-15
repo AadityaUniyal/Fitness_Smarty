@@ -7,8 +7,8 @@ Exports all models and services for easy import
 # Import Base first
 from .database import Base
 
-# Export database models from db_models module
-from .db_models import (
+# Export database models from models module
+from .models import (
     EnhancedUser,
     ExerciseCategory,
     ExerciseItem,
@@ -26,16 +26,15 @@ User = EnhancedUser
 
 __all__ = [
     'EnhancedUser',
-    'User',  # Compatibility alias
+    'User',
     'ExerciseCategory',
     'ExerciseItem',
-    'WorkoutLog',
-    'MealLog',
-    'BiometricRecord',
-    'BiomechanicalFault',
-    'UserProfile',
-    'UserGoal',
+    'FoodCategory',
     'FoodItem',
+    'MealLog',
     'FoodDetection',
+    'WorkoutLog',
+    'BiometricReading',
+    'ProgressSnapshot',
     'Base'
 ]

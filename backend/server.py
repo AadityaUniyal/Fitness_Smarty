@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app import EnhancedUser, MealLog, WorkoutLog, BiometricReading
-from app import schemas, database, ai_analyzer
+from app import models, schemas, database, ai_analyzer
 import random
 from datetime import datetime, timedelta
 
@@ -80,7 +80,7 @@ def get_neural_integrity(user_id: str = "user-1", db: Session = Depends(database
     """Computes high-level biomechanical integrity based on recent faults."""
     recent_faults = db.query(BiomechanicalFault).filter(
         BiomechanicalFault.user_id == user_id
-    ).order_by(models.BiomechanicalFault.timestamp.desc()).limit(20).all()
+    ).order_by(WorkoutLog.created_at.desc()).limit(20).all()
     
     if not recent_faults:
         return {"integrity_score": 100, "status": "NOMINAL", "directive": "System synchronized. No kinetic faults detected."}
@@ -122,7 +122,7 @@ def get_neural_analytics(
     if days > 0:
         query = query.filter(BiometricRecord.timestamp >= threshold)
         
-    logs = query.order_by(models.BiometricRecord.timestamp.desc()).all()
+    logs = query.order_by(BiometricReading.created_at.desc()).all()
     
     if not logs:
         # Generate algorithmic mock data for visual consistency if no real data exists

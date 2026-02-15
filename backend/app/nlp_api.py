@@ -37,7 +37,7 @@ async def analyze_recipe_text(
     """
     try:
         # Get BERT recipe analyzer
-        from app.models.recipe_bert import get_recipe_bert
+        from app.ml_models.recipe_bert import get_recipe_bert
         bert = get_recipe_bert()
         
         # Analyze recipe
@@ -70,7 +70,7 @@ async def search_meals_by_text(
     """
     try:
         # Get CLIP search
-        from app.models.clip_search import get_clip_search
+        from app.ml_models.clip_search import get_clip_search
         clip = get_clip_search()
         
         # In production, load meal embeddings from database
@@ -133,7 +133,7 @@ async def search_similar_meals(
     
     try:
         # Get CLIP search
-        from app.models.clip_search import get_clip_search
+        from app.ml_models.clip_search import get_clip_search
         clip = get_clip_search()
         
         # Mock meal embeddings (in production, load from database)
@@ -181,7 +181,7 @@ async def extract_ingredients(
     Quick endpoint for ingredient extraction without full analysis
     """
     try:
-        from app.models.recipe_bert import get_recipe_bert
+        from app.ml_models.recipe_bert import get_recipe_bert
         bert = get_recipe_bert()
         
         analysis = bert.analyze_recipe(recipe_text)
@@ -202,8 +202,8 @@ async def get_nlp_models_status():
     Check NLP model availability
     """
     try:
-        from app.models.recipe_bert import TRANSFORMERS_AVAILABLE
-        from app.models.clip_search import CLIP_AVAILABLE
+        from app.ml_models.recipe_bert import TRANSFORMERS_AVAILABLE
+        from app.ml_models.clip_search import CLIP_AVAILABLE
     except:
         TRANSFORMERS_AVAILABLE = False
         CLIP_AVAILABLE = False

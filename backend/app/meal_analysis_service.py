@@ -19,7 +19,11 @@ from .image_processor import ImageProcessor, ImageValidationError
 from .food_detection_model import FoodDetectionModel, FoodDetectionResult, DetectedFood
 from .food_service import FoodDatabaseService
 from .nutrition_calculator import NutritionCalculator
-from .models import MealLog, MealComponent
+try:
+    from .models import MealLog, MealComponent
+except ImportError:
+    from .models import MealLog
+    MealComponent = None  # Not available in current schema
 from .error_handler import (
     retry_on_failure, graceful_degradation, error_handler,
     AIAnalysisError, ExternalAPIError, ErrorCategory

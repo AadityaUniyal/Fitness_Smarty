@@ -12,7 +12,11 @@ from fuzzywuzzy import fuzz, process
 from decimal import Decimal
 import uuid
 
-from .models import Food, NutritionFact
+try:
+    from .models import Food, NutritionFact
+except ImportError:
+    from .models import FoodItem as Food
+    NutritionFact = None  # Not available in current schema
 from .usda_integration_service import USDAIntegrationService
 
 

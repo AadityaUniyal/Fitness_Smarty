@@ -1,19 +1,16 @@
 
-from . import db_models
+from . import models
 
-def get_hydration_requirement(user: db_models.EnhancedUser, activity_minutes: int = 0):
+def get_hydration_requirement(user: models.EnhancedUser, activity_minutes: int = 0):
     """
     Calculates target water intake in milliliters.
     Base: 35ml per kg of body weight + 500ml per hour of high-intensity activity.
     """
-    base_ml = user.weight * 35
-    activity_ml = (activity_minutes / 60) * 750 # Higher loss during training
-    
-    total_target = base_ml + activity_ml
-    
+    base_ml = (user.weight_kg or 70) * 35
+    activity_bonus = (activity_minutes / 60) * 500
+    target = base_ml + activity_bonus
     return {
-        "target_ml": round(total_target, 0),
-        "target_oz": round(total_target / 29.5735, 1),
-        "intervals": 8,
-        "advice": "Neural cooling protocol: Sip 250ml every 90 minutes."
+        "target_ml": round(target),
+        "status": "hydrated" if target < 3000 else "high_demand",
+        "recommendation": f"Drink {round(target / 250)} glasses of water today."
     }

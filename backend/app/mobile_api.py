@@ -19,7 +19,7 @@ async def export_model_to_onnx(model_name: str):
     Compatible with iOS, Android, and Web (ONNX.js)
      """
     try:
-        from app.models.mobile_export import get_mobile_exporter
+        from app.ml_models.mobile_export import get_mobile_exporter
         exporter = get_mobile_exporter()
         
         result = exporter.export_to_onnx(model_name)
@@ -41,7 +41,7 @@ async def export_model_to_tflite(
     Optimized for mobile (Android/iOS)
     """
     try:
-        from app.models.mobile_export import get_mobile_exporter
+        from app.ml_models.mobile_export import get_mobile_exporter
         exporter = get_mobile_exporter()
         
         result = exporter.export_to_tflite(model_name, quantize)
@@ -60,7 +60,7 @@ async def list_mobile_models():
     Shows available downloads
     """
     try:
-        from app.models.mobile_export import get_mobile_exporter
+        from app.ml_models.mobile_export import get_mobile_exporter
         exporter = get_mobile_exporter()
         
         models = exporter.list_exported_models()

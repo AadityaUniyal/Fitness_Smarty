@@ -169,3 +169,79 @@ class ProgressSnapshot(Base):
     photos = Column(JSON, nullable=True)
     measurements = Column(JSON, nullable=True)
     notes = Column(Text, nullable=True)
+
+
+class UserProfile(Base):
+    """Extended user profile for recommendations"""
+    __tablename__ = "user_profiles"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, unique=True, index=True)
+    age = Column(Integer, nullable=True)
+    weight_kg = Column(Float, nullable=True)
+    height_cm = Column(Float, nullable=True)
+    gender = Column(String, nullable=True)
+    activity_level = Column(String, nullable=True)
+    dietary_preferences = Column(JSON, nullable=True)
+    allergies = Column(JSON, nullable=True)
+    fitness_goal = Column(String, nullable=True)
+    daily_calorie_target = Column(Float, nullable=True)
+    protein_target_g = Column(Float, nullable=True)
+    carbs_target_g = Column(Float, nullable=True)
+    fat_target_g = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class UserGoal(Base):
+    """User fitness/nutrition goals"""
+    __tablename__ = "user_goals"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True)
+    goal_type = Column(String)  # weight_loss, muscle_gain, maintenance, etc.
+    target_value = Column(Float, nullable=True)
+    current_value = Column(Float, nullable=True)
+    start_date = Column(DateTime, default=datetime.utcnow)
+    target_date = Column(DateTime, nullable=True)
+    is_active = Column(Boolean, default=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class SocialActivity(Base):
+    """Social feed activity"""
+    __tablename__ = "social_activities"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    activity_type = Column(String)  # workout, achievement, milestone
+    content = Column(Text, nullable=True)
+    data = Column(JSON, nullable=True)
+    likes = Column(Integer, default=0)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+class Achievement(Base):
+    """User achievements/badges"""
+    __tablename__ = "achievements"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String)
+    description = Column(Text, nullable=True)
+    badge_type = Column(String, nullable=True)
+    earned_at = Column(DateTime, default=datetime.utcnow)
+
+
+class BiometricRecord(Base):
+    """General biometric tracking records"""
+    __tablename__ = "biometric_records"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True)
+    category = Column(String)  # steps, heart_rate, sleep, etc.
+    value = Column(Float)
+    unit = Column(String, nullable=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)

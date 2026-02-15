@@ -1,7 +1,7 @@
 
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from . import db_models
+from . import models
 
 def calculate_recovery_score(db: Session, user_id: str):
     """

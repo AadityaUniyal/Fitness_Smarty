@@ -40,7 +40,7 @@ async def recommend_user_based(
     Recommends meals liked by similar users
     """
     try:
-        from app.models.collaborative_filtering import get_collaborative_recommender
+        from app.ml_models.collaborative_filtering import get_collaborative_recommender
         recommender = get_collaborative_recommender()
         
         # Mock user-meal ratings (in production: fetch from DB)
@@ -78,7 +78,7 @@ async def recommend_item_based(
     Recommends meals similar to ones user liked
     """
     try:
-        from app.models.collaborative_filtering import get_collaborative_recommender
+        from app.ml_models.collaborative_filtering import get_collaborative_recommender
         recommender = get_collaborative_recommender()
         
         # Mock data
@@ -112,7 +112,7 @@ async def recommend_by_nutrition(
     Recommends meals with similar nutritional profile
     """
     try:
-        from app.models.content_based import get_content_recommender
+        from app.ml_models.content_based import get_content_recommender
         recommender = get_content_recommender()
         
         # Add mock meals
@@ -155,7 +155,7 @@ async def recommend_by_ingredients(
     Recommends meals with similar ingredients
     """
     try:
-        from app.models.content_based import get_content_recommender
+        from app.ml_models.content_based import get_content_recommender
         recommender = get_content_recommender()
         
         # Add meals (same as above)
@@ -196,7 +196,7 @@ async def find_similar_meals(
     Combines nutrition + ingredient similarity
     """
     try:
-        from app.models.content_based import get_content_recommender
+        from app.ml_models.content_based import get_content_recommender
         recommender = get_content_recommender()
         
         # Add meals

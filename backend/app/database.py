@@ -39,7 +39,7 @@ def get_db():
 
 def seed_exercise_database():
     """Injects a massive library of Kinetic Nodes (Exercises)."""
-    from . import db_models as models
+    from . import models
     db = SessionLocal()
     if db.query(models.ExerciseCategory).first():
         db.close()
@@ -92,7 +92,7 @@ def seed_exercise_database():
 
 def seed_nutrition_database():
     """Injects a Comprehensive Biofuel Library (Food) for AI analysis."""
-    from . import db_models as models
+    from . import models
     db = SessionLocal()
     if db.query(models.FoodCategory).first():
         db.close()

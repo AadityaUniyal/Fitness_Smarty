@@ -1,7 +1,7 @@
 
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from . import db_models
+from . import models
 
 def get_peer_benchmarks(db: Session, user_id: str):
     """

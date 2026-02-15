@@ -6,14 +6,14 @@ Advanced computer vision endpoints for food detection using YOLOv8, ResNet, and 
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from sqlalchemy.orm import Session
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
 from pathlib import Path
 import os
 import shutil
 from datetime import datetime
 
 from app.database import get_db
-from app.models.yolo_food_detector import get_yolo_detector
+from app.ml_models.yolo_food_detector import get_yolo_detector
 from app import models as db_models
 
 router = APIRouter(prefix="/api/vision", tags=["vision"])
@@ -189,7 +189,7 @@ async def classify_with_resnet(
     
     try:
         # Get ResNet50 classifier
-        from app.models.resnet_classifier import get_resnet_classifier
+        from app.ml_models.resnet_classifier import get_resnet_classifier
         classifier = get_resnet_classifier()
         
         # Classify
@@ -225,7 +225,7 @@ async def estimate_portions_maskrcnn(
     
     try:
         # Get Mask R-CNN estimator
-        from app.models.portion_estimator import get_portion_estimator
+        from app.ml_models.portion_estimator import get_portion_estimator
         estimator = get_portion_estimator()
         
         # Parse food labels
@@ -268,7 +268,7 @@ async def detect_ensemble(
         results = {'models_used': []}
         
         # 1. YOLO detection
-        from app.models.yolo_food_detector import get_yolo_detector
+        from app.ml_models.yolo_food_detector import get_yolo_detector
         yolo = get_yolo_detector()
         yolo_result = yolo.detect(str(file_path))
         results['yolo'] = yolo_result
@@ -276,7 +276,7 @@ async def detect_ensemble(
         
         # 2. ResNet50 classification
         if use_all_models:
-            from app.models.resnet_classifier import get_resnet_classifier
+            from app.ml_models.resnet_classifier import get_resnet_classifier
             resnet = get_resnet_classifier()
             resnet_result = resnet.classify(str(file_path), top_k=3)
             results['resnet'] = resnet_result
@@ -284,7 +284,7 @@ async def detect_ensemble(
         
         # 3. Mask R-CNN portions
         if use_all_models:
-            from app.models.portion_estimator import get_portion_estimator
+            from app.ml_models.portion_estimator import get_portion_estimator
             maskrcnn = get_portion_estimator()
             
             # Use YOLO detections as labels
@@ -336,7 +336,7 @@ async def get_models_status():
     """
     Check which computer vision models are available
     """
-    from app.models.yolo_food_detector import YOLO_AVAILABLE
+    from app.ml_models.yolo_food_detector import YOLO_AVAILABLE
     
     # Check PyTorch for ResNet and MaskRCNN
     try:

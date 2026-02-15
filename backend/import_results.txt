@@ -1,0 +1,78 @@
+﻿python : Traceback 
+(most recent call 
+last):
+At line:1 char:1
++ python 
+test_imports.py 2>&1 
+| Out-File -FilePath 
+import_results.txt - 
+...
++ ~~~~~~~~~~~~~~~~~~~~
+~~~~~~~
+    + CategoryInfo    
+          : NotSpeci  
+  fied: (Traceback    
+ (most recent call    
+ last)::String) [    
+], RemoteExceptio    n
+    + FullyQualifiedE 
+   rrorId : NativeCo  
+  mmandError
+ 
+  File "C:\Users\HP\On
+eDrive\Desktop\Smarty-
+reco\backend\test_impo
+rts.py", line 36, in 
+<module>
+    print(f"\u2705 
+{mod}")
+    ~~~~~^^^^^^^^^^^^^
+  File "C:\Python313\L
+ib\encodings\cp1252.py
+", line 19, in encode
+    return codecs.char
+map_encode(input,self.
+errors,encoding_table)
+[0]
+           ~~~~~~~~~~~
+~~~~~~~~~~^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 
+'charmap' codec can't 
+encode character 
+'\u2705' in position 
+0: character maps to 
+<undefined>
+
+During handling of 
+the above exception, 
+another exception 
+occurred:
+
+Traceback (most 
+recent call last):
+  File "C:\Users\HP\On
+eDrive\Desktop\Smarty-
+reco\backend\test_impo
+rts.py", line 38, in 
+<module>
+    print(f"\u274c 
+{mod}: {e}")
+    ~~~~~^^^^^^^^^^^^^
+^^^^^
+  File "C:\Python313\L
+ib\encodings\cp1252.py
+", line 19, in encode
+    return codecs.char
+map_encode(input,self.
+errors,encoding_table)
+[0]
+           ~~~~~~~~~~~
+~~~~~~~~~~^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 
+'charmap' codec can't 
+encode character 
+'\u274c' in position 
+0: character maps to 
+<undefined>

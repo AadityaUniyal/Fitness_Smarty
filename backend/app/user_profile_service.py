@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
 from decimal import Decimal
-from . import db_models
+from . import models
 from pydantic import BaseModel, validator, Field
 
 

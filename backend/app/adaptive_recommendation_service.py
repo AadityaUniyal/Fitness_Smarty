@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal
 from collections import defaultdict
 import statistics
-from . import db_models
+from . import models
 from .recommendation_engine import RecommendationEngine, NutritionalPattern
 from pydantic import BaseModel
 

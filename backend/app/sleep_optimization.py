@@ -1,6 +1,6 @@
 
 from datetime import datetime, time
-from . import db_models
+from . import models
 
 def calculate_circadian_alignment(sleep_start: datetime, sleep_end: datetime):
     """

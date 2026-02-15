@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Dict, Optional
 from app import EnhancedUser, MealLog, WorkoutLog, FoodDetection, BiometricReading, ProgressSnapshot, FoodItem, ExerciseItem
+from app import models, schemas, database, engine
 from app import recovery_engine, hydration_monitor, challenge_engine
 from app import ai_analyzer, sleep_optimization, social_engine
 from app.exercise_service import ExerciseService
@@ -68,7 +69,7 @@ database.seed_exercise_database()
 @app.get("/neural/forecast", tags=["Neural Intelligence"], response_model=schemas.ForecastResponse)
 def get_performance_forecast(
     db: Session = Depends(database.get_db), 
-    user_id: str = Depends(security.validate_operator_link)
+    user_id: str = Depends(get_current_user_id)
 ):
     """Predict future performance trends using the AI Analyzer engine."""
     return ai_analyzer.forecast_performance(db, user_id)
@@ -76,7 +77,7 @@ def get_performance_forecast(
 @app.get("/neural/plateau-status", tags=["Neural Intelligence"])
 def check_for_plateaus(
     db: Session = Depends(database.get_db), 
-    user_id: str = Depends(security.validate_operator_link)
+    user_id: str = Depends(get_current_user_id)
 ):
     """Analyze historical progression for stagnation markers."""
     return ai_analyzer.detect_plateaus(db, user_id)
@@ -84,7 +85,7 @@ def check_for_plateaus(
 @app.get("/neural/sleep-protocol", tags=["Metabolic Monitoring"], response_model=schemas.SleepProtocolResponse)
 def get_sleep_bio_protocol(
     db: Session = Depends(database.get_db), 
-    user_id: str = Depends(security.validate_operator_link)
+    user_id: str = Depends(get_current_user_id)
 ):
     """Retrieve recovery protocols based on sleep quality and strain."""
     # Mocking strain and quality for now; would normally fetch from DB
@@ -95,7 +96,7 @@ def get_sleep_bio_protocol(
 @app.get("/social/benchmarks", tags=["Social Synchronization"], response_model=schemas.PeerBenchmarkResponse)
 def get_community_standing(
     db: Session = Depends(database.get_db), 
-    user_id: str = Depends(security.validate_operator_link)
+    user_id: str = Depends(get_current_user_id)
 ):
     """Compare performance against global anonymous neural network data."""
     return social_engine.get_peer_benchmarks(db, user_id)
@@ -103,12 +104,12 @@ def get_community_standing(
 # --- EXISTING ENDPOINTS ---
 
 @app.get("/neural/recovery", tags=["Neural Diagnostics"])
-def get_recovery_diagnostics(db: Session = Depends(database.get_db), user_id: str = Depends(security.validate_operator_link)):
+def get_recovery_diagnostics(db: Session = Depends(database.get_db), user_id: str = Depends(get_current_user_id)):
     """Fetch AI-computed recovery score and readiness diagnostics."""
     return recovery_engine.calculate_recovery_score(db, user_id)
 
 @app.get("/neural/hydration", tags=["Metabolic Monitoring"])
-def get_hydration_protocol(db: Session = Depends(database.get_db), user_id: str = Depends(security.validate_operator_link)):
+def get_hydration_protocol(db: Session = Depends(database.get_db), user_id: str = Depends(get_current_user_id)):
     """Calculate personalized fluid requirements based on current load."""
     user = db.query(EnhancedUser).filter(EnhancedUser.id == user_id).first()
     return hydration_monitor.get_hydration_requirement(user, activity_minutes=84)
@@ -324,7 +325,7 @@ def validate_exercise_completeness(
 @app.get("/users/me", response_model=schemas.UserResponse)
 def get_current_operator(
     db: Session = Depends(database.get_db), 
-    user_id: str = Depends(security.validate_operator_link)
+    user_id: str = Depends(get_current_user_id)
 ):
     user = db.query(EnhancedUser).filter(EnhancedUser.id == user_id).first()
     if not user:
@@ -427,7 +428,7 @@ def refresh_token(
 @app.post("/api/auth/change-password", tags=["Authentication"])
 def change_password(
     password_data: PasswordChange,
-    current_user: models.EnhancedUser = Depends(require_auth),
+    current_user: EnhancedUser = Depends(get_current_user),
     db: Session = Depends(database.get_db)
 ):
     """
@@ -452,7 +453,7 @@ def change_password(
 
 @app.get("/api/auth/me", tags=["Authentication"])
 def get_current_user_info(
-    current_user: models.EnhancedUser = Depends(require_auth)
+    current_user: EnhancedUser = Depends(get_current_user)
 ):
     """
     Get current authenticated user information
@@ -468,7 +469,7 @@ def get_current_user_info(
 
 
 @app.post("/api/auth/logout", tags=["Authentication"])
-def logout(current_user: models.EnhancedUser = Depends(require_auth)):
+def logout(current_user: EnhancedUser = Depends(get_current_user)):
     """
     Logout user (client should discard tokens)
     

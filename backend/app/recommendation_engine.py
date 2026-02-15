@@ -350,4 +350,59 @@ class PortionOptimizer:
 
 
 # Export all recommendation engines
-__all__ = ['GoalPredictor', 'MealRecommender', 'FoodSwapEngine', 'PortionOptimizer']
+class NutritionalPattern:
+    """Represents nutritional pattern analysis"""
+    def __init__(self, deficiencies=None, excesses=None, balance_score=0.5):
+        self.deficiencies = deficiencies or []
+        self.excesses = excesses or []
+        self.balance_score = balance_score
+
+
+class RecommendationRequest:
+    """Request object for recommendation engine"""
+    def __init__(self, user_id=None, goal_type=None, daily_targets=None, consumed_today=None):
+        self.user_id = user_id
+        self.goal_type = goal_type
+        self.daily_targets = daily_targets or {}
+        self.consumed_today = consumed_today or {}
+
+
+class RecommendationEngine:
+    """Unified recommendation engine facade"""
+    
+    def __init__(self, db=None):
+        self.db = db
+        self.goal_predictor = GoalPredictor()
+        self.meal_recommender = MealRecommender()
+        self.food_swap_engine = FoodSwapEngine()
+        self.portion_optimizer = PortionOptimizer()
+    
+    def predict_goal_timeline(self, current_weight, target_weight, goal, avg_daily_deficit):
+        return self.goal_predictor.predict_timeline(current_weight, target_weight, goal, avg_daily_deficit)
+    
+    def recommend_next_meal(self, daily_targets, consumed_so_far, time_of_day='lunch'):
+        return self.meal_recommender.recommend_next_meal(daily_targets, consumed_so_far, time_of_day)
+    
+    def suggest_food_swaps(self, detected_foods):
+        return self.food_swap_engine.suggest_swaps(detected_foods)
+    
+    def optimize_portions(self, meal_components, target_calories, target_protein):
+        return self.portion_optimizer.optimize_portions(meal_components, target_calories, target_protein)
+    
+    def analyze_nutritional_patterns(self, user_id):
+        """Analyze nutritional patterns - returns NutritionalPattern"""
+        return NutritionalPattern()
+    
+    def get_recommendations(self, request: RecommendationRequest):
+        """Get general recommendations based on request"""
+        return {
+            "recommendations": [],
+            "total": 0,
+            "user_id": request.user_id
+        }
+
+
+__all__ = [
+    'GoalPredictor', 'MealRecommender', 'FoodSwapEngine', 'PortionOptimizer',
+    'RecommendationEngine', 'RecommendationRequest', 'NutritionalPattern'
+]
