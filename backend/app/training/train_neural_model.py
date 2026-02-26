@@ -14,7 +14,11 @@ import numpy as np
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
 import joblib
+from app.database import get_training_db
+from app.models import FoodTrainingSample
 
 
 class MealDataset(Dataset):
@@ -183,7 +187,87 @@ class NeuralModelTrainer:
         
         return X, y
     
-    def train(self, dataset_file: str, epochs: int = 50, batch_size: int = 32):
+    def load_data_from_db(self, limit=None):
+        """Load data from Training Database"""
+        print("📥 Connecting to Training Database...")
+        db = next(get_training_db())
+        
+        try:
+            query = db.query(FoodTrainingSample).filter(FoodTrainingSample.verified == True)
+            if limit:
+                query = query.limit(limit)
+                
+            samples = query.all()
+            print(f"✓ Loaded {len(samples)} records from DB")
+            
+            # Convert to training format
+            # We need to map DB FoodTrainingSample to the expected "record" format for extract_features
+            # The original extract_features expects complex nested JSON (user_profile, meal, etc.)
+            # But here we are training a "MealRecommendationNN" which classifies "is_good".
+            # Currently our synthetic data has user profiles.
+            # Our DB data ONLY has Food info (calories, macros).
+            # We rely on user info for the personalization model.
+            
+            # CRITICAL: The current model requires USER PROFILE data.
+            # Our new huge dataset is just FOOD data.
+            # Strategy: We will syntheticlly attach diverse user profiles to these food samples 
+            # to create the training set. This simulates "different users eating these foods".
+            
+            records = []
+            print("🔧 Synthesizing user contexts for food samples...")
+            
+            # Mock user profiles to mix in
+            profiles = [
+                {'age': 25, 'weight_kg': 70, 'height_cm': 175, 'bmi': 22.9, 'gender': 'male', 'goal': 'muscle_gain', 'activity_level': 'active'},
+                {'age': 35, 'weight_kg': 85, 'height_cm': 180, 'bmi': 26.2, 'gender': 'male', 'goal': 'weight_loss', 'activity_level': 'sedentary'},
+                {'age': 28, 'weight_kg': 60, 'height_cm': 165, 'bmi': 22.0, 'gender': 'female', 'goal': 'maintenance', 'activity_level': 'moderate'},
+                {'age': 45, 'weight_kg': 95, 'height_cm': 178, 'bmi': 30.0, 'gender': 'male', 'goal': 'weight_loss', 'activity_level': 'light'},
+            ]
+            
+            for s in samples:
+                # Create a training record for EACH profile type to robustly train
+                for p in profiles:
+                    # Logic: Is this food good for this user?
+                    # Simple heuristic for ground truth generation:
+                    # Muscle gain -> High protein good
+                    # Weight loss -> High cal bad
+                    
+                    is_good = 0
+                    if p['goal'] == 'muscle_gain':
+                        if s.protein > 20: is_good = 1
+                    elif p['goal'] == 'weight_loss':
+                        if s.calories < 400 and s.protein > 15: is_good = 1
+                        if s.calories > 600: is_good = 0
+                    elif p['goal'] == 'maintenance':
+                        if 300 < s.calories < 600: is_good = 1
+                        
+                    record = {
+                        'user_profile': p,
+                        'meal': {
+                            'nutrition': {
+                                'calories': s.calories,
+                                'protein_g': s.protein,
+                                'carbs_g': s.carbs,
+                                'fat_g': s.fats,
+                                'fiber_g': 0 # Default if missing
+                            },
+                            'foods': [{'name': s.label}] 
+                        },
+                        'label': is_good
+                    }
+                    records.append(record)
+            
+            print(f"✓ Generated {len(records)} augmented training samples")
+            
+            X = np.array([self.extract_features(r) for r in records])
+            y = np.array([r['label'] for r in records])
+            
+            return X, y
+            
+        finally:
+            db.close()
+
+    def train(self, dataset_file: str = None, use_db: bool = False, epochs: int = 50, batch_size: int = 32):
         """Train the model"""
         print("="*70)
         print("  NEURAL NETWORK TRAINING")
@@ -191,7 +275,12 @@ class NeuralModelTrainer:
         print()
         
         # Load data
-        X, y = self.load_data(dataset_file)
+        if use_db:
+             X, y = self.load_data_from_db()
+        elif dataset_file:
+             X, y = self.load_data(dataset_file)
+        else:
+            raise ValueError("Must provide dataset_file or set use_db=True")
         
         # Split data
         X_train, X_test, y_train, y_test = train_test_split(
@@ -351,9 +440,10 @@ class NeuralModelTrainer:
 if __name__ == "__main__":
     trainer = NeuralModelTrainer()
     
-    # Train on synthetic dataset
+    # Train on DB data (Huge Data Mode)
+    print("🚀 Starting Huge Data Training using Neon Training Branch...")
     accuracy = trainer.train(
-        dataset_file="app/training/datasets/synthetic_meals.jsonl",
+        use_db=True,
         epochs=50,
         batch_size=64
     )

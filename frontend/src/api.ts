@@ -1,6 +1,6 @@
 import { UserStats, BiometricPoint, WorkoutPlan } from './types';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Helper to get auth token
 const getAuthHeaders = async (getToken: () => Promise<string | null>) => {

@@ -43,6 +43,12 @@ export interface NutritionItem {
     protein_g: number;
     carbs_g: number;
     fat_g: number;
+    per_100g?: {
+        calories: number;
+        protein: number;
+        carbs: number;
+        fat: number;
+    };
 }
 
 export interface NutritionEstimate {

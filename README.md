@@ -5,6 +5,7 @@ A comprehensive full-stack fitness application with AI-powered meal analysis, pe
 ## Features
 
 - 🍽️ **AI Meal Analysis**: Upload meal photos for automatic food detection and nutrition calculation
+- 📹 **Live Food Tracking**: Real-time AR food detection and calorie estimation using camera feed
 - 📊 **Nutrition Tracking**: Comprehensive food database with detailed nutritional information
 - 💪 **Exercise Database**: Extensive exercise library with difficulty classifications
 - 🎯 **Goal Management**: Set and track personalized fitness goals

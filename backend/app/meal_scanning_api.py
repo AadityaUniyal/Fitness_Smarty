@@ -3,6 +3,7 @@ Meal Scanning API using Gemini + Personalization
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Dict, Optional
@@ -55,7 +56,7 @@ async def scan_meal_photo(
             shutil.copyfileobj(file.file, buffer)
         
         # Scan with Gemini
-        result = scanner.scan_meal(str(image_path))
+        result = await run_in_threadpool(scanner.scan_meal, str(image_path))
         
         # Generate meal ID
         import uuid

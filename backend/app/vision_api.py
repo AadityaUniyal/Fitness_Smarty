@@ -5,6 +5,7 @@ Advanced computer vision endpoints for food detection using YOLOv8, ResNet, and 
 """
 
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from typing import Dict, Any, Optional, List
 from pathlib import Path
@@ -68,7 +69,7 @@ async def detect_with_yolo(
             )
             results['annotated_image_url'] = f"/uploads/vision/{annotated_filename}"
         else:
-            results = detector.detect(str(file_path), confidence)
+            results = await run_in_threadpool(detector.detect, str(file_path), confidence)
         
         # Add file info
         results['original_filename'] = file.filename
@@ -113,7 +114,7 @@ async def detect_hybrid(
             # Read file as bytes for Gemini
             with open(file_path, "rb") as f:
                 image_bytes = f.read()
-            gemini_results = gemini_scanner.scan_meal(image_bytes)
+            gemini_results = await run_in_threadpool(gemini_scanner.scan_meal, image_bytes)
         except:
             gemini_results = None
         
@@ -232,7 +233,7 @@ async def estimate_portions_maskrcnn(
         labels_list = food_labels.split(',') if food_labels else None
         
         # Estimate portions
-        results = estimator.estimate_portions(str(file_path), food_labels=labels_list)
+        results = await run_in_threadpool(estimator.estimate_portions, str(file_path), food_labels=labels_list)
         
         return results
         
@@ -278,7 +279,7 @@ async def detect_ensemble(
         if use_all_models:
             from app.ml_models.resnet_classifier import get_resnet_classifier
             resnet = get_resnet_classifier()
-            resnet_result = resnet.classify(str(file_path), top_k=3)
+            resnet_result = await run_in_threadpool(resnet.classify, str(file_path), top_k=3)
             results['resnet'] = resnet_result
             results['models_used'].append('resnet50')
         
@@ -381,20 +382,17 @@ async def get_models_status():
 
 
 @router.post("/estimate-nutrition")
-async def estimate_nutrition_from_detection(detection_result: Dict[str, Any]):
+async def estimate_nutrition_from_detection(
+    detection_result: Dict[str, Any],
+    db: Session = Depends(get_db)
+):
     """
-    Convert food detections to nutrition estimates
+    Convert food detections to nutrition estimates using the Food Database.
     
-    Uses detected foods + portion estimates to calculate macros
+    Returns comprehensive nutrition info including per-100g values for client-side scaling.
     """
-    # Simple nutrition database (in production, use comprehensive DB)
-    nutrition_db = {
-        'chicken': {'protein_per_100g': 31, 'carbs_per_100g': 0, 'fat_per_100g': 3.6, 'calories_per_100g': 165},
-        'rice': {'protein_per_100g': 2.7, 'carbs_per_100g': 28, 'fat_per_100g': 0.3, 'calories_per_100g': 130},
-        'broccoli': {'protein_per_100g': 2.8, 'carbs_per_100g': 6.6, 'fat_per_100g': 0.4, 'calories_per_100g': 34},
-        'salmon': {'protein_per_100g': 22, 'carbs_per_100g': 0, 'fat_per_100g': 13, 'calories_per_100g': 208},
-        'pasta': {'protein_per_100g': 5.3, 'carbs_per_100g': 27, 'fat_per_100g': 0.5, 'calories_per_100g': 124},
-    }
+    from app.food_service import FoodDatabaseService
+    food_service = FoodDatabaseService(db)
     
     total_nutrition = {
         'calories': 0,
@@ -407,34 +405,55 @@ async def estimate_nutrition_from_detection(detection_result: Dict[str, Any]):
     detections = detection_result.get('detections', [])
     
     for detection in detections:
-        food_name = detection['class'].lower()
+        food_name = detection['class'].lower().replace('_', ' ')
         portion_g = detection.get('portion_estimate_g', 100)
         
-        # Find matching nutrition
-        nutrition = None
-        for key, value in nutrition_db.items():
-            if key in food_name:
-                nutrition = value
-                break
+        # 1. Try to find in DB
+        # Search for exact or close match
+        search_results = food_service.search_foods(food_name, limit=1)
         
-        if nutrition:
-            # Scale by portion
-            multiplier = portion_g / 100
-            
-            item_nutrition = {
-                'food': food_name,
-                'portion_g': portion_g,
-                'calories': round(nutrition['calories_per_100g'] * multiplier),
-                'protein_g': round(nutrition['protein_per_100g'] * multiplier, 1),
-                'carbs_g': round(nutrition['carbs_per_100g'] * multiplier, 1),
-                'fat_g': round(nutrition['fat_per_100g'] * multiplier, 1)
+        nutrition_per_100g = None
+        
+        if search_results and search_results[0].get('nutrition'):
+            # Found in DB
+            db_food = search_results[0]
+            nutrition_per_100g = db_food['nutrition']
+            # Ensure we have defaults
+            nutrition_per_100g = {
+                'calories': nutrition_per_100g.get('calories_per_100g') or 0,
+                'protein': nutrition_per_100g.get('protein_g') or 0,
+                'carbs': nutrition_per_100g.get('carbs_g') or 0,
+                'fat': nutrition_per_100g.get('fat_g') or 0
+            }
+        else:
+            # Fallback to simple logic or Training Data (Future)
+            # For now, default mock values if not found to prevent crash
+             nutrition_per_100g = {
+                'calories': 150, # Generic decent avg
+                'protein': 10,
+                'carbs': 20,
+                'fat': 5
             }
             
-            total_nutrition['items'].append(item_nutrition)
-            total_nutrition['calories'] += item_nutrition['calories']
-            total_nutrition['protein_g'] += item_nutrition['protein_g']
-            total_nutrition['carbs_g'] += item_nutrition['carbs_g']
-            total_nutrition['fat_g'] += item_nutrition['fat_g']
+        # Calculate based on portion
+        multiplier = portion_g / 100.0
+        
+        item_nutrition = {
+            'food': food_name,
+            'portion_g': portion_g,
+            'calories': round(nutrition_per_100g['calories'] * multiplier),
+            'protein_g': round(nutrition_per_100g['protein'] * multiplier, 1),
+            'carbs_g': round(nutrition_per_100g['carbs'] * multiplier, 1),
+            'fat_g': round(nutrition_per_100g['fat'] * multiplier, 1),
+            # Return unit values so frontend can recalculate on weight change
+            'per_100g': nutrition_per_100g 
+        }
+        
+        total_nutrition['items'].append(item_nutrition)
+        total_nutrition['calories'] += item_nutrition['calories']
+        total_nutrition['protein_g'] += item_nutrition['protein_g']
+        total_nutrition['carbs_g'] += item_nutrition['carbs_g']
+        total_nutrition['fat_g'] += item_nutrition['fat_g']
     
     total_nutrition['calories'] = round(total_nutrition['calories'])
     total_nutrition['protein_g'] = round(total_nutrition['protein_g'], 1)

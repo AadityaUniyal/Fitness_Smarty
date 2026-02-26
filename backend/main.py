@@ -7,6 +7,8 @@ from app import EnhancedUser, MealLog, WorkoutLog, FoodDetection, BiometricReadi
 from app import models, schemas, database, engine
 from app import recovery_engine, hydration_monitor, challenge_engine
 from app import ai_analyzer, sleep_optimization, social_engine
+from app import nutrition_engine
+from app.models import UserGoal
 from app.exercise_service import ExerciseService
 from app.meal_analysis_service import MealAnalysisService
 from app.user_profile_service import UserProfileService, UserProfileCreate as ServiceUserProfileCreate, UserProfileUpdate as ServiceUserProfileUpdate, GoalCreate as ServiceGoalCreate, GoalUpdate as ServiceGoalUpdate
@@ -18,7 +20,13 @@ from app.auth import AuthService, UserRegister, UserLogin, PasswordChange, Token
 from datetime import datetime
 import uuid
 import base64
+import base64
 import os
+import logging
+
+# Configure Logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 
@@ -26,11 +34,12 @@ import os
 app = FastAPI(title="Smarty AI Neural Infrastructure")
 
 app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+     CORSMiddleware,
+     allow_origins=["http://localhost:5173", "http://localhost:3000"], # Update this with specific domains in production
+     allow_credentials=True,
+     allow_methods=["*"],
+     allow_headers=["*"],
+ )
 
 
 # Mount API Routers
@@ -45,6 +54,7 @@ from app.rl_api import router as rl_router  # Phase 5: Reinforcement Learning
 from app.explainability_api import router as explainability_router  # Phase 6: Explainability  
 from app.mobile_api import router as mobile_router  # Phase 7: Mobile Deployment
 from app.infrastructure_api import router as infrastructure_router  # Phase 8: Infrastructure
+from app.training_api import router as training_router  # Training Pipeline
 
 app.include_router(meal_router)
 app.include_router(analytics_router)
@@ -57,6 +67,11 @@ app.include_router(rl_router)  # DQN, Q-Learning
 app.include_router(explainability_router)  # SHAP
 app.include_router(mobile_router)  # ONNX, TFLite
 app.include_router(infrastructure_router)  # Caching, Batch, Health
+app.include_router(training_router)  # Training Pipeline
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok", "service": "Smarty Neural Backend"}
 
 
 # Initialize DB and Seed Data Libraries
@@ -327,13 +342,13 @@ def get_current_operator(
     db: Session = Depends(database.get_db), 
     user_id: str = Depends(get_current_user_id)
 ):
-    user = db.query(EnhancedUser).filter(EnhancedUser.id == user_id).first()
+    user = db.query(EnhancedUser).first()
     if not user:
-        user = EnhancedUser(id=user_id, username="operator_alex", email="alex@smarty.com", weight_kg=80.0, height_cm=180.0, primary_goal="Athletic")
+        user = EnhancedUser(username="operator_alex", email="alex@smarty.com", weight_kg=80.0, height_cm=180.0, primary_goal="Athletic")
         db.add(user)
         db.commit()
         db.refresh(user)
-    return {**user.__dict__, "achievements": user.achievements, "daily_calories": 2450, "daily_steps": 12402, "heart_rate": 72}
+    return {**user.__dict__, "achievements": [], "daily_calories": 2450, "daily_steps": 12402, "heart_rate": 72}
 
 @app.get("/social/feed", response_model=List[schemas.SocialItem])
 def get_global_feed(db: Session = Depends(database.get_db)):

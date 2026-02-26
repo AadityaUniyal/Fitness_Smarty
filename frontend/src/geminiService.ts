@@ -6,7 +6,7 @@ export const generateDailyTasks = async (profile: BioProfile): Promise<DailyTask
   const apiKey = process.env.API_KEY || ''; // Ensure string
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-2.0-flash',
     contents: `Based on this Bio-Profile: Age ${profile.age}, ${profile.gender}, Weight ${profile.weight}kg, Height ${profile.height}cm, Goal ${profile.goal}.
     Generate a 5-item daily "Operational Checklist" for fitness success. Include specific times and priorities.`,
     config: {
@@ -40,7 +40,7 @@ export const generateWorkoutPlan = async (goal: string, level: string, duration:
   const apiKey = process.env.API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-2.0-flash',
     contents: `Generate a training protocol. Goal: ${goal}. Profile: ${level}. Time: ${duration}min.`,
     config: {
       responseMimeType: "application/json",
@@ -80,7 +80,7 @@ export const analyzeMealImage = async (base64Image: string): Promise<MealAnalysi
   const apiKey = process.env.API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
+    model: 'gemini-2.0-flash',
     contents: {
       parts: [
         { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
@@ -111,7 +111,7 @@ export const getBodyTypeAdvice = async (goal: BodyGoal): Promise<BodyTypeAdvice>
   const apiKey = process.env.API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-2.0-flash',
     contents: `Compute optimal biofuel for: ${goal}.`,
     config: {
       responseMimeType: "application/json",
@@ -141,7 +141,7 @@ export const createChat = () => {
   const apiKey = process.env.API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   return ai.chats.create({
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-2.0-flash',
     config: {
       systemInstruction: `You are the SMARTY AI Neural Oracle. Expert in biomechanics and nutrition.`,
     },

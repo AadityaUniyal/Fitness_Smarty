@@ -48,6 +48,11 @@ class ExerciseCategory(Base):
     
     exercises = relationship("ExerciseItem", back_populates="category")
 
+    @property
+    def items(self):
+        """Alias for schema compatibility"""
+        return self.exercises
+
 
 class ExerciseItem(Base):
     """Individual exercises"""
@@ -75,6 +80,11 @@ class FoodCategory(Base):
     
     foods = relationship("FoodItem", back_populates="category")
 
+    @property
+    def items(self):
+        """Alias for schema compatibility"""
+        return self.foods
+
 
 class FoodItem(Base):
     """Individual food items"""
@@ -90,6 +100,11 @@ class FoodItem(Base):
     is_elite = Column(Boolean, default=False)
     
     category = relationship("FoodCategory", back_populates="foods")
+
+    @property
+    def serving_size(self):
+        """Default serving size label"""
+        return "per 100g"
 
 
 class MealLog(Base):
@@ -245,3 +260,23 @@ class BiometricRecord(Base):
     value = Column(Float)
     unit = Column(String, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow)
+
+
+class FoodTrainingSample(Base):
+    """
+    Dedicated table for the 'Huge Dataset' training branch.
+    Stores synthetic and real verfied food data for ML training.
+    """
+    __tablename__ = "food_training_dataset"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    image_signature = Column(String, nullable=True)  # Vector hash or S3 path
+    label = Column(String, index=True)
+    calories = Column(Float)
+    protein = Column(Float, nullable=True)
+    carbs = Column(Float, nullable=True)
+    fats = Column(Float, nullable=True)
+    source = Column(String)  # 'synthetic', 'user_correction', 'verified_upload'
+    verified = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
