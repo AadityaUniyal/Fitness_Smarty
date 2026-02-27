@@ -1,175 +1,223 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Dumbbell,
-  Utensils,
-  Mic,
-  Settings,
-  Bell,
-  Search,
-  MessageCircle,
-  Menu,
-  X,
-  LogOut,
-  Zap,
-  Fingerprint,
-  User
+  LayoutDashboard, Dumbbell, Utensils, Mic, MessageCircle,
+  Menu, X, LogOut, Zap, Fingerprint, Camera, TrendingUp,
+  Phone, User, ChevronRight
 } from 'lucide-react';
+
+// Pages
+import LoginPage from './pages/LoginPage';
+import OnboardingPage from './pages/OnboardingPage';
+import ContactPage from './pages/ContactPage';
+
+// Feature Components
 import Dashboard from './Dashboard';
 import WorkoutAssistant from './WorkoutAssistant';
 import NutritionHub from './NutritionHub';
 import LiveCoach from './LiveCoach';
 import SmartyChat from './SmartyChat';
 import BioLink from './BioLink';
-import { NavigationTab } from './types';
+import MealScanner from './MealScanner';
+import ProgressTracking from './ProgressTracking';
 
+// -- Auth Guard
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const user = localStorage.getItem('smarty_user');
+  if (!user) return <Navigate to="/" replace />;
+  return <>{children}</>;
+};
 
-const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<NavigationTab>(NavigationTab.DASHBOARD);
+// -- Dashboard shell with sidebar
+const DashboardShell: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // Simple signOut fallback
-  const signOut = () => {
-    console.log('Sign out (dev mode)');
-    window.location.reload();
-  };
-
-  const renderContent = () => {
-    switch (activeTab) {
-      case NavigationTab.DASHBOARD: return <Dashboard />;
-      case NavigationTab.BIO_PROFILE: return <BioLink />;
-      case NavigationTab.WORKOUTS: return <WorkoutAssistant />;
-      case NavigationTab.NUTRITION: return <NutritionHub />;
-      case NavigationTab.LIVE_COACH: return <LiveCoach />;
-      case NavigationTab.CHAT: return <SmartyChat />;
-      default: return <Dashboard />;
-    }
-  };
+  const user = JSON.parse(localStorage.getItem('smarty_user') || '{}');
+  const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
 
   const navItems = [
-    { id: NavigationTab.DASHBOARD, label: 'Mission Control', icon: LayoutDashboard },
-    { id: NavigationTab.BIO_PROFILE, label: 'Bio Calibration', icon: Fingerprint },
-    { id: NavigationTab.WORKOUTS, label: 'Kinetic Ops', icon: Dumbbell },
-    { id: NavigationTab.NUTRITION, label: 'Fuel Matrix', icon: Utensils },
-    { id: NavigationTab.LIVE_COACH, label: 'Neural Coach', icon: Mic },
-    { id: NavigationTab.CHAT, label: 'Core Oracle', icon: MessageCircle },
+    { path: '/dashboard', label: 'Mission Control', icon: LayoutDashboard, exact: true },
+    { path: '/dashboard/food-scanner', label: 'Food Scanner', icon: Camera },
+    { path: '/dashboard/workout', label: 'Workout Planner', icon: Dumbbell },
+    { path: '/dashboard/nutrition', label: 'Nutrition Hub', icon: Utensils },
+    { path: '/dashboard/progress', label: 'Progress', icon: TrendingUp },
+    { path: '/dashboard/bio', label: 'Bio Profile', icon: Fingerprint },
+    { path: '/dashboard/coach', label: 'Live Coach', icon: Mic },
+    { path: '/dashboard/chat', label: 'AI Chat', icon: MessageCircle },
+    { path: '/contact', label: 'Contact', icon: Phone },
   ];
+
+  const isActive = (item: typeof navItems[0]) => {
+    if (item.exact) return location.pathname === item.path;
+    return location.pathname.startsWith(item.path);
+  };
+
+  const handleSignOut = () => {
+    localStorage.removeItem('smarty_user');
+    navigate('/');
+  };
+
+  const goalLabel = profile.goal ? {
+    weight_loss: '🔥 Weight Loss', muscle_gain: '💪 Muscle Gain',
+    athletic: '⚡ Athletic', maintenance: '🎯 Maintenance'
+  }[profile.goal as string] || profile.goal : null;
 
   return (
     <div className="flex h-screen bg-[#020617] overflow-hidden text-slate-200 selection:bg-emerald-500/30">
-      {/* HUD-Style Sidebar */}
-      <aside className="w-80 border-r border-white/5 flex flex-col hidden lg:flex bg-slate-950/20 backdrop-blur-2xl relative">
-        <div className="absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-transparent via-emerald-500/20 to-transparent"></div>
+      {/* Sidebar */}
+      <aside className="w-72 border-r border-white/5 flex-col hidden lg:flex bg-slate-950/20 backdrop-blur-2xl relative shrink-0">
+        <div className="absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-transparent via-emerald-500/20 to-transparent" />
 
-        <div className="p-10">
-          <div className="flex items-center space-x-4 group cursor-pointer" onClick={() => setActiveTab(NavigationTab.DASHBOARD)}>
-            <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all group-hover:scale-110 rotate-3">
-              <Zap size={26} className="fill-slate-950" />
+        <div className="p-8">
+          <div className="flex items-center space-x-4 group cursor-pointer" onClick={() => navigate('/dashboard')}>
+            <div className="w-11 h-11 bg-emerald-500 rounded-2xl flex items-center justify-center text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all group-hover:scale-110 rotate-3">
+              <Zap size={22} className="fill-slate-950" />
             </div>
             <div>
-              <h1 className="text-2xl font-black italic tracking-tighter text-white">SMARTY <span className="text-emerald-400">AI</span></h1>
-              <p className="text-[8px] font-black uppercase tracking-[0.4em] text-slate-500 -mt-1">Operational v4.0</p>
+              <h1 className="text-xl font-black italic tracking-tighter text-white">SMARTY <span className="text-emerald-400">AI</span></h1>
+              <p className="text-[7px] font-black uppercase tracking-[0.4em] text-slate-500">Neural Fitness v4.0</p>
             </div>
           </div>
+
+          {/* User pill */}
+          {user.name && (
+            <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+              <div className="flex items-center space-x-3">
+                <div className="w-9 h-9 bg-emerald-500/20 rounded-xl flex items-center justify-center">
+                  <User size={16} className="text-emerald-400" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-white">{profile.name || user.name}</p>
+                  {goalLabel && <p className="text-[9px] text-slate-500 mt-0.5">{goalLabel}</p>}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 px-6 space-y-3 mt-4">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`w-full flex items-center space-x-4 px-6 py-4 rounded-2xl transition-all relative group ${activeTab === item.id
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner'
-                : 'text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent'
-                }`}
-            >
-              <item.icon size={22} className={activeTab === item.id ? 'text-emerald-400' : 'group-hover:text-emerald-400 transition-colors'} />
-              <span className="font-black uppercase tracking-[0.15em] text-[10px]">{item.label}</span>
-              {activeTab === item.id && (
-                <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981]"></div>
-              )}
-            </button>
-          ))}
+        <nav className="flex-1 px-5 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const active = isActive(item);
+            return (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all relative group ${active
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner'
+                  : 'text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent'}`}
+              >
+                <item.icon size={18} className={active ? 'text-emerald-400' : 'group-hover:text-emerald-400 transition-colors'} />
+                <span className="font-black uppercase tracking-[0.12em] text-[10px]">{item.label}</span>
+                {active && <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />}
+              </button>
+            );
+          })}
         </nav>
 
-        <div className="p-8 border-t border-white/5 space-y-3">
+        <div className="p-5 border-t border-white/5">
           <button
-            onClick={() => signOut()}
-            className="w-full flex items-center space-x-4 px-6 py-4 text-rose-500/60 hover:text-rose-400 hover:bg-rose-500/5 rounded-2xl transition-colors group"
+            onClick={handleSignOut}
+            className="w-full flex items-center space-x-3 px-5 py-3.5 text-rose-500/60 hover:text-rose-400 hover:bg-rose-500/5 rounded-2xl transition-colors"
           >
-            <LogOut size={20} />
-            <span className="font-black uppercase tracking-widest text-[10px]">Deactivate Link</span>
+            <LogOut size={16} />
+            <span className="font-black uppercase tracking-widest text-[9px]">Sign Out</span>
           </button>
         </div>
       </aside>
 
-      {/* Main Command Center */}
+      {/* Main */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <header className="h-24 border-b border-white/5 flex items-center justify-between px-10 bg-[#020617]/40 backdrop-blur-3xl sticky top-0 z-40">
-          <div className="flex items-center space-x-8">
-            <button className="lg:hidden p-3 text-slate-400 bg-white/5 rounded-xl" onClick={() => setIsMobileMenuOpen(true)}>
-              <Menu size={24} />
+        {/* Topbar */}
+        <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 md:px-10 bg-[#020617]/40 backdrop-blur-3xl sticky top-0 z-40 shrink-0">
+          <div className="flex items-center space-x-4">
+            <button className="lg:hidden p-2.5 text-slate-400 bg-white/5 rounded-xl" onClick={() => setIsMobileMenuOpen(true)}>
+              <Menu size={20} />
             </button>
-            <div className="relative w-full max-w-lg hidden md:block">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600" size={18} />
-              <input
-                type="text"
-                placeholder="EXECUTE NEURAL COMMAND..."
-                className="w-full bg-slate-950 border border-white/10 rounded-2xl py-4 pl-14 pr-6 text-[10px] font-black tracking-widest text-emerald-400 focus:outline-none transition-all focus:ring-4 focus:ring-emerald-500/5 uppercase"
-              />
+            <div className="hidden sm:block">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">Current Module</p>
+              <p className="text-sm font-black text-emerald-400 uppercase tracking-widest">
+                {navItems.find(n => isActive(n))?.label || 'Dashboard'}
+              </p>
             </div>
           </div>
-
-          <div className="flex items-center space-x-8">
-            <div className="hidden lg:flex flex-col items-end mr-2">
-              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Uplink Status</p>
-              <p className="text-[10px] font-black text-emerald-400 glow-text uppercase animate-pulse">Encrypted & Secure</p>
-            </div>
-
-            <div className="flex items-center space-x-5 pl-8 border-l border-white/5">
-              <div className="relative group cursor-pointer">
-                <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-cyan-500 rounded-2xl blur opacity-25 group-hover:opacity-100 transition duration-1000"></div>
-                <div className="w-14 h-14 rounded-2xl border border-white/20 shadow-2xl bg-slate-900 flex items-center justify-center relative">
-                  <User size={24} className="text-emerald-400" />
-                </div>
+          <div className="flex items-center space-x-4">
+            {goalLabel && (
+              <div className="hidden md:flex items-center space-x-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Goal: {goalLabel}</span>
               </div>
+            )}
+            <div className="w-11 h-11 rounded-2xl border border-white/20 bg-slate-900 flex items-center justify-center">
+              <User size={18} className="text-emerald-400" />
             </div>
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto p-8 md:p-12 relative">
-          <div className="absolute inset-0 opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(16, 185, 129, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(16, 185, 129, 0.2) 1px, transparent 1px)', backgroundSize: '100px 100px' }}></div>
-          <div className="relative z-10">{renderContent()}</div>
-        </div>
-
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden">
-            <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setIsMobileMenuOpen(false)}></div>
-            <aside className="absolute top-0 left-0 bottom-0 w-72 bg-[#020617] border-r border-white/10 p-8 flex flex-col animate-in slide-in-from-left duration-500">
-              <div className="flex items-center justify-between mb-12">
-                <span className="text-2xl font-black italic text-white uppercase tracking-tighter">Smarty <span className="text-emerald-400">AI</span></span>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-500"><X size={24} /></button>
-              </div>
-              <nav className="flex-1 space-y-4">
-                {navItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => { setActiveTab(item.id); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center space-x-4 p-5 rounded-2xl ${activeTab === item.id ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-slate-500'
-                      }`}
-                  >
-                    <item.icon size={22} />
-                    <span className="font-black text-[10px] uppercase tracking-widest">{item.label}</span>
-                  </button>
-                ))}
-              </nav>
-            </aside>
+        {/* Content area */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-10 relative">
+          <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(16,185,129,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.2) 1px, transparent 1px)', backgroundSize: '80px 80px' }} />
+          <div className="relative z-10">
+            <Routes>
+              <Route index element={<Dashboard />} />
+              <Route path="food-scanner" element={<MealScanner />} />
+              <Route path="workout" element={<WorkoutAssistant />} />
+              <Route path="nutrition" element={<NutritionHub />} />
+              <Route path="progress" element={<ProgressTracking />} />
+              <Route path="bio" element={<BioLink />} />
+              <Route path="coach" element={<LiveCoach />} />
+              <Route path="chat" element={<SmartyChat />} />
+            </Routes>
           </div>
-        )}
+        </div>
       </main>
+
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setIsMobileMenuOpen(false)} />
+          <aside className="absolute top-0 left-0 bottom-0 w-72 bg-[#020617] border-r border-white/10 p-6 flex flex-col">
+            <div className="flex items-center justify-between mb-8">
+              <span className="text-xl font-black italic text-white">SMARTY <span className="text-emerald-400">AI</span></span>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 text-slate-500"><X size={20} /></button>
+            </div>
+            {user.name && (
+              <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+                <p className="text-sm font-black text-white">{profile.name || user.name}</p>
+                {goalLabel && <p className="text-[10px] text-slate-500">{goalLabel}</p>}
+              </div>
+            )}
+            <nav className="flex-1 space-y-2 overflow-y-auto">
+              {navItems.map((item) => (
+                <button key={item.path} onClick={() => { navigate(item.path); setIsMobileMenuOpen(false); }}
+                  className={`w-full flex items-center space-x-3 p-4 rounded-2xl ${isActive(item) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-slate-500'}`}>
+                  <item.icon size={18} />
+                  <span className="font-black text-[10px] uppercase tracking-widest">{item.label}</span>
+                </button>
+              ))}
+            </nav>
+            <button onClick={handleSignOut} className="flex items-center space-x-3 p-4 text-rose-400 mt-4">
+              <LogOut size={16} />
+              <span className="font-black text-[10px] uppercase tracking-widest">Sign Out</span>
+            </button>
+          </aside>
+        </div>
+      )}
     </div>
   );
 };
+
+// Root App with router
+const App: React.FC = () => (
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<LoginPage />} />
+      <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
+      <Route path="/contact" element={<ContactPage />} />
+      <Route path="/dashboard/*" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  </BrowserRouter>
+);
 
 export default App;

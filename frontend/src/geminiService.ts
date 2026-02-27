@@ -76,36 +76,110 @@ export const generateWorkoutPlan = async (goal: string, level: string, duration:
   return JSON.parse(response.text || '{}');
 };
 
-export const analyzeMealImage = async (base64Image: string): Promise<MealAnalysis> => {
+export interface FoodItem {
+  name: string;
+  portion: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fats: number;
+  isHealthy: boolean;
+}
+
+export interface EnhancedMealAnalysis {
+  mealName: string;
+  totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFats: number;
+  items: FoodItem[];
+  recommendation: string;
+  goalAlignment: string; // 'good' | 'over' | 'under'
+  mealRating: number; // 1-10
+  healthTips: string[];
+  alternatives: string[];
+}
+
+export const analyzeMealImageEnhanced = async (
+  base64Image: string,
+  userGoal?: string,
+  dailyCaloriesRemaining?: number
+): Promise<EnhancedMealAnalysis> => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  if (!apiKey) throw new Error('No Gemini API key configured');
   const ai = new GoogleGenAI({ apiKey });
+
+  const goalContext = userGoal
+    ? `The user's fitness goal is: ${userGoal}. ${dailyCaloriesRemaining ? `They have ${dailyCaloriesRemaining} calories remaining today.` : ''}`
+    : '';
+
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
     contents: {
       parts: [
         { inlineData: { mimeType: 'image/jpeg', data: base64Image } },
-        { text: "Analyze this meal macros." }
+        {
+          text: `You are an expert nutritionist AI. Analyze this meal image in detail. ${goalContext}
+
+Identify every food item visible, estimate portion sizes, and calculate nutritional info.
+Then give a personalized recommendation based on the user's goal.
+
+Respond in JSON matching this exact schema.` }
       ]
     },
     config: {
-      responseMimeType: "application/json",
+      responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          foodName: { type: Type.STRING },
-          calories: { type: Type.NUMBER },
-          protein: { type: Type.NUMBER },
-          carbs: { type: Type.NUMBER },
-          fats: { type: Type.NUMBER },
-          recommendation: { type: Type.STRING }
+          mealName: { type: Type.STRING },
+          totalCalories: { type: Type.NUMBER },
+          totalProtein: { type: Type.NUMBER },
+          totalCarbs: { type: Type.NUMBER },
+          totalFats: { type: Type.NUMBER },
+          items: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING },
+                portion: { type: Type.STRING },
+                calories: { type: Type.NUMBER },
+                protein: { type: Type.NUMBER },
+                carbs: { type: Type.NUMBER },
+                fats: { type: Type.NUMBER },
+                isHealthy: { type: Type.BOOLEAN }
+              },
+              required: ['name', 'portion', 'calories', 'protein', 'carbs', 'fats', 'isHealthy']
+            }
+          },
+          recommendation: { type: Type.STRING },
+          goalAlignment: { type: Type.STRING },
+          mealRating: { type: Type.NUMBER },
+          healthTips: { type: Type.ARRAY, items: { type: Type.STRING } },
+          alternatives: { type: Type.ARRAY, items: { type: Type.STRING } },
         },
-        required: ["foodName", "calories", "protein", "carbs", "fats", "recommendation"]
+        required: ['mealName', 'totalCalories', 'totalProtein', 'totalCarbs', 'totalFats', 'items', 'recommendation', 'goalAlignment', 'mealRating', 'healthTips', 'alternatives']
       }
     }
   });
 
   return JSON.parse(response.text || '{}');
 };
+
+export const analyzeMealImage = async (base64Image: string): Promise<MealAnalysis> => {
+  const result = await analyzeMealImageEnhanced(base64Image);
+  return {
+    meal_log_id: Date.now().toString(),
+    foodName: result.mealName,
+    calories: result.totalCalories,
+    protein: result.totalProtein,
+    carbs: result.totalCarbs,
+    fats: result.totalFats,
+    recommendation: result.recommendation,
+  };
+};
+
 
 export const getBodyTypeAdvice = async (goal: BodyGoal): Promise<BodyTypeAdvice> => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
