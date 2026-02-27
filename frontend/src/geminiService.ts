@@ -38,10 +38,48 @@ export const generateDailyTasks = async (profile: BioProfile): Promise<DailyTask
 
 export const generateWorkoutPlan = async (goal: string, level: string, duration: number): Promise<WorkoutPlan> => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+
+  // Dev fallback if no API key is provided
+  if (!apiKey) {
+    console.warn("No Gemini API key found. Using mock workout plan for development.");
+    return new Promise(resolve => setTimeout(() => resolve({
+      title: `${goal} Protocol Beta`,
+      duration: `${duration} mins`,
+      intensity: 'Medium',
+      exercises: [
+        {
+          name: "Holographic Squats",
+          sets: 4,
+          reps: "10-12",
+          description: "Engage your neural core while performing a full range of motion squat.",
+          targeted_muscle: "Quadriceps & Glutes",
+          difficulty: "Intermediate",
+          equipment: "Bodyweight or Dumbbells"
+        },
+        {
+          name: "Kinetic Push-ups",
+          sets: 3,
+          reps: "To Failure",
+          description: "Maintain core tension and explode upwards.",
+          targeted_muscle: "Chest & Triceps",
+          difficulty: "Intermediate",
+          equipment: "Bodyweight"
+        }
+      ],
+      nutrition_advice: {
+        pre_workout: "1/2 banana with almond butter 45 mins prior.",
+        post_workout: "Protein shake with 30g whey and a handful of berries.",
+        recommended_foods: ["Lean Chicken Breast", "Sweet Potato", "Greek Yogurt", "Spinach"],
+        hydration_tip: "Drink 16oz of water 2 hours before, and 8oz every 15 mins during the session."
+      }
+    }), 1500));
+  }
+
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
-    contents: `Generate a training protocol. Goal: ${goal}. Profile: ${level}. Time: ${duration}min.`,
+    contents: `Generate a training protocol and paired nutrition advice. Goal: ${goal}. Profile: ${level}. Time: ${duration}min.
+    Include specific pre-workout fuel, post-workout recovery food, a list of general recommended foods for this goal, and a hydration tip.`,
     config: {
       responseMimeType: "application/json",
       responseSchema: {
@@ -66,9 +104,19 @@ export const generateWorkoutPlan = async (goal: string, level: string, duration:
               },
               required: ["name", "sets", "reps", "description", "targeted_muscle", "difficulty", "equipment"]
             }
+          },
+          nutrition_advice: {
+            type: Type.OBJECT,
+            properties: {
+              pre_workout: { type: Type.STRING },
+              post_workout: { type: Type.STRING },
+              recommended_foods: { type: Type.ARRAY, items: { type: Type.STRING } },
+              hydration_tip: { type: Type.STRING }
+            },
+            required: ["pre_workout", "post_workout", "recommended_foods", "hydration_tip"]
           }
         },
-        required: ["title", "exercises", "duration", "intensity"]
+        required: ["title", "exercises", "duration", "intensity", "nutrition_advice"]
       }
     }
   });

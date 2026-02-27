@@ -53,6 +53,12 @@ export interface WorkoutPlan {
   }[];
   duration: string;
   intensity: 'Low' | 'Medium' | 'High';
+  nutrition_advice: {
+    pre_workout: string;
+    post_workout: string;
+    recommended_foods: string[];
+    hydration_tip: string;
+  };
 }
 
 export interface MealAnalysis {

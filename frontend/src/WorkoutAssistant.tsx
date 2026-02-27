@@ -200,8 +200,8 @@ const WorkoutAssistant: React.FC = () => {
                 onClick={handleSyncToCore}
                 disabled={syncing || synced}
                 className={`px-8 py-4 rounded-2xl flex items-center space-x-3 transition-all font-black text-[10px] uppercase tracking-widest border group shadow-lg relative overflow-hidden ${synced
-                    ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.6)] animate-success-glow'
-                    : 'bg-white/5 border-white/10 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400'
+                  ? 'bg-emerald-500 border-emerald-400 text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.6)] animate-success-glow'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-emerald-500/10 hover:border-emerald-500/30 hover:text-emerald-400'
                   }`}
               >
                 {syncing ? (
@@ -351,6 +351,64 @@ const WorkoutAssistant: React.FC = () => {
               ))}
             </div>
           </div>
+
+          {/* NUTRITION & PROTOCOL ADVICE */}
+          {plan.nutrition_advice && (
+            <div className="glass-panel rounded-[3rem] border border-white/5 overflow-hidden p-8 md:p-10 space-y-8 animate-in slide-in-from-bottom-8 duration-700 delay-300">
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-3 text-cyan-400">
+                  <Flame size={20} />
+                  <span className="text-sm font-black uppercase tracking-[0.2em]">Metabolic & Nutrition Protocol</span>
+                </div>
+                <p className="text-slate-400 text-sm">Optimized biofuel strategy for this specific training session.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="p-6 bg-slate-900/80 border border-white/10 rounded-3xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full blur-[50px] group-hover:bg-orange-500/10 transition-colors"></div>
+                  <div className="w-10 h-10 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-400 mb-4 border border-orange-500/20">
+                    <Zap size={18} />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Pre-Workout Fuel</h4>
+                  <p className="text-sm font-medium text-slate-300 leading-relaxed">{plan.nutrition_advice.pre_workout}</p>
+                </div>
+
+                <div className="p-6 bg-slate-900/80 border border-white/10 rounded-3xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-[50px] group-hover:bg-emerald-500/10 transition-colors"></div>
+                  <div className="w-10 h-10 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-4 border border-emerald-500/20">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Post-Workout Recovery</h4>
+                  <p className="text-sm font-medium text-slate-300 leading-relaxed">{plan.nutrition_advice.post_workout}</p>
+                </div>
+
+                <div className="p-6 bg-slate-900/80 border border-white/10 rounded-3xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-[50px] group-hover:bg-cyan-500/10 transition-colors"></div>
+                  <div className="w-10 h-10 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mb-4 border border-cyan-500/20">
+                    <Timer size={18} />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Hydration Protocol</h4>
+                  <p className="text-sm font-medium text-slate-300 leading-relaxed">{plan.nutrition_advice.hydration_tip}</p>
+                </div>
+
+                <div className="p-6 bg-slate-900/80 border border-white/10 rounded-3xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-[50px] group-hover:bg-purple-500/10 transition-colors"></div>
+                  <div className="w-10 h-10 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-4 border border-purple-500/20">
+                    <Database size={18} />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Recommended Elements</h4>
+                  <ul className="space-y-2">
+                    {plan.nutrition_advice.recommended_foods.map((food, i) => (
+                      <li key={i} className="text-xs text-slate-400 flex items-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500/50 mr-2" />
+                        {food}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-center pt-8">
             <div className="flex items-center space-x-4 text-slate-600 bg-slate-950/50 px-8 py-4 rounded-3xl border border-white/5">
