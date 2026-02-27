@@ -3,7 +3,7 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { MealAnalysis, WorkoutPlan, BodyTypeAdvice, BodyGoal, BioProfile, DailyTask } from "./types";
 
 export const generateDailyTasks = async (profile: BioProfile): Promise<DailyTask[]> => {
-  const apiKey = process.env.API_KEY || ''; // Ensure string
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
@@ -37,7 +37,7 @@ export const generateDailyTasks = async (profile: BioProfile): Promise<DailyTask
 };
 
 export const generateWorkoutPlan = async (goal: string, level: string, duration: number): Promise<WorkoutPlan> => {
-  const apiKey = process.env.API_KEY || '';
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
@@ -77,7 +77,7 @@ export const generateWorkoutPlan = async (goal: string, level: string, duration:
 };
 
 export const analyzeMealImage = async (base64Image: string): Promise<MealAnalysis> => {
-  const apiKey = process.env.API_KEY || '';
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
@@ -108,7 +108,7 @@ export const analyzeMealImage = async (base64Image: string): Promise<MealAnalysi
 };
 
 export const getBodyTypeAdvice = async (goal: BodyGoal): Promise<BodyTypeAdvice> => {
-  const apiKey = process.env.API_KEY || '';
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   const response = await ai.models.generateContent({
     model: 'gemini-2.0-flash',
@@ -138,7 +138,7 @@ export const getBodyTypeAdvice = async (goal: BodyGoal): Promise<BodyTypeAdvice>
 };
 
 export const createChat = () => {
-  const apiKey = process.env.API_KEY || '';
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
   const ai = new GoogleGenAI({ apiKey });
   return ai.chats.create({
     model: 'gemini-2.0-flash',

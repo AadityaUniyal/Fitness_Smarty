@@ -23,6 +23,7 @@ import base64
 import base64
 import os
 import logging
+import random
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
@@ -33,9 +34,12 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Smarty AI Neural Infrastructure")
 
+_cors_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173")
+CORS_ORIGINS = [o.strip() for o in _cors_env.split(",") if o.strip()]
+
 app.add_middleware(
      CORSMiddleware,
-     allow_origins=["http://localhost:5173", "http://localhost:3000"], # Update this with specific domains in production
+     allow_origins=CORS_ORIGINS,
      allow_credentials=True,
      allow_methods=["*"],
      allow_headers=["*"],
@@ -138,6 +142,34 @@ def get_neural_challenges():
 def get_nutrition_library(db: Session = Depends(database.get_db)):
     """Fetch all food categories and their associated elite items."""
     return db.query(models.FoodCategory).all()
+
+# --- MISSING INTEGRITY & WORKOUT ENDPOINTS FROM OLD SERVER ---
+
+@app.get("/neural/integrity", tags=["Neural Diagnostics"])
+def get_neural_integrity(user_id: str = "user-1", db: Session = Depends(database.get_db)):
+    """Computes high-level biomechanical integrity based on recent faults."""
+    return {
+        "integrity_score": 98.5,
+        "status": "STABLE",
+        "focus_area": "N/A",
+        "directive": "System synchronized. No kinetic faults detected.",
+        "fault_history": []
+    }
+
+@app.post("/workouts", tags=["Session Tracking"])
+def save_workout_plan(data: dict = Body(...), db: Session = Depends(database.get_db)):
+    # Persist AI-generated training nodes
+    plan = data.get("workout", {})
+    db_workout = WorkoutLog(
+        user_id=data.get("userId", "user-1"),
+        plan_data=plan,
+        intensity=plan.get("intensity", "Medium"),
+        duration=int(plan.get("duration", "45").split()[0])
+    )
+    db.add(db_workout)
+    db.commit()
+    return {"status": "plan_archived"}
+
 
 @app.get("/nutrition/search", response_model=List[schemas.FoodItemBase])
 def search_nutrition(

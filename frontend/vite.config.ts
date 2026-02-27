@@ -14,14 +14,26 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
     },
     plugins: [react()],
-    define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
-    },
+    // Removed process.env.API_KEY shim — all env vars now use import.meta.env.VITE_*
     resolve: {
       alias: {
         '@': path.resolve(__dirname, './src'),
       }
+    },
+    build: {
+      // Code splitting to reduce chunk size
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Vendor chunk for large stable libraries
+            'vendor-react': ['react', 'react-dom'],
+            'vendor-gemini': ['@google/genai'],
+            'vendor-ui': ['lucide-react'],
+          }
+        }
+      },
+      // Raise chunk size warning limit slightly (large ML deps are expected)
+      chunkSizeWarningLimit: 600,
     }
   };
 });

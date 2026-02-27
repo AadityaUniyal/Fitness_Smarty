@@ -58,16 +58,16 @@ const HUDOverlay: React.FC<HUDOverlayProps> = ({ highlights }) => {
         return (
           <g key={part} className="animate-in fade-in zoom-in duration-500">
             {/* Animated Bounding Box */}
-            <rect 
-              x={x} y={y} width={w} height={h} 
-              fill={`${color}08`} 
-              stroke={color} 
-              strokeWidth="0.4" 
+            <rect
+              x={x} y={y} width={w} height={h}
+              fill={`${color}08`}
+              stroke={color}
+              strokeWidth="0.4"
               strokeDasharray="2 1"
               filter="url(#glow)"
               className="animate-pulse"
             />
-            
+
             {/* Tactical Corners */}
             <path d={`M ${x} ${y + 4} L ${x} ${y} L ${x + 4} ${y}`} stroke={color} strokeWidth="0.8" fill="none" />
             <path d={`M ${x + w - 4} ${y} L ${x + w} ${y} L ${x + w} ${y + 4}`} stroke={color} strokeWidth="0.8" fill="none" />
@@ -80,11 +80,11 @@ const HUDOverlay: React.FC<HUDOverlayProps> = ({ highlights }) => {
             {/* Label HUD Element */}
             <g transform={`translate(${x}, ${y - 2})`}>
               <rect x="-0.5" y="-5" width={part.length * 3 + 12} height="5.5" fill="rgba(2,6,23,0.9)" rx="1.5" stroke={color} strokeWidth="0.1" />
-              <text 
+              <text
                 x="1.5" y="-1.2"
-                fill={color} 
-                fontSize="3.2" 
-                fontWeight="900" 
+                fill={color}
+                fontSize="3.2"
+                fontWeight="900"
                 className="uppercase tracking-[0.2em]"
                 style={{ fontFamily: 'Space Grotesk' }}
               >
@@ -95,10 +95,10 @@ const HUDOverlay: React.FC<HUDOverlayProps> = ({ highlights }) => {
             {/* Floating Feedback Panel */}
             <foreignObject x={x + w + 1.5} y={y} width="35" height="25">
               <div className="p-3 rounded-xl backdrop-blur-xl border-l-4 bg-slate-950/90 shadow-2xl" style={{ borderColor: color }}>
-                 <p className="text-[8px] font-black text-white uppercase tracking-tighter mb-1 opacity-50">Diagnostic:</p>
-                 <p className="text-[10px] font-bold text-slate-100 italic leading-tight">
-                   {data.feedback}
-                 </p>
+                <p className="text-[8px] font-black text-white uppercase tracking-tighter mb-1 opacity-50">Diagnostic:</p>
+                <p className="text-[10px] font-bold text-slate-100 italic leading-tight">
+                  {data.feedback}
+                </p>
               </div>
             </foreignObject>
           </g>
@@ -154,7 +154,7 @@ const LiveCoach: React.FC = () => {
   const [transcription, setTranscription] = useState('Neural core ready for link...');
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
-  
+
   const [highlights, setHighlights] = useState<Record<string, HighlightData>>({});
 
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -162,7 +162,7 @@ const LiveCoach: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const sessionPromiseRef = useRef<Promise<any> | null>(null);
   const frameIntervalRef = useRef<number | null>(null);
-  
+
   const inputAudioContextRef = useRef<AudioContext | null>(null);
   const outputAudioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
@@ -220,22 +220,22 @@ const LiveCoach: React.FC = () => {
     setIsActive(true);
     setTranscription('SYNCHRONIZING NEURAL UPLINK...');
 
-    inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 16000});
-    outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
+    inputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
+    outputAudioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
 
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
 
     const sessionPromise = ai.live.connect({
-      model: 'gemini-2.5-flash-native-audio-preview-12-2025',
+      model: 'gemini-2.0-flash-live-001',
       callbacks: {
         onopen: () => {
           setLoading(false);
           setTranscription('NEURAL LINK SECURED. MONITORING BIOMECHANICS.');
-          
+
           if (streamRef.current) {
             const source = inputAudioContextRef.current!.createMediaStreamSource(streamRef.current);
             scriptProcessorRef.current = inputAudioContextRef.current!.createScriptProcessor(4096, 1, 1);
-            
+
             scriptProcessorRef.current.onaudioprocess = (e) => {
               const inputData = e.inputBuffer.getChannelData(0);
               const pcmBlob = createBlob(inputData);
@@ -285,7 +285,7 @@ const LiveCoach: React.FC = () => {
               const source = outputAudioContextRef.current.createBufferSource();
               source.buffer = audioBuffer;
               source.connect(outputAudioContextRef.current.destination);
-              
+
               nextStartTimeRef.current = Math.max(nextStartTimeRef.current, outputAudioContextRef.current.currentTime);
               source.start(nextStartTimeRef.current);
               nextStartTimeRef.current += audioBuffer.duration;
@@ -371,12 +371,12 @@ const LiveCoach: React.FC = () => {
     setIsActive(false);
     setLoading(false);
     setTranscription('Uplink terminated.');
-    
+
     if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
     if (scriptProcessorRef.current) scriptProcessorRef.current.disconnect();
     if (inputAudioContextRef.current) inputAudioContextRef.current.close();
     if (outputAudioContextRef.current) outputAudioContextRef.current.close();
-    
+
     sessionPromiseRef.current?.then((s: any) => s.close());
     sessionPromiseRef.current = null;
     audioSourcesRef.current.forEach(s => s.stop());
@@ -409,11 +409,10 @@ const LiveCoach: React.FC = () => {
           </div>
         </div>
         <div className="flex space-x-4">
-          <button 
+          <button
             onClick={toggleCamera}
-            className={`px-8 py-4 rounded-2xl flex items-center space-x-3 transition-all font-black text-[10px] uppercase tracking-widest border ${
-              hasCamera ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20' : 'bg-emerald-500 text-slate-950 shadow-xl shadow-emerald-500/20 hover:scale-105'
-            }`}
+            className={`px-8 py-4 rounded-2xl flex items-center space-x-3 transition-all font-black text-[10px] uppercase tracking-widest border ${hasCamera ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20' : 'bg-emerald-500 text-slate-950 shadow-xl shadow-emerald-500/20 hover:scale-105'
+              }`}
           >
             {hasCamera ? <CameraOff size={18} /> : <Camera size={18} />}
             <span>{hasCamera ? 'Offline Sensor' : 'Online Sensor'}</span>
@@ -433,7 +432,7 @@ const LiveCoach: React.FC = () => {
                 </p>
               </div>
               <div className="flex space-x-4">
-                <button 
+                <button
                   onClick={toggleCamera}
                   className="bg-emerald-500 text-slate-950 px-8 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-emerald-500/20 hover:scale-105 transition-all"
                 >
@@ -453,11 +452,11 @@ const LiveCoach: React.FC = () => {
               <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover grayscale opacity-40 transition-all group-hover:grayscale-0 group-hover:opacity-70" />
               <canvas ref={canvasRef} className="hidden" />
               <HUDOverlay highlights={highlights} />
-              
+
               <div className="absolute top-10 left-10 flex flex-col space-y-4 z-40">
                 <div className="flex items-center space-x-3 bg-slate-950/80 backdrop-blur-xl px-5 py-2.5 rounded-2xl border border-emerald-500/30">
-                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
-                   <span className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em]">Kinetic Scan: Active</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
+                  <span className="text-[9px] font-black text-emerald-400 uppercase tracking-[0.2em]">Kinetic Scan: Active</span>
                 </div>
                 {syncing && (
                   <div className="flex items-center space-x-3 bg-cyan-500/20 backdrop-blur-xl px-5 py-2.5 rounded-2xl border border-cyan-500/30 animate-in fade-in zoom-in duration-300">
@@ -466,9 +465,9 @@ const LiveCoach: React.FC = () => {
                   </div>
                 )}
                 {Object.keys(highlights).some(k => highlights[k].status !== 'optimal') && (
-                   <div className="flex items-center space-x-3 bg-rose-500/20 backdrop-blur-xl px-5 py-2.5 rounded-2xl border border-rose-500/30 animate-pulse">
-                      <span className="text-[9px] font-black text-rose-400 uppercase tracking-[0.2em]">Bio-Fault Detected</span>
-                   </div>
+                  <div className="flex items-center space-x-3 bg-rose-500/20 backdrop-blur-xl px-5 py-2.5 rounded-2xl border border-rose-500/30 animate-pulse">
+                    <span className="text-[9px] font-black text-rose-400 uppercase tracking-[0.2em]">Bio-Fault Detected</span>
+                  </div>
                 )}
               </div>
             </>
@@ -506,14 +505,13 @@ const LiveCoach: React.FC = () => {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={isActive ? stopSession : startSession}
               disabled={!hasCamera || loading || permissionDenied}
-              className={`w-full py-7 rounded-[2rem] transition-all flex items-center justify-center space-x-4 font-black uppercase tracking-[0.25em] text-[10px] group relative overflow-hidden ${
-                isActive 
-                  ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20' 
+              className={`w-full py-7 rounded-[2rem] transition-all flex items-center justify-center space-x-4 font-black uppercase tracking-[0.25em] text-[10px] group relative overflow-hidden ${isActive
+                  ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20'
                   : 'bg-emerald-500 text-slate-950 shadow-2xl shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 disabled:bg-slate-800 disabled:text-slate-600 disabled:shadow-none'
-              }`}
+                }`}
             >
               {isActive ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
               <span>{isActive ? 'Disconnect Uplink' : 'Activate Live Link'}</span>

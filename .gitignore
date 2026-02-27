@@ -56,6 +56,8 @@ coverage.xml
 .env
 .env.local
 .env.*.local
+# Keep example templates tracked
+!.env.example
 
 # Database
 *.db
