@@ -43,6 +43,15 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+test_*.py
+*_test.py
+tests/
+__tests__/
+spec/
+*.test.*
+*.spec.*
+backend/run_quick_tests.py
+backend/test_*.py
 
 # IDEs
 .vscode/
