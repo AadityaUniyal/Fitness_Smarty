@@ -4,12 +4,14 @@ Recommendation API Endpoints
 Advanced features for meal planning and optimization
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
+from sqlalchemy.orm import Session
 
+from app.database import get_db
 from app.recommendation_engine import (
-    GoalPredictor, MealRecommender, FoodSwapEngine, PortionOptimizer
+    GoalPredictor, MealRecommender, FoodSwapEngine, PortionOptimizer, RecommendationEngine
 )
 
 router = APIRouter(prefix="/api/recommendations", tags=["Smart Recommendations"])
@@ -34,9 +36,61 @@ class MealRecommendationRequest(BaseModel):
     time_of_day: Optional[str] = "lunch"
 
 
+class WorkoutPlanRequest(BaseModel):
+    goal: str
+    difficulty: str
+
+class WorkoutBurnRequest(BaseModel):
+    exercises: List[Dict[str, Any]] # [{'exercise_id': int, 'reps': int, 'sets': int}]
+
+class FoodCalorieRequest(BaseModel):
+    items: List[Dict[str, Any]] # [{'food_id': int, 'grams': float}]
+
 class FoodComponent(BaseModel):
     name: str
     nutrition_per_100g: Dict
+
+@router.get("/generate-6day-plan")
+async def generate_6day_plan(
+    goal: str = Query(..., description="e.g. muscle_gain, weight_loss"),
+    difficulty: str = Query(..., description="Beginner, Intermediate, Advanced"),
+    db: Session = Depends(get_db)
+):
+    """Generate a custom 6-day workout split with exercises from the expanded database."""
+    try:
+        engine = RecommendationEngine(db=db)
+        plan = engine.generate_workout_plan(goal, difficulty)
+        return plan
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/calculate-workout-burn")
+async def calculate_workout_burn(request: WorkoutBurnRequest, db: Session = Depends(get_db)):
+    """Calculate total calories burned for a list of exercises with reps and sets."""
+    try:
+        engine = RecommendationEngine(db=db)
+        result = engine.calculate_workout_burn(request.exercises)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/calculate-food-calories")
+async def calculate_food_calories(request: FoodCalorieRequest, db: Session = Depends(get_db)):
+    """Calculate total nutritional intake based on food items and their weights in grams."""
+    try:
+        from app.models import FoodItem
+        from app.nutrition_engine import get_nutritional_summary
+        
+        items_with_grams = []
+        for entry in request.items:
+            food = db.query(FoodItem).filter_by(id=entry['food_id']).first()
+            if food:
+                items_with_grams.append((food, entry['grams']))
+        
+        summary = get_nutritional_summary(items_with_grams)
+        return summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/predict-goal-timeline")
@@ -220,3 +274,65 @@ async def get_meal_ideas_for_goal(goal: str):
         'meal_ideas': ideas,
         'count': len(ideas)
     }
+
+@router.post("/daily-strategy")
+async def get_day_strategy(
+    request: Dict[str, Any], # {'consumed': dict, 'targets': dict, 'time_of_day': str, 'goal': str, 'last_meal': dict}
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze current day progress and provide proactive path correction.
+    """
+    try:
+        from app.nutrition_engine import get_meal_feedback, get_daily_strategy
+        
+        consumed = request.get('consumed', {})
+        targets = request.get('targets', {})
+        goal = request.get('goal', 'athletic')
+        last_meal = request.get('last_meal') # Optional
+        
+        strategy_data = get_daily_strategy(consumed, targets, request.get('time_of_day', 'lunch'))
+        
+        feedback = None
+        if last_meal:
+            feedback = get_meal_feedback(last_meal, goal)
+            
+        return {
+            "strategy": strategy_data,
+            "last_meal_feedback": feedback,
+            "status": "diverged" if strategy_data['is_budget_critical'] else "on_track"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/foods-by-aim")
+async def get_foods_by_aim(
+    goal: str = None, 
+    target_muscle: str = None, 
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """
+    Recommend foods based on a specific fitness goal and targeted muscle group.
+    
+    Returns a list of foods tailored to the aim and muscle focus.
+    """
+    try:
+        engine = RecommendationEngine(db=db)
+        foods = engine.recommend_foods_by_goal_and_muscle(goal, target_muscle, limit)
+        
+        if not foods:
+            return {
+                "message": "No specific foods found for this combination.", 
+                "foods": [], 
+                "count": 0
+            }
+            
+        return {
+            "goal": goal,
+            "target_muscle": target_muscle,
+            "foods": foods,
+            "count": len(foods)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
