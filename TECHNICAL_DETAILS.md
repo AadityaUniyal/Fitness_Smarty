@@ -29,12 +29,11 @@ Smarty-Reco is a comprehensive fitness and nutrition platform that utilizes a **
   - **Implementation:** `lstm_predictor.py`
   - **Why:** Captures temporal dependencies in user data to predict future progress based on history.
 
-### 4. Personalization Engine
-- **Model:** **Custom Neural Networks**
-  - **Framework:** PyTorch / Scikit-learn
-  - **Purpose:** "Is this good for YOU?" scoring. Learns from user feedback to tailor recommendations.
-  - **Implementation:** `train_neural_model.py`, `recommendation_engine.py`
-  - **Performance:** Designed to achieve high accuracy (>98%) on personalized datasets.
+### 4. Personalization & Bio-Sync
+- **Model:** **CycleSyncEngine (Hormonal Intelligence)**
+  - **Purpose:** Synchronizes training and nutrition with the four phases of the menstrual cycle.
+  - **Implementation:** `recommendation_engine.py`, `FemmeCare.tsx`
+  - **Logic:** Maps cycle day (1-28) to specific intensity limits and macro priorities.
 
 ## 💻 Technology Stack
 
@@ -42,8 +41,9 @@ Smarty-Reco is a comprehensive fitness and nutrition platform that utilizes a **
 - **Framework:** **React 18** with **Vite** (Fast build tool)
 - **Language:** TypeScript (Strict typing for reliability)
 - **Styling:** **Tailwind CSS** (Utility-first styling) & Vanilla CSS for custom animations.
-- **Visualization:** Recharts (Data analytics charts)
+- **Visualization:** Recharts (Data analytics & Cycle visualization)
 - **Auth:** Clerk (User authentication and management)
+- **Specialized Module:** **FemmeCare (Aura Pink UI)**
 - **Icons:** Lucide-React
 
 ### Backend
@@ -68,3 +68,4 @@ Smarty-Reco is a comprehensive fitness and nutrition platform that utilizes a **
 4.  **Storage:** Data logged to PostgreSQL.
 5.  **Analytics:** LSTM model updates weight predictions based on the new entry.
 6.  **Response:** Frontend displays detailed breakdown and "Good/Bad" verdict.
+7.  **Bio-Sync (Optional):** If FemmeCare is active, the system injects hormonal phase advice into the daily recommendations.
