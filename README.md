@@ -11,6 +11,9 @@ A comprehensive full-stack fitness application with AI-powered meal analysis, pe
 - 🎯 **Goal Management**: Set and track personalized fitness goals
 - 📈 **Progress Tracking**: Monitor your fitness journey with detailed analytics
 - 🤖 **Smart Recommendations**: AI-powered personalized meal and exercise suggestions
+- 🌸 **FemmeCare Module**: Dedicated ecosystem for female health with menstrual cycle tracking
+- 🔄 **Cycle-Syncing Intelligence**: Bio-synchronized training and nutrition advice based on hormonal phases
+- 💓 **Aura Pink UI**: Premium, specialized interface for female-centric fitness tracking
 - 🔐 **Secure Authentication**: JWT-based user authentication and authorization
 
 ## Tech Stack
@@ -73,6 +76,7 @@ fitness-smarty-ai/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/            # React components
+│   │   ├── FemmeCare.tsx          # Dedicated female health dashboard
 │   │   ├── services/              # API services
 │   │   ├── hooks/                 # Custom React hooks
 │   │   ├── App.tsx                # Main application
@@ -184,6 +188,8 @@ Once the backend is running, visit:
 
 ### Recommendations
 - `GET /recommendations` - Get personalized recommendations
+- `GET /api/recommendations/femmecare/daily-advice` - Get cycle-synced advice
+- `POST /api/recommendations/femmecare/log-period` - Log new menstrual cycle
 
 ## Development
 
