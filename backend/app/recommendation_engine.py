@@ -9,6 +9,7 @@ Next-level features:
 5. Meal Timing Intelligence - When to eat based on activity
 """
 
+from sqlalchemy.orm import Session
 import numpy as np
 from typing import Dict, List, Tuple
 from datetime import datetime, timedelta
@@ -367,6 +368,74 @@ class RecommendationRequest:
         self.consumed_today = consumed_today or {}
 
 
+class WorkoutPlanner6Day:
+    """Generate 6-day workout splits based on goal and difficulty"""
+    
+    SPLITS = {
+        'ppl': [
+            {'day': 1, 'type': 'Push', 'focus': 'Chest, Shoulders, Triceps'},
+            {'day': 2, 'type': 'Pull', 'focus': 'Back, Biceps'},
+            {'day': 3, 'type': 'Legs', 'focus': 'Quads, Hamstrings, Glutes, Calves'},
+            {'day': 4, 'type': 'Push', 'focus': 'Chest, Shoulders, Triceps'},
+            {'day': 5, 'type': 'Pull', 'focus': 'Back, Biceps'},
+            {'day': 6, 'type': 'Legs', 'focus': 'Quads, Hamstrings, Glutes, Calves'},
+            {'day': 7, 'type': 'Rest', 'focus': 'Recovery'}
+        ],
+        'upper_lower': [
+            {'day': 1, 'type': 'Upper', 'focus': 'Chest, Back, Shoulders, Arms'},
+            {'day': 2, 'type': 'Lower', 'focus': 'Legs, Core'},
+            {'day': 3, 'type': 'Upper', 'focus': 'Chest, Back, Shoulders, Arms'},
+            {'day': 4, 'type': 'Lower', 'focus': 'Legs, Core'},
+            {'day': 5, 'type': 'Upper', 'focus': 'Chest, Back, Shoulders, Arms'},
+            {'day': 6, 'type': 'Lower', 'focus': 'Legs, Core'},
+            {'day': 7, 'type': 'Rest', 'focus': 'Recovery'}
+        ]
+    }
+
+    def generate_6day_plan(self, goal: str, difficulty: str, db: Session) -> Dict:
+        """Generate a 6-day plan with specific exercises from DB"""
+        from app.models import ExerciseItem
+        
+        split_type = 'ppl' if 'muscle' in goal.lower() else 'upper_lower'
+        split = self.SPLITS[split_type]
+        
+        plan = []
+        for day in split:
+            if day['type'] == 'Rest':
+                plan.append({**day, 'exercises': []})
+                continue
+                
+            # Filter exercises for the focus muscle groups
+            muscles = [m.strip() for m in day['focus'].split(',')]
+            
+            day_exercises = []
+            for muscle in muscles:
+                # Get exercises for this muscle and difficulty
+                query = db.query(ExerciseItem).filter(
+                    ExerciseItem.targeted_muscle.ilike(f"%{muscle}%"),
+                    ExerciseItem.difficulty.ilike(f"%{difficulty}%")
+                ).limit(3).all() # 3 per primary muscle in the group
+                
+                for ex in query:
+                    day_exercises.append({
+                        "id": ex.id,
+                        "name": ex.name,
+                        "muscle": ex.targeted_muscle,
+                        "reps": "10-12" if difficulty == "Beginner" else "8-10",
+                        "sets": 3 if difficulty == "Beginner" else 4,
+                        "cal_per_rep": ex.calories_per_rep or 0.1
+                    })
+            
+            plan.append({**day, 'exercises': day_exercises})
+            
+        return {
+            "split_type": split_type,
+            "goal": goal,
+            "difficulty": difficulty,
+            "weekly_plan": plan
+        }
+
+
 class RecommendationEngine:
     """Unified recommendation engine facade"""
     
@@ -376,6 +445,11 @@ class RecommendationEngine:
         self.meal_recommender = MealRecommender()
         self.food_swap_engine = FoodSwapEngine()
         self.portion_optimizer = PortionOptimizer()
+        self.workout_planner = WorkoutPlanner6Day()
+    
+    def generate_workout_plan(self, goal: str, difficulty: str):
+        if not self.db: return {}
+        return self.workout_planner.generate_6day_plan(goal, difficulty, self.db)
     
     def predict_goal_timeline(self, current_weight, target_weight, goal, avg_daily_deficit):
         return self.goal_predictor.predict_timeline(current_weight, target_weight, goal, avg_daily_deficit)
@@ -393,6 +467,69 @@ class RecommendationEngine:
         """Analyze nutritional patterns - returns NutritionalPattern"""
         return NutritionalPattern()
     
+    def recommend_foods_by_goal_and_muscle(self, goal: str, target_muscle: str, limit: int = 10):
+        """Recommend foods tailored to a specific aim and muscle group"""
+        if not self.db:
+            return []
+            
+        from app.models import FoodItem
+        from sqlalchemy import or_
+        
+        query = self.db.query(FoodItem)
+        
+        if goal:
+            goal_lower = goal.lower().replace(" ", "_")
+            query = query.filter(or_(
+                FoodItem.recommended_for_goal.ilike(f"%{goal_lower}%"),
+                FoodItem.recommended_for_goal.ilike("%general%")
+            ))
+            
+        if target_muscle:
+            muscle_lower = target_muscle.lower()
+            query = query.filter(or_(
+                FoodItem.target_muscle_group.ilike(f"%{muscle_lower}%"),
+                FoodItem.target_muscle_group.ilike("%all%"),
+                FoodItem.target_muscle_group.ilike("%full_body%")
+            ))
+            
+        # Prioritize elite foods and order by appropriate macro based on goal
+        if goal and 'muscle' in goal.lower():
+            query = query.order_by(FoodItem.is_elite.desc(), FoodItem.protein.desc())
+        elif goal and 'loss' in goal.lower():
+            query = query.order_by(FoodItem.is_elite.desc(), FoodItem.calories.asc())
+        else:
+            query = query.order_by(FoodItem.is_elite.desc())
+            
+        return query.limit(limit).all()
+    
+    def calculate_workout_burn(self, exercises_performed: List[Dict]) -> Dict:
+        """
+        Calculate total calories burned based on reps, sets, and cal_per_rep.
+        exercises_performed: List of {'exercise_id': int, 'reps': int, 'sets': int}
+        """
+        if not self.db: return {"total_burn": 0, "breakdown": []}
+        
+        from app.models import ExerciseItem
+        total_burn = 0.0
+        breakdown = []
+        
+        for entry in exercises_performed:
+            ex = self.db.query(ExerciseItem).filter_by(id=entry['exercise_id']).first()
+            if ex:
+                burn = entry['reps'] * entry['sets'] * (ex.calories_per_rep or 0.1)
+                total_burn += burn
+                breakdown.append({
+                    "name": ex.name,
+                    "reps": entry['reps'],
+                    "sets": entry['sets'],
+                    "calories": round(burn, 1)
+                })
+        
+        return {
+            "total_burn": round(total_burn, 1),
+            "breakdown": breakdown
+        }
+
     def get_recommendations(self, request: RecommendationRequest):
         """Get general recommendations based on request"""
         return {
