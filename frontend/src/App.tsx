@@ -45,7 +45,6 @@ const DashboardShell: React.FC = () => {
     { path: '/dashboard/progress', label: 'Progress', icon: TrendingUp },
     { path: '/dashboard/bio', label: 'Bio Profile', icon: Fingerprint },
     { path: '/dashboard/coach', label: 'Live Coach', icon: Mic },
-    { path: '/dashboard/chat', label: 'AI Chat', icon: MessageCircle },
     { path: '/contact', label: 'Contact', icon: Phone },
   ];
 
@@ -166,7 +165,6 @@ const DashboardShell: React.FC = () => {
               <Route path="progress" element={<ProgressTracking />} />
               <Route path="bio" element={<BioLink />} />
               <Route path="coach" element={<LiveCoach />} />
-              <Route path="chat" element={<SmartyChat />} />
             </Routes>
           </div>
         </div>
