@@ -82,6 +82,9 @@ class FoodItemBase(BaseModel):
     fats: float
     serving_size: str
     is_elite: bool
+    target_muscle_group: Optional[str] = None
+    recommended_for_goal: Optional[str] = None
+    
     class Config: from_attributes = True
 
 class FoodCategoryResponse(BaseModel):
@@ -100,6 +103,7 @@ class ExerciseItemBase(BaseModel):
     difficulty: str
     equipment: str
     calories_per_min: float
+    calories_per_rep: float  # New
     class Config: from_attributes = True
 
 class ExerciseCategoryResponse(BaseModel):
@@ -355,3 +359,38 @@ class RecommendationListResponse(BaseModel):
     recommendations: List[RecommendationItem]
     total_count: int
     unread_count: int
+# --- FEMME CARE SCHEMAS ---
+
+class FemaleExerciseItemBase(BaseModel):
+    id: int
+    name: str
+    targeted_muscle: Optional[str]
+    difficulty: str
+    equipment: str
+    calories_per_min: float
+    suitable_cycle_phase: str
+    description: Optional[str]
+    
+    class Config: from_attributes = True
+
+class MenstrualCycleLogBase(BaseModel):
+    id: int
+    user_id: str
+    start_date: datetime
+    end_date: Optional[datetime]
+    cycle_length_days: int
+    symptoms: Optional[List[str]]
+    mood: Optional[str]
+    flow_intensity: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+
+    class Config: from_attributes = True
+
+class MenstrualCycleLogCreate(BaseModel):
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    symptoms: Optional[List[str]] = []
+    mood: Optional[str] = None
+    flow_intensity: Optional[str] = None
+    notes: Optional[str] = None
