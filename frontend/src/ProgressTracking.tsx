@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { TrendingUp, Flame, Dumbbell, Scale, Target, Plus, Check, Trash2, Award, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { Flame, Dumbbell, Scale, Target, Plus, Check, Award, Calendar, CheckCircle2, Timer } from 'lucide-react';
 
 interface WeightEntry { date: string; weight: number; }
 interface MealLog { mealName: string; totalCalories: number; totalProtein: number; totalCarbs: number; totalFats: number; mealType: string; timestamp: string; }
-interface WorkoutLog { name: string; duration: number; completed: boolean; timestamp: string; }
+interface WorkoutLog { name: string; duration: number; caloriesBurned: number; exercisesCompleted: number; exercisesTotal: number; timestamp: string; goal: string; }
 
 const ProgressTracking: React.FC = () => {
   const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
@@ -49,13 +49,12 @@ const ProgressTracking: React.FC = () => {
 
   const maxCal = Math.max(...weekData.map(d => d.calories), dailyCalGoal);
 
-  // Workout streak
+  const totalCalsBurned = workoutLogs.reduce((s, w) => s + (w.caloriesBurned || 0), 0);
+  const todayCalsBurned = workoutLogs.filter(w => new Date(w.timestamp).toDateString() === today).reduce((s, w) => s + (w.caloriesBurned || 0), 0);
   const workoutStreak = (() => {
-    let streak = 0;
-    let d = new Date();
+    let streak = 0; let d = new Date();
     while (streak < 30) {
-      const ds = d.toDateString();
-      if (workoutLogs.some(w => new Date(w.timestamp).toDateString() === ds && w.completed)) streak++;
+      if (workoutLogs.some(w => new Date(w.timestamp).toDateString() === d.toDateString())) streak++;
       else break;
       d.setDate(d.getDate() - 1);
     }
@@ -98,7 +97,7 @@ const ProgressTracking: React.FC = () => {
           },
           { label: "Today's Protein", value: `${todayProtein.toFixed(0)}g`, sub: 'consumed', color: 'blue', icon: Dumbbell },
           { label: 'Workout Streak', value: `${workoutStreak}`, sub: 'days', color: 'emerald', icon: Award },
-          { label: 'Current Weight', value: `${currentWeight}kg`, sub: weightChange !== 0 ? `${weightChange > 0 ? '+' : ''}${weightChange.toFixed(1)}kg total` : 'no change', color: 'purple', icon: Scale },
+          { label: 'Calories Burned', value: `${todayCalsBurned}`, sub: 'today from workouts', color: 'purple', icon: Flame },
         ].map(s => (
           <div key={s.label} className={`p-5 bg-${s.color}-500/10 border border-${s.color}-500/20 rounded-2xl ${s.warn ? 'border-rose-500/40' : ''}`}>
             <s.icon size={18} className={`text-${s.color}-400 mb-3`} />
@@ -215,29 +214,44 @@ const ProgressTracking: React.FC = () => {
         </div>
       </div>
 
-      {/* Recent Meal Logs */}
-      {mealLogs.length > 0 && (
-        <div className="bg-slate-900 border border-white/10 rounded-2xl p-6">
-          <div className="flex items-center space-x-3 mb-4">
-            <Flame size={18} className="text-orange-400" />
-            <p className="text-sm font-black text-white uppercase tracking-widest">Recent Meals</p>
+      {/* Completed Workout History */}
+      <div className="bg-slate-900 border border-white/10 rounded-2xl p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <Dumbbell size={18} className="text-emerald-400" />
+          <p className="text-sm font-black text-white uppercase tracking-widest">Completed Workouts</p>
+        </div>
+        {workoutLogs.length === 0 ? (
+          <div className="py-8 text-center">
+            <Dumbbell size={28} className="text-slate-700 mx-auto mb-2" />
+            <p className="text-sm text-slate-600">No completed workouts yet.</p>
+            <p className="text-[10px] text-slate-700 mt-1">Go to Workout Planner, generate a plan, start a session, and mark exercises done!</p>
           </div>
+        ) : (
           <div className="space-y-2">
-            {mealLogs.slice(0, 8).map((m, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-slate-800 rounded-xl">
-                <div>
-                  <p className="text-sm font-black text-white">{m.mealName}</p>
-                  <p className="text-[9px] text-slate-500 capitalize">{m.mealType} • {new Date(m.timestamp).toLocaleDateString()}</p>
+            {workoutLogs.slice(0, 10).map((w, i) => (
+              <div key={i} className="flex items-center justify-between p-4 bg-slate-800 rounded-xl">
+                <div className="flex items-center space-x-3">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <div>
+                    <p className="text-sm font-black text-white">{w.name}</p>
+                    <p className="text-[9px] text-slate-500">
+                      {w.exercisesCompleted}/{w.exercisesTotal} exercises • {w.duration} min • {new Date(w.timestamp).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-black text-amber-400">{m.totalCalories} kcal</p>
-                  <p className="text-[9px] text-slate-500">P{m.totalProtein}g C{m.totalCarbs}g F{m.totalFats}g</p>
+                  <p className="text-sm font-black text-orange-400">{w.caloriesBurned} kcal</p>
+                  <p className="text-[9px] text-slate-600 capitalize">{w.goal}</p>
                 </div>
               </div>
             ))}
+            <div className="pt-3 border-t border-white/5 flex justify-between">
+              <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{workoutLogs.length} sessions total</p>
+              <p className="text-[10px] font-black text-orange-400">{totalCalsBurned} kcal total burned</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
