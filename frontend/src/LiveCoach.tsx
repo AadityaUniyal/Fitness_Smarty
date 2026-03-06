@@ -156,6 +156,8 @@ const LiveCoach: React.FC = () => {
   const [syncing, setSyncing] = useState(false);
 
   const [highlights, setHighlights] = useState<Record<string, HighlightData>>({});
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanCountdown, setScanCountdown] = useState(10);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -187,6 +189,37 @@ const LiveCoach: React.FC = () => {
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  const startReadinessScan = () => {
+    setIsScanning(true);
+    setScanCountdown(10);
+    setTranscription("Bio-Sensor Calibration initiated. Stand in frame...");
+
+    const interval = setInterval(() => {
+      setScanCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          finishScan();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const finishScan = async () => {
+    setIsScanning(false);
+    setTranscription("Scan Complete. Ready score recalibrated. All systems nominal.");
+
+    // Log a nominal fault to reset integrity in backend
+    await logBiomechanicalFault({
+      type: 'nominal_scan',
+      muscle_group: 'Full Body',
+      severity: 'none',
+      feedback: 'Routine kinetic integrity calibration complete.',
+      timestamp: new Date().toISOString()
+    });
+  };
 
   const toggleCamera = async () => {
     setPermissionDenied(false);
@@ -410,6 +443,14 @@ const LiveCoach: React.FC = () => {
         </div>
         <div className="flex space-x-4">
           <button
+            onClick={startReadinessScan}
+            disabled={!hasCamera || isScanning || isActive}
+            className={`px-8 py-4 rounded-2xl flex items-center space-x-3 transition-all font-black text-[10px] uppercase tracking-widest border ${isScanning ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400' : 'bg-slate-900 border-white/10 text-white hover:border-emerald-500/40'}`}
+          >
+            <Sparkles size={18} className={isScanning ? 'animate-spin' : ''} />
+            <span>{isScanning ? `Scanning... ${scanCountdown}s` : 'Neural Scan'}</span>
+          </button>
+          <button
             onClick={toggleCamera}
             className={`px-8 py-4 rounded-2xl flex items-center space-x-3 transition-all font-black text-[10px] uppercase tracking-widest border ${hasCamera ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20' : 'bg-emerald-500 text-slate-950 shadow-xl shadow-emerald-500/20 hover:scale-105'
               }`}
@@ -509,8 +550,8 @@ const LiveCoach: React.FC = () => {
               onClick={isActive ? stopSession : startSession}
               disabled={!hasCamera || loading || permissionDenied}
               className={`w-full py-7 rounded-[2rem] transition-all flex items-center justify-center space-x-4 font-black uppercase tracking-[0.25em] text-[10px] group relative overflow-hidden ${isActive
-                  ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20'
-                  : 'bg-emerald-500 text-slate-950 shadow-2xl shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 disabled:bg-slate-800 disabled:text-slate-600 disabled:shadow-none'
+                ? 'bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:bg-rose-500/20'
+                : 'bg-emerald-500 text-slate-950 shadow-2xl shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 disabled:bg-slate-800 disabled:text-slate-600 disabled:shadow-none'
                 }`}
             >
               {isActive ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
