@@ -396,6 +396,7 @@ class MenstrualCycleLogCreate(BaseModel):
     mood: Optional[str] = None
     flow_intensity: Optional[str] = None
     notes: Optional[str] = None
+<<<<<<< HEAD
 
 
 # ============= SOCIAL FEED SCHEMAS =============
@@ -650,3 +651,5 @@ class NotificationLogResponse(BaseModel):
     created_at: datetime
 
     class Config: from_attributes = True
+=======
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a

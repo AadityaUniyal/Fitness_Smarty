@@ -4,6 +4,7 @@
 
 ## ✨ Core Features & Implementation Status
 
+<<<<<<< HEAD
 | Module | Description | Implementation Status |
 |--------|-------------|-----------------------|
 | 🤖 **AI Chat & Coach** | Profile-aware Gemini Flash conversation with quick prompts | **Active (Production-Ready)** |
@@ -15,6 +16,19 @@
 | 📊 **Predictive Analytics** | Time-series forecasting for weight trends and body metrics | **Active (LSTM with Mock Fallback)** |
 | 🧬 **Personalization / RL** | DQN optimal meal sequencing & collaborative recommendations | *Scaffolded (Development Mock)* |
 | 🔐 **Auth & Security** | JWT bcrypt auth + Clerk optional integration, secure env check | **Active (Google Fit Light Theme)** |
+=======
+- 🍽️ **AI Meal Analysis**: Upload meal photos for automatic food detection and nutrition calculation
+- 📹 **Live Food Tracking**: Real-time AR food detection and calorie estimation using camera feed
+- 📊 **Nutrition Tracking**: Comprehensive food database with detailed nutritional information
+- 💪 **Exercise Database**: Extensive exercise library with difficulty classifications
+- 🎯 **Goal Management**: Set and track personalized fitness goals
+- 📈 **Progress Tracking**: Monitor your fitness journey with detailed analytics
+- 🤖 **Smart Recommendations**: AI-powered personalized meal and exercise suggestions
+- 🌸 **FemmeCare Module**: Dedicated ecosystem for female health with menstrual cycle tracking
+- 🔄 **Cycle-Syncing Intelligence**: Bio-synchronized training and nutrition advice based on hormonal phases
+- 💓 **Aura Pink UI**: Premium, specialized interface for female-centric fitness tracking
+- 🔐 **Secure Authentication**: JWT-based user authentication and authorization
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
 
 ## 🏗️ Tech Stack
 
@@ -184,11 +198,18 @@ Once the backend is running, visit:
 - `POST /api/users/goals` - Create fitness goal
 - `GET /api/users/goals` - Get user goals
 
+<<<<<<< HEAD
 ### Recommendations & Female Health
 - `GET /api/recommendations` - Get personalized recommendations
 - `GET /api/female/cycle-phase/{user_id}` - Get cycle-synced advice
 - `POST /api/female/log-period/{user_id}` - Log new menstrual cycle
 - `GET /api/female/calendar-feed/{user_id}` - Get standard iCal (.ics) calendar feed for Google Calendar
+=======
+### Recommendations
+- `GET /recommendations` - Get personalized recommendations
+- `GET /api/recommendations/femmecare/daily-advice` - Get cycle-synced advice
+- `POST /api/recommendations/femmecare/log-period` - Log new menstrual cycle
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
 
 ## Development
 

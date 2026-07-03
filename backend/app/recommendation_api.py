@@ -10,8 +10,14 @@ from typing import List, Dict, Optional, Any
 from sqlalchemy.orm import Session
 
 from app.database import get_db
+<<<<<<< HEAD
 from app.models import MenstrualCycleLog
 from app.schemas import MenstrualCycleLogCreate
+=======
+from app.recommendation_engine import (
+    GoalPredictor, MealRecommender, FoodSwapEngine, PortionOptimizer, RecommendationEngine
+)
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
 
 router = APIRouter(prefix="/api/recommendations", tags=["Smart Recommendations"])
 
@@ -85,7 +91,10 @@ async def generate_6day_plan(
 ):
     """Generate a custom 6-day workout split with exercises from the expanded database."""
     try:
+<<<<<<< HEAD
         from app.recommendation_engine import RecommendationEngine
+=======
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
         engine = RecommendationEngine(db=db)
         plan = engine.generate_workout_plan(goal, difficulty)
         return plan
@@ -96,7 +105,10 @@ async def generate_6day_plan(
 async def calculate_workout_burn(request: WorkoutBurnRequest, db: Session = Depends(get_db)):
     """Calculate total calories burned for a list of exercises with reps and sets."""
     try:
+<<<<<<< HEAD
         from app.recommendation_engine import RecommendationEngine
+=======
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
         engine = RecommendationEngine(db=db)
         result = engine.calculate_workout_burn(request.exercises)
         return result
@@ -347,7 +359,10 @@ async def get_foods_by_aim(
     Returns a list of foods tailored to the aim and muscle focus.
     """
     try:
+<<<<<<< HEAD
         from app.recommendation_engine import RecommendationEngine
+=======
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
         engine = RecommendationEngine(db=db)
         foods = engine.recommend_foods_by_goal_and_muscle(goal, target_muscle, limit)
         
@@ -366,6 +381,7 @@ async def get_foods_by_aim(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+<<<<<<< HEAD
 
 # --- FEMME CARE ENDPOINTS ---
 
@@ -441,3 +457,5 @@ async def log_period(user_id: str, log_data: MenstrualCycleLogCreate, db: Sessio
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+=======
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a

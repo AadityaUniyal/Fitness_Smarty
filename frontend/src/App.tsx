@@ -109,6 +109,7 @@ const DashboardShell: React.FC = () => {
     { path: '/dashboard/history', label: 'History', icon: Clock },
     { path: '/dashboard/nutrition', label: 'Nutrition', icon: Utensils },
     { path: '/dashboard/progress', label: 'Progress', icon: TrendingUp },
+<<<<<<< HEAD
     { path: '/dashboard/body', label: 'Measurements', icon: Activity },
     { path: '/dashboard/achievements', label: 'Achievements', icon: Trophy },
     { path: '/dashboard/mood', label: 'Mood & Energy', icon: Heart },
@@ -122,6 +123,10 @@ const DashboardShell: React.FC = () => {
     { path: '/dashboard/training', label: 'Training', icon: Brain },
     { path: '/dashboard/interpreter', label: 'AI Interpreter', icon: BrainCircuit },
     { path: '/dashboard/feedback', label: 'Feedback', icon: MessageCircle },
+=======
+    { path: '/dashboard/bio', label: 'Bio Profile', icon: Fingerprint },
+    { path: '/dashboard/coach', label: 'Live Coach', icon: Mic },
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
     { path: '/contact', label: 'Contact', icon: Phone },
   ];
 
@@ -261,6 +266,7 @@ const DashboardShell: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-6 md:p-10 relative">
           <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(16,185,129,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.2) 1px, transparent 1px)', backgroundSize: '80px 80px' }} />
           <div className="relative z-10">
+<<<<<<< HEAD
             <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <PageTransition>
                 <Routes>
@@ -297,6 +303,17 @@ const DashboardShell: React.FC = () => {
                 </Routes>
               </PageTransition>
             </Suspense>
+=======
+            <Routes>
+              <Route index element={<Dashboard />} />
+              <Route path="food-scanner" element={<MealScanner />} />
+              <Route path="workout" element={<WorkoutAssistant />} />
+              <Route path="nutrition" element={<NutritionHub />} />
+              <Route path="progress" element={<ProgressTracking />} />
+              <Route path="bio" element={<BioLink />} />
+              <Route path="coach" element={<LiveCoach />} />
+            </Routes>
+>>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
           </div>
         </div>
       </main>
