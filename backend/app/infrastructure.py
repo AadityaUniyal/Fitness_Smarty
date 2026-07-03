@@ -29,7 +29,7 @@ class ModelCache:
         self.ttl = ttl_seconds
         self.hit_count = 0
         self.miss_count = 0
-        print(f"✓ Model Cache initialized (TTL: {ttl_seconds}s)")
+        print(f"[OK] Model Cache initialized (TTL: {ttl_seconds}s)")
     
     def get(self, key: str) -> Optional[Any]:
         """Get cached value"""
@@ -82,7 +82,7 @@ class BatchProcessor:
     def __init__(self):
         """Initialize batch processor"""
         self.processing_times = []
-        print("✓ Batch Processor initialized")
+        print("[OK] Batch Processor initialized")
     
     def process_batch(
         self,
@@ -148,7 +148,7 @@ class HealthMonitor:
         self.start_time = datetime.now()
         self.request_counts = defaultdict(int)
         self.error_counts = defaultdict(int)
-        print("✓ Health Monitor initialized")
+        print("[OK] Health Monitor initialized")
     
     def record_request(self, endpoint: str):
         """Record API request"""

@@ -72,6 +72,11 @@ async def search_meals_by_text(
         # Get CLIP search
         from app.ml_models.clip_search import get_clip_search
         clip = get_clip_search()
+        if clip.mock_mode:
+            raise HTTPException(
+                status_code=503,
+                detail="Semantic search is temporarily unavailable: CLIP model could not be loaded."
+            )
         
         # In production, load meal embeddings from database
         # For now, use mock data
@@ -135,6 +140,11 @@ async def search_similar_meals(
         # Get CLIP search
         from app.ml_models.clip_search import get_clip_search
         clip = get_clip_search()
+        if clip.mock_mode:
+            raise HTTPException(
+                status_code=503,
+                detail="Similar meal search is temporarily unavailable: CLIP model could not be loaded."
+            )
         
         # Mock meal embeddings (in production, load from database)
         mock_meal_embeddings = {

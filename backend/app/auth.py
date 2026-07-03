@@ -5,7 +5,7 @@ Provides JWT token-based authentication, secure password handling,
 and user registration functionality.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 import bcrypt
 from jose import JWTError, jwt
@@ -15,19 +15,51 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, validator
 import os
 import secrets
+import logging
 from app import models, database
 
 
 # Configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", secrets.token_urlsafe(32))
+logger = logging.getLogger(__name__)
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+SECRET_KEY = os.getenv("JWT_SECRET_KEY") or os.getenv("SECRET_KEY")
+
+if not SECRET_KEY:
+    if ENVIRONMENT not in {"development", "dev", "test", "testing"}:
+        raise RuntimeError("JWT_SECRET_KEY or SECRET_KEY must be explicitly set in non-development environments")
+    # Dynamically generate a random session key for local development sessions if not configured, preventing hardcoded keys
+    import secrets
+    SECRET_KEY = secrets.token_hex(32)
+    logger.warning("No JWT_SECRET_KEY environment variable set. Generated a dynamic random session key for local dev.")
+
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
+# Token blacklist set (stores JTI or token hash for revoked tokens)
+_token_blacklist: set = set()
+
+def revoke_token(token: str) -> None:
+    _token_blacklist.add(token)
+
+def is_token_revoked(token: str) -> bool:
+    return token in _token_blacklist
+
+# In-memory password reset tokens: email -> token
+_reset_tokens: dict = {}
+
+def store_reset_token(email: str, token: str) -> None:
+    _reset_tokens[email] = token
+
+def verify_reset_token(email: str, token: str) -> bool:
+    return _reset_tokens.get(email) == token
+
+def consume_reset_token(email: str) -> None:
+    _reset_tokens.pop(email, None)
+
 # HTTP Bearer token scheme
-security = HTTPBearer()
-
-
+security = HTTPBearer(auto_error=False)
 class Token(BaseModel):
     """Token response model"""
     access_token: str
@@ -39,6 +71,14 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Token payload data"""
     user_id: Optional[str] = None
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str
     email: Optional[str] = None
     exp: Optional[datetime] = None
 
@@ -123,73 +163,42 @@ class JWTHandler:
     
     @staticmethod
     def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
-        """
-        Create a JWT access token
-        
-        Args:
-            data: Payload data to encode in the token
-            expires_delta: Optional custom expiration time
-            
-        Returns:
-            Encoded JWT token string
-        """
         to_encode = data.copy()
-        
         if expires_delta:
-            expire = datetime.utcnow() + expires_delta
+            expire = datetime.now(timezone.utc) + expires_delta
         else:
-            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        
-        # Convert datetime to Unix timestamp to avoid timezone issues
+            expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         to_encode.update({"exp": int(expire.timestamp()), "type": "access"})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
-    
+
     @staticmethod
     def create_refresh_token(data: Dict[str, Any]) -> str:
-        """
-        Create a JWT refresh token
-        
-        Args:
-            data: Payload data to encode in the token
-            
-        Returns:
-            Encoded JWT refresh token string
-        """
         to_encode = data.copy()
-        expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-        # Convert datetime to Unix timestamp to avoid timezone issues
+        expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         to_encode.update({"exp": int(expire.timestamp()), "type": "refresh"})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
     
     @staticmethod
     def decode_token(token: str) -> TokenData:
-        """
-        Decode and validate a JWT token
-        
-        Args:
-            token: JWT token string
-            
-        Returns:
-            TokenData object with decoded payload
-            
-        Raises:
-            HTTPException: If token is invalid or expired
-        """
         try:
+            if is_token_revoked(token):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has been revoked",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             user_id: str = payload.get("sub")
             email: str = payload.get("email")
             exp: datetime = datetime.fromtimestamp(payload.get("exp"))
-            
             if user_id is None:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid authentication credentials",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            
             return TokenData(user_id=user_id, email=email, exp=exp)
         except JWTError:
             raise HTTPException(
@@ -235,7 +244,9 @@ class AuthService:
         # Create user
         new_user = models.EnhancedUser(
             email=user_data.email,
-            password_hash=hashed_password
+            username=user_data.email.split('@')[0],
+            hashed_password=hashed_password,
+            full_name=user_data.name
         )
         
         self.db.add(new_user)
@@ -262,7 +273,7 @@ class AuthService:
         if not user:
             return None
         
-        if not PasswordHasher.verify_password(password, user.password_hash):
+        if not PasswordHasher.verify_password(password, user.hashed_password):
             return None
         
         return user
@@ -373,14 +384,14 @@ class AuthService:
             )
         
         # Verify current password
-        if not PasswordHasher.verify_password(password_data.current_password, user.password_hash):
+        if not PasswordHasher.verify_password(password_data.current_password, user.hashed_password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Current password is incorrect"
             )
         
         # Hash and update new password
-        user.password_hash = PasswordHasher.hash_password(password_data.new_password)
+        user.hashed_password = PasswordHasher.hash_password(password_data.new_password)
         user.updated_at = datetime.utcnow()
         
         self.db.commit()

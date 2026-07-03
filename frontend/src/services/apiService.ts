@@ -1,32 +1,91 @@
 /**
  * API Service Layer for Backend Communication
  * Provides type-safe methods for all backend API endpoints
+ * Includes automatic JWT token refresh on 401 responses.
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
-// Helper function for API requests
+let isRefreshing = false;
+let refreshQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+
+function getToken() { return localStorage.getItem('smarty_access_token'); }
+function getRefreshToken() { return localStorage.getItem('smarty_refresh_token'); }
+function setTokens(access: string, refresh: string) {
+  localStorage.setItem('smarty_access_token', access);
+  localStorage.setItem('smarty_refresh_token', refresh);
+}
+function clearAuth() {
+  localStorage.removeItem('smarty_access_token');
+  localStorage.removeItem('smarty_refresh_token');
+  localStorage.removeItem('smarty_user_data');
+  localStorage.removeItem('smarty_user');
+}
+
+async function refreshAccessToken(): Promise<string> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) throw new Error('No refresh token');
+
+  const resp = await fetch(`${API_BASE}/api/auth/refresh`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  if (!resp.ok) {
+    clearAuth();
+    window.location.href = '/';
+    throw new Error('Session expired');
+  }
+
+  const data = await resp.json();
+  setTokens(data.access_token, data.refresh_token);
+  return data.access_token;
+}
+
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
-  
-  const defaultHeaders: HeadersInit = {
+  const token = getToken();
+
+  const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers as Record<string, string> || {}),
   };
 
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
-  };
+  const config: RequestInit = { ...options, headers };
 
   try {
-    const response = await fetch(url, config);
-    
+    let response = await fetch(url, config);
+
+    if (response.status === 401 && getRefreshToken()) {
+      if (!isRefreshing) {
+        isRefreshing = true;
+        try {
+          const newToken = await refreshAccessToken();
+          isRefreshing = false;
+          refreshQueue.forEach(q => q.resolve(newToken));
+          refreshQueue = [];
+          headers['Authorization'] = `Bearer ${newToken}`;
+          response = await fetch(url, { ...config, headers });
+        } catch (err) {
+          isRefreshing = false;
+          refreshQueue.forEach(q => q.reject(err));
+          refreshQueue = [];
+          throw err;
+        }
+      } else {
+        const newToken = await new Promise<string>((resolve, reject) => {
+          refreshQueue.push({ resolve, reject });
+        });
+        headers['Authorization'] = `Bearer ${newToken}`;
+        response = await fetch(url, { ...config, headers });
+      }
+    }
+
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Request failed' }));
       throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
@@ -34,10 +93,14 @@ async function apiRequest<T>(
 
     return await response.json();
   } catch (error) {
-    console.error(`API Error [${endpoint}]:`, error);
+    if (error instanceof TypeError && (error as any).message === 'Failed to fetch') {
+      throw new Error('Network error — is the backend running?');
+    }
     throw error;
   }
 }
+
+export { getToken, setTokens, clearAuth };
 
 // ============= MEAL ANALYSIS API =============
 
@@ -157,6 +220,7 @@ export interface UserProfile {
   id: string;
   user_id: string;
   age?: number;
+  gender?: string;
   weight_kg?: number;
   height_cm?: number;
   activity_level: string;
@@ -264,18 +328,22 @@ export const GoalsAPI = {
   },
 
   async updateGoal(goalId: string, goalData: Partial<UserGoal>): Promise<UserGoal> {
-    return apiRequest<UserGoal>(`/api/goals/${goalId}`, {
+    return apiRequest<UserGoal>(`/api/users/goals/${goalId}`, {
       method: 'PUT',
       body: JSON.stringify(goalData),
     });
   },
 
   async validateGoal(goalId: string): Promise<GoalValidation> {
-    return apiRequest<GoalValidation>(`/api/goals/${goalId}/validate`);
+    return apiRequest<GoalValidation>(`/api/users/goals/${goalId}/validate`);
   },
 
   async getProgress(userId: string): Promise<ProgressMetrics> {
     return apiRequest<ProgressMetrics>(`/api/users/${userId}/progress`);
+  },
+
+  async deleteGoal(goalId: string): Promise<void> {
+    return apiRequest(`/api/users/goals/${goalId}`, { method: 'DELETE' });
   },
 };
 
@@ -327,7 +395,7 @@ export const RecommendationsAPI = {
   },
 
   async markAsRead(recommendationId: string): Promise<{ message: string }> {
-    return apiRequest(`/api/recommendations/${recommendationId}/read`, {
+    return apiRequest(`/api/recommendations/read/${recommendationId}`, {
       method: 'PUT',
     });
   },
@@ -359,22 +427,22 @@ export interface ExerciseSearchParams {
 
 export const ExerciseAPI = {
   async searchExercises(params: ExerciseSearchParams): Promise<Exercise[]> {
-    return apiRequest<Exercise[]>('/exercises/search', {
+    return apiRequest<Exercise[]>('/api/exercises/search', {
       method: 'POST',
       body: JSON.stringify(params),
     });
   },
 
   async getExerciseById(exerciseId: string): Promise<Exercise> {
-    return apiRequest<Exercise>(`/exercises/${exerciseId}`);
+    return apiRequest<Exercise>(`/api/exercises/${exerciseId}`);
   },
 
   async getByDifficulty(difficulty: string): Promise<Exercise[]> {
-    return apiRequest<Exercise[]>(`/exercises/difficulty/${difficulty}`);
+    return apiRequest<Exercise[]>(`/api/exercises/difficulty/${difficulty}`);
   },
 
   async getByMuscleGroup(muscleGroup: string): Promise<Exercise[]> {
-    return apiRequest<Exercise[]>(`/exercises/muscle-group/${muscleGroup}`);
+    return apiRequest<Exercise[]>(`/api/exercises/muscle-group/${muscleGroup}`);
   },
 
   async recommendExercises(params: {
@@ -383,7 +451,7 @@ export const ExerciseAPI = {
     available_equipment?: string[];
     limit?: number;
   }): Promise<Exercise[]> {
-    return apiRequest<Exercise[]>('/exercises/recommend', {
+    return apiRequest<Exercise[]>('/api/exercises/recommend', {
       method: 'POST',
       body: JSON.stringify(params),
     });
@@ -417,11 +485,11 @@ export const FoodAPI = {
     if (categoryId) params.append('category_id', categoryId.toString());
     
     const queryString = params.toString();
-    return apiRequest<FoodItem[]>(`/nutrition/search${queryString ? `?${queryString}` : ''}`);
+    return apiRequest<FoodItem[]>(`/api/food/search${queryString ? `?${queryString}` : ''}`);
   },
 
   async getFoodLibrary(): Promise<FoodCategory[]> {
-    return apiRequest<FoodCategory[]>('/nutrition/library');
+    return apiRequest<FoodCategory[]>('/api/food/library');
   },
 };
 
@@ -480,6 +548,104 @@ export const AuthAPI = {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+    });
+  },
+
+  async updateProfile(token: string, data: Record<string, any>): Promise<any> {
+    return apiRequest('/api/auth/profile', {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+  },
+
+  async googleLogin(idToken: string): Promise<AuthTokens> {
+    return apiRequest<AuthTokens>('/api/auth/oauth/google', {
+      method: 'POST',
+      body: JSON.stringify({ id_token: idToken }),
+    });
+  },
+
+  async appleLogin(idToken: string, fullName?: string, email?: string): Promise<AuthTokens> {
+    return apiRequest<AuthTokens>('/api/auth/oauth/apple', {
+      method: 'POST',
+      body: JSON.stringify({ id_token: idToken, full_name: fullName, email }),
+    });
+  },
+};
+
+// ============= TRAINING PIPELINE API =============
+
+export interface TrainingStatus {
+  datasets: { total_datasets: number; total_samples: number; datasets: string[] };
+  trained_models: Array<{ name: string; path: string; size_kb: number }>;
+}
+
+export interface DatasetInfo {
+  name: string; version: string; num_samples: number; num_classes: number;
+  classes: string[]; split_sizes: Record<string, number>; source: string;
+  created_at: string;
+}
+
+export const TrainingAPI = {
+  async getStatus(): Promise<TrainingStatus> {
+    return apiRequest<TrainingStatus>('/api/training/status');
+  },
+
+  async listDatasets(): Promise<{ datasets: string[]; statistics: any }> {
+    return apiRequest('/api/training/datasets');
+  },
+
+  async getDatasetInfo(name: string): Promise<DatasetInfo> {
+    return apiRequest<DatasetInfo>(`/api/training/datasets/${name}`);
+  },
+
+  async trainRecommendation(epochs: number = 50, useDb: boolean = false): Promise<any> {
+    return apiRequest('/api/training/recommendation/train', {
+      method: 'POST',
+      body: JSON.stringify({ epochs, use_db: useDb }),
+    });
+  },
+
+  async trainDetector(imagesSrc?: string, epochs: number = 50, imgsz: number = 640, batch: number = 16): Promise<any> {
+    return apiRequest('/api/training/vision/train-detector', {
+      method: 'POST',
+      body: JSON.stringify({ images_src: imagesSrc, epochs, imgsz, batch }),
+    });
+  },
+
+  async trainClassifier(dataset?: string, epochs: number = 30, batch: number = 32, lr: number = 0.001): Promise<any> {
+    return apiRequest('/api/training/vision/train-classifier', {
+      method: 'POST',
+      body: JSON.stringify({ dataset, epochs, batch, lr }),
+    });
+  },
+
+  async clusterUsers(nClusters?: number, method: string = 'kmeans'): Promise<any> {
+    return apiRequest('/api/training/cluster/users', {
+      method: 'POST',
+      body: JSON.stringify({ n_clusters: nClusters, method }),
+    });
+  },
+
+  async trainLSTM(epochs: number = 100, seqLength: number = 14, hidden: number = 64, layers: number = 2): Promise<any> {
+    return apiRequest('/api/training/forecast/train-lstm', {
+      method: 'POST',
+      body: JSON.stringify({ epochs, seq_length: seqLength, hidden, layers }),
+    });
+  },
+
+  async trainDQN(episodes: number = 500, batch: number = 64, lr: number = 0.001, gamma: number = 0.99): Promise<any> {
+    return apiRequest('/api/training/rl/train-dqn', {
+      method: 'POST',
+      body: JSON.stringify({ episodes, batch, lr, gamma }),
+    });
+  },
+
+  async trainQLearning(episodes: number = 1000, alpha: number = 0.1, gamma: number = 0.95): Promise<any> {
+    return apiRequest('/api/training/rl/train-qlearning', {
+      method: 'POST',
+      body: JSON.stringify({ episodes, alpha, gamma }),
     });
   },
 };

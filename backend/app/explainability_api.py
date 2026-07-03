@@ -40,8 +40,8 @@ async def explain_recommendation(
         explainer = get_shap_explainer()
         
         explanation = explainer.explain_recommendation(
-            recommendation.dict(),
-            user_features.dict()
+            recommendation.model_dump(),
+            user_features.model_dump()
         )
         
         return explanation

@@ -167,12 +167,12 @@ def main():
         backend_dir = project_root / "backend"
         
         if frontend_dir.exists():
-            print(f"✓ Frontend directory created")
+            print(f"[OK] Frontend directory created")
             frontend_files = list(frontend_dir.rglob("*"))
             print(f"  - {len([f for f in frontend_files if f.is_file()])} files moved to frontend")
         
         if backend_dir.exists():
-            print(f"✓ Backend directory exists")
+            print(f"[OK] Backend directory exists")
             backend_files = list(backend_dir.rglob("*"))
             print(f"  - {len([f for f in backend_files if f.is_file()])} files in backend")
         
@@ -183,14 +183,14 @@ def main():
         backend_requirements = backend_dir / "requirements.txt"
         
         if frontend_package.exists():
-            print("✓ package.json moved to frontend directory")
+            print("[OK] package.json moved to frontend directory")
         else:
-            print("⚠ package.json not found in frontend directory")
+            print("[!] package.json not found in frontend directory")
             
         if backend_requirements.exists():
-            print("✓ requirements.txt moved to backend directory")
+            print("[OK] requirements.txt moved to backend directory")
         else:
-            print("⚠ requirements.txt not found in backend directory")
+            print("[!] requirements.txt not found in backend directory")
         
     except Exception as e:
         print(f"Error during reorganization: {e}")

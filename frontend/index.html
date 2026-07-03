@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fitness Smarty AI | Elite Performance</title>
+  <title>Smarty | AI Fitness</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.21.0/dist/tf-core.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.21.0/dist/tf-converter.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.21.0/dist/tf-backend-webgl.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2/dist/pose-detection.min.js" defer></script>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -74,6 +78,74 @@
       text-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
     }
 
+    /* ───── Enhanced Visual Effects ───── */
+
+    /* Animated gradient orbs background */
+    .bg-orbs {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      overflow: hidden;
+      pointer-events: none;
+    }
+    .bg-orbs .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.12;
+      animation: orb-float 20s ease-in-out infinite;
+    }
+    .bg-orbs .orb:nth-child(1) {
+      width: 500px; height: 500px;
+      background: #10b981;
+      top: -10%; left: -10%;
+      animation-delay: 0s;
+      animation-duration: 25s;
+    }
+    .bg-orbs .orb:nth-child(2) {
+      width: 400px; height: 400px;
+      background: #06b6d4;
+      bottom: -10%; right: -10%;
+      animation-delay: -5s;
+      animation-duration: 20s;
+    }
+    .bg-orbs .orb:nth-child(3) {
+      width: 300px; height: 300px;
+      background: #8b5cf6;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: -10s;
+      animation-duration: 30s;
+    }
+
+    @keyframes orb-float {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      25% { transform: translate(60px, -40px) scale(1.1); }
+      50% { transform: translate(-30px, 60px) scale(0.9); }
+      75% { transform: translate(40px, 30px) scale(1.05); }
+    }
+
+    /* Smooth scroll for entire app */
+    html { scroll-behavior: smooth; }
+
+    /* Better focus ring */
+    *:focus-visible {
+      outline: 2px solid rgba(16, 185, 129, 0.5);
+      outline-offset: 2px;
+      border-radius: 8px;
+    }
+
+    /* Smooth transitions on all interactive elements */
+    a, button, input, select, textarea {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Scrollbar for content areas */
+    .custom-scrollbar::-webkit-scrollbar { width: 3px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(16, 185, 129, 0.3); border-radius: 10px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(16, 185, 129, 0.5); }
+
     /* Custom Clerk Theme Overrides */
     .cl-rootBox {
       width: 100%;
@@ -92,12 +164,26 @@
       text-transform: uppercase !important;
     }
   </style>
-<!-- Module resolution handled by Vite -->
-<link rel="stylesheet" href="/index.css">
+  <!-- Module resolution handled by Vite -->
+  <link rel="stylesheet" href="/src/styles/animations.css">
+  <link rel="stylesheet" href="/index.css">
+  <link rel="manifest" href="/manifest.json">
 </head>
 <body class="bg-slate-950 text-slate-100">
+  <div class="bg-orbs">
+    <div class="orb"></div>
+    <div class="orb"></div>
+    <div class="orb"></div>
+  </div>
   <div class="fixed inset-0 noise-bg z-[-1]"></div>
   <div id="root"></div>
-<script type="module" src="/src/index.tsx"></script>
+  <script type="module" src="/src/index.tsx"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js');
+      });
+    }
+  </script>
 </body>
 </html>

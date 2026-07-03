@@ -12,11 +12,7 @@ from fuzzywuzzy import fuzz, process
 from decimal import Decimal
 import uuid
 
-try:
-    from .models import Food, NutritionFact
-except ImportError:
-    from .models import FoodItem as Food
-    NutritionFact = None  # Not available in current schema
+from .models import FoodItem as Food
 from .usda_integration_service import USDAIntegrationService
 
 
@@ -157,57 +153,62 @@ class FoodSearchEngine:
     
     def exact_search(self, query: str, limit: int = 25) -> List[Food]:
         """
-        Perform exact search on food names
-        
-        Args:
-            query: Search query
-            limit: Maximum results to return
-            
-        Returns:
-            List of matching Food objects
+        Perform high-performance search using Postgres full-text search (FTS)
+        falling back to SQLite ILIKE text matching.
         """
-        return self.db.query(Food).filter(
-            or_(
-                Food.name.ilike(f"%{query}%"),
-                Food.brand.ilike(f"%{query}%")
-            )
-        ).limit(limit).all()
+        if not query:
+            return []
+            
+        dialect = self.db.bind.dialect.name if self.db.bind else "sqlite"
+        
+        # Postgres Full-Text Search
+        if dialect == "postgresql":
+            from sqlalchemy import func
+            return self.db.query(Food).filter(
+                func.to_tsvector('english', Food.name).op('@@')(func.plainto_tsquery('english', query))
+            ).limit(limit).all()
+            
+        # SQLite / general fallback
+        filters = [Food.name.ilike(f"%{query}%")]
+        if hasattr(Food, "brand"):
+            filters.append(getattr(Food, "brand").ilike(f"%{query}%"))
+            
+        return self.db.query(Food).filter(or_(*filters)).limit(limit).all()
     
     def fuzzy_search(self, query: str, threshold: int = 60, limit: int = 25) -> List[Tuple[Food, int]]:
         """
-        Perform fuzzy search on food names with similarity scoring
-        
-        Args:
-            query: Search query
-            threshold: Minimum similarity score (0-100)
-            limit: Maximum results to return
-            
-        Returns:
-            List of tuples (Food object, similarity_score)
+        Fuzzy search using Levenshtein distance ranking fallback when exact search yields few results.
         """
-        # Get all foods from database
-        all_foods = self.db.query(Food).all()
-        
-        # Calculate similarity scores
+        # Try exact search first to see if we get enough hits
+        exact_results = self.exact_search(query, limit=limit)
+        if len(exact_results) >= 5:
+            return [(food, 100) for food in exact_results]
+            
+        # Fallback: Scored fuzzy matching on candidate pool
+        # Get candidates (matching first letter or similar to optimize compared to loading all)
+        first_char = query[0] if query else ""
+        if first_char:
+            candidates = self.db.query(Food).filter(Food.name.ilike(f"{first_char}%")).all()
+        else:
+            candidates = self.db.query(Food).limit(200).all()
+            
+        # If still too few candidates, load all
+        if len(candidates) < 10:
+            candidates = self.db.query(Food).all()
+            
         scored_foods = []
-        for food in all_foods:
-            # Calculate similarity for name
+        for food in candidates:
             name_score = fuzz.partial_ratio(query.lower(), food.name.lower())
             
-            # Calculate similarity for brand if present
             brand_score = 0
-            if food.brand:
-                brand_score = fuzz.partial_ratio(query.lower(), food.brand.lower())
-            
-            # Use the higher score
+            if hasattr(food, "brand") and getattr(food, "brand"):
+                brand_score = fuzz.partial_ratio(query.lower(), getattr(food, "brand").lower())
+                
             max_score = max(name_score, brand_score)
-            
             if max_score >= threshold:
                 scored_foods.append((food, max_score))
-        
-        # Sort by score descending
+                
         scored_foods.sort(key=lambda x: x[1], reverse=True)
-        
         return scored_foods[:limit]
     
     def search_by_category(self, category: str, limit: int = 50) -> List[Food]:

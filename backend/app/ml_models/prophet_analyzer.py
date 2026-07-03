@@ -15,7 +15,7 @@ try:
     PROPHET_AVAILABLE = True
 except ImportError:
     PROPHET_AVAILABLE = False
-    print("⚠️  Prophet not available. Install with: pip install prophet")
+    print("[!] Prophet not available. Install with: pip install prophet")
 
 
 class ProphetTrendAnalyzer:
@@ -30,9 +30,9 @@ class ProphetTrendAnalyzer:
         self.mock_mode = not PROPHET_AVAILABLE
         
         if PROPHET_AVAILABLE:
-            print("✓ Prophet trend analyzer initialized")
+            print("[OK] Prophet trend analyzer initialized")
         else:
-            print("⚠️  Prophet not installed. Using mock mode.")
+            print("[!] Prophet not installed. Using mock mode.")
     
     def analyze_nutrition_trends(
         self,
@@ -136,16 +136,16 @@ class ProphetTrendAnalyzer:
         # Calorie insights
         cal_trend = results['calories_trend']
         if cal_trend['trend'] == 'increasing':
-            insights.append(f"📈 Calories trending up ({cal_trend['change_percent']:+.1f}%). Consider portion control.")
+            insights.append(f"[UP] Calories trending up ({cal_trend['change_percent']:+.1f}%). Consider portion control.")
         elif cal_trend['trend'] == 'decreasing':
-            insights.append(f"📉 Calories trending down ({cal_trend['change_percent']:+.1f}%). Ensure adequate nutrition.")
+            insights.append(f"[DOWN] Calories trending down ({cal_trend['change_percent']:+.1f}%). Ensure adequate nutrition.")
         
         # Protein insights
         prot_trend = results['protein_trend']
         if prot_trend['forecast_avg'] < 50:
-            insights.append("💪 Protein intake below recommended. Add lean meats, eggs, or legumes.")
+            insights.append("[FIT] Protein intake below recommended. Add lean meats, eggs, or legumes.")
         elif prot_trend['trend'] == 'increasing':
-            insights.append("💪 Great job increasing protein! Supports muscle recovery.")
+            insights.append("[FIT] Great job increasing protein! Supports muscle recovery.")
         
         # Macro balance
         carbs = results['carbs_trend']['forecast_avg']
@@ -156,7 +156,7 @@ class ProphetTrendAnalyzer:
         if total > 0:
             prot_pct = (protein * 4 / total) * 100
             if prot_pct < 15:
-                insights.append("⚖️  Protein ratio low. Aim for 20-30% of calories from protein.")
+                insights.append("[BALANCE] Protein ratio low. Aim for 20-30% of calories from protein.")
         
         return insights
     
@@ -192,8 +192,8 @@ class ProphetTrendAnalyzer:
                 'change_percent': -1.2
             },
             'insights': [
-                "📊 Your nutrition is stable over the past week",
-                "💪 Protein intake is adequate at {}g/day".format(int(avg_protein))
+                "[CHART] Your nutrition is stable over the past week",
+                "[FIT] Protein intake is adequate at {}g/day".format(int(avg_protein))
             ],
             'model': 'mock'
         }

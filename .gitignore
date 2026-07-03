@@ -102,8 +102,22 @@ tmp/
 Thumbs.db
 .DS_Store
 
-# Meal images (optional - uncomment if you don't want to track uploaded images)
-# meal_images/
+# Meal images and upload folders
+meal_images/
+backend/meal_images/
+uploads/
+backend/uploads/
 
 # Metadata
 metadata.json
+
+# ML model weights (too large for git)
+*.pth
+*.pt
+backend/weights/
+
+# Training dataset cache (Food-101 download, ~5GB)
+backend/data/
+
+# Keep the wger exercise seed JSON tracked (small, avoids API dependency on deploy)
+!backend/app/seed_data/exercises_wger.json

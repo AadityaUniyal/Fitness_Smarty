@@ -15,7 +15,7 @@ try:
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-    print("⚠️  scikit-learn not available")
+    print("[!] scikit-learn not available")
 
 
 class CollaborativeFilteringRecommender:
@@ -35,9 +35,9 @@ class CollaborativeFilteringRecommender:
         self.item_similarity = None
         
         if SKLEARN_AVAILABLE:
-            print("✓ Collaborative filtering recommender initialized")
+            print("[OK] Collaborative filtering recommender initialized")
         else:
-            print("⚠️  scikit-learn not installed. Using mock mode.")
+            print("[!] scikit-learn not installed. Using mock mode.")
     
     def fit(self, user_meal_ratings: Dict[int, Dict[int, float]]):
         """
@@ -72,7 +72,7 @@ class CollaborativeFilteringRecommender:
             # Calculate item similarity
             self.item_similarity = cosine_similarity(matrix.T)
             
-            print(f"✓ Fitted on {len(all_users)} users, {len(all_meals)} meals")
+            print(f"[OK] Fitted on {len(all_users)} users, {len(all_meals)} meals")
             
         except Exception as e:
             print(f"Error fitting collaborative filtering: {e}")

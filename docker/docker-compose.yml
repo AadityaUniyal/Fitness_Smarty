@@ -1,0 +1,32 @@
+services:
+  backend:
+    build: ../backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../backend/.env
+    environment:
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/smarty_neural_core.db}
+      - SQLITE_FALLBACK_URL=sqlite:////app/data/smarty_neural_core.db
+    volumes:
+      - backend_data:/app/data
+      - backend_uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5).read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build: ../frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  backend_data:
+  backend_uploads:

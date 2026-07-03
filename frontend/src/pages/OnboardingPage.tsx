@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, ChevronRight, ChevronLeft, Check, User, Target, Utensils, Activity } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Profile {
     name: string;
@@ -12,6 +13,7 @@ interface Profile {
     goal: string;
     dietaryRestrictions: string[];
     targetWeight?: string;
+    femmecareEnabled: boolean;
 }
 
 const GOALS = [
@@ -33,10 +35,13 @@ const DIET_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Keto', 'Intermitten
 
 const OnboardingPage: React.FC = () => {
     const navigate = useNavigate();
+    const { updateProfile } = useAuth();
     const [step, setStep] = useState(0);
+    const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState<Profile>({
         name: '', age: '', gender: 'Male', weight: '', height: '',
-        activityLevel: 'moderate', goal: 'athletic', dietaryRestrictions: [], targetWeight: ''
+        activityLevel: 'moderate', goal: 'athletic', dietaryRestrictions: [], targetWeight: '',
+        femmecareEnabled: false
     });
 
     const totalSteps = 4;
@@ -55,13 +60,27 @@ const OnboardingPage: React.FC = () => {
         }));
     };
 
-    const handleFinish = () => {
+    const handleFinish = async () => {
+        setSaving(true);
         const fullProfile = {
             ...profile,
             name: profile.name || user?.name || 'Operator',
             dailyCalorieGoal: profile.goal === 'weight_loss' ? 1800 : profile.goal === 'muscle_gain' ? 2800 : 2200,
         };
         localStorage.setItem('smarty_profile', JSON.stringify(fullProfile));
+        try {
+            await updateProfile({
+                full_name: profile.name || user?.name,
+                age: profile.age ? parseInt(profile.age) : undefined,
+                weight_kg: profile.weight ? parseFloat(profile.weight) : undefined,
+                height_cm: profile.height ? parseFloat(profile.height) : undefined,
+                gender: profile.gender,
+                activity_level: profile.activityLevel,
+                primary_goal: profile.goal,
+                femmecare_enabled: profile.femmecareEnabled,
+            } as any);
+        } catch {}
+        setSaving(false);
         navigate('/dashboard');
     };
 
@@ -89,7 +108,7 @@ const OnboardingPage: React.FC = () => {
                                 className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-600" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Gender</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Biological Sex</label>
                             <select value={profile.gender} onChange={e => update('gender', e.target.value)}
                                 className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition text-white">
                                 <option value="Male">Male</option>
@@ -110,6 +129,23 @@ const OnboardingPage: React.FC = () => {
                                 className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-600" />
                         </div>
                     </div>
+                    {profile.gender === 'Female' && (
+                        <div className="mt-2 p-4 bg-pink-500/5 border border-pink-500/20 rounded-2xl flex items-center justify-between transition-all">
+                            <div>
+                                <p className="text-xs font-black text-pink-400">FemmeCare Cycle Syncing</p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">Tune training & nutrition to your hormonal phases</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={profile.femmecareEnabled}
+                                    onChange={e => update('femmecareEnabled', e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500 peer-checked:after:bg-white peer-checked:after:border-pink-500" />
+                            </label>
+                        </div>
+                    )}
                 </div>
             ),
         },
@@ -255,10 +291,10 @@ const OnboardingPage: React.FC = () => {
                     ) : (
                         <button
                             onClick={handleFinish}
-                            className="flex items-center space-x-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all"
+                            disabled={saving}
+                            className="flex items-center space-x-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all"
                         >
-                            <Check size={16} />
-                            <span>Launch Smarty AI</span>
+                            {saving ? <span className="animate-pulse">Saving...</span> : <><Check size={16} /><span>Launch Smarty AI</span></>}
                         </button>
                     )}
                 </div>

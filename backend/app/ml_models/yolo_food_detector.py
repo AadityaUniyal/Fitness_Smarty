@@ -17,7 +17,7 @@ try:
     YOLO_AVAILABLE = True
 except ImportError:
     YOLO_AVAILABLE = False
-    print("⚠️  YOLOv8 not available. Install with: pip install ultralytics")
+    print("[!] YOLOv8 not available. Install with: pip install ultralytics")
 
 
 class YOLOFoodDetector:
@@ -65,18 +65,21 @@ class YOLOFoodDetector:
                 # Try to load custom food model
                 if os.path.exists(self.model_path):
                     self.model = YOLO(self.model_path)
-                    print(f"✓ Loaded YOLOv8 food model from {self.model_path}")
+                    self.is_coco_fallback = False
+                    print(f"[OK] Loaded custom YOLOv8 food model from {self.model_path}")
                 else:
-                    # Use pretrained YOLO for general object detection
-                    # In production, you'd train on Food-101 dataset
+                    # Use pretrained YOLO for general object detection as a fallback
                     self.model = YOLO('yolov8n.pt')  # nano version for speed
-                    print("⚠️  Using pretrained YOLOv8 (not food-specific). Train on Food-101 for better results.")
+                    self.is_coco_fallback = True
+                    print("[!] WARNING: Using COCO-pretrained YOLOv8 (general objects, not food-specific).")
+                    print("    For accurate food bounding boxes, fine-tune on Food-101 and place weights at: " + self.model_path)
                     
             except Exception as e:
-                print(f"⚠️  Could not load YOLO model: {e}")
+                print(f"[!] Could not load YOLO model: {e}")
                 self.mock_mode = True
+                self.is_coco_fallback = False
         else:
-            print("⚠️  YOLOv8 not installed. Using mock mode.")
+            print("[!] YOLOv8 not installed. Using mock mode.")
             self.mock_mode = True
     
     def detect(self, image_path: str, confidence_threshold: float = 0.5) -> Dict[str, Any]:
@@ -144,7 +147,7 @@ class YOLOFoodDetector:
             return {
                 'detections': detections,
                 'total_foods': len(detections),
-                'model_used': 'yolov8',
+                'model_used': 'yolov8_coco_fallback' if self.is_coco_fallback else 'yolov8_custom_food',
                 'image_size': image_size,
                 'confidence_threshold': confidence_threshold
             }

@@ -234,7 +234,7 @@ class MealDatasetGenerator:
             
             dataset.append(record)
         
-        print(f"✓ Generated {n_samples} samples")
+        print(f"[OK] Generated {n_samples} samples")
         return dataset
     
     def save_dataset(self, dataset: List[Dict], output_file: str):
@@ -246,7 +246,7 @@ class MealDatasetGenerator:
             for record in dataset:
                 f.write(json.dumps(record) + '\n')
         
-        print(f"✓ Dataset saved to: {output_path}")
+        print(f"[OK] Dataset saved to: {output_path}")
         
         # Print statistics
         positive = sum(1 for r in dataset if r['label'] == 1)
@@ -266,5 +266,5 @@ if __name__ == "__main__":
     # Save to file
     generator.save_dataset(dataset, "app/training/datasets/synthetic_meals.jsonl")
     
-    print("\n✅ Dataset generation complete!")
+    print("\n[OK] Dataset generation complete!")
     print("Next step: Run train_neural_model.py to train the model")

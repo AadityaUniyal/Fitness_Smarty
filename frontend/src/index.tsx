@@ -7,26 +7,19 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || '';
 const root = ReactDOM.createRoot(rootElement);
 
-if (PUBLISHABLE_KEY) {
-  // With Clerk: Full auth mode
-  import('@clerk/clerk-react').then(({ ClerkProvider }) => {
-    root.render(
-      <React.StrictMode>
-        <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/">
-          <App />
-        </ClerkProvider>
-      </React.StrictMode>
-    );
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+// Register service worker for installable PWA offline functionality
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log('[PWA] Service worker registered successfully:', reg.scope))
+      .catch((err) => console.error('[PWA] Service worker registration failed:', err));
   });
-} else {
-  // Without Clerk: Dev/demo mode - render app directly
-  console.info('[Smarty AI] Running in dev mode (no Clerk key). Auth bypassed.');
-  root.render(
-    <React.StrictMode>
-      <App />
-    </React.StrictMode>
-  );
 }

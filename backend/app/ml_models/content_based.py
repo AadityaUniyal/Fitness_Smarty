@@ -14,7 +14,7 @@ try:
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
-    print("⚠️  scikit-learn not available")
+    print("[!] scikit-learn not available")
 
 
 class ContentBasedRecommender:
@@ -37,9 +37,9 @@ class ContentBasedRecommender:
         
         if SKLEARN_AVAILABLE:
             self.ingredient_vectorizer = TfidfVectorizer(max_features=100)
-            print("✓ Content-based recommender initialized")
+            print("[OK] Content-based recommender initialized")
         else:
-            print("⚠️  scikit-learn not installed. Using mock mode.")
+            print("[!] scikit-learn not installed. Using mock mode.")
     
     def add_meal(
         self,
@@ -83,7 +83,7 @@ class ContentBasedRecommender:
             ingredient_texts = [self.meal_features[mid]['ingredients'] for mid in meal_ids]
             self.ingredient_matrix = self.ingredient_vectorizer.fit_transform(ingredient_texts)
             
-            print(f"✓ Fitted on {len(meal_ids)} meals")
+            print(f"[OK] Fitted on {len(meal_ids)} meals")
             
         except Exception as e:
             print(f"Error fitting content-based filtering: {e}")

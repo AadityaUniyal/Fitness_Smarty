@@ -77,25 +77,23 @@ class FoodDetectionModel:
     
     def _load_model(self):
         """
-        Load the computer vision model
-        
-        In production, this would load YOLOv8 or similar model:
-        - from ultralytics import YOLO
-        - self.model = YOLO(self.model_path or 'yolov8n.pt')
+        Load the computer vision model using YOLOv8 if available.
         """
         try:
-            # Mock implementation - replace with actual model loading
-            logger.info("Food detection model initialized (mock mode)")
+            from ultralytics import YOLO
+            model_file = self.model_path or 'yolov8n.pt'
+            logger.info(f"Loading YOLOv8 model from {model_file}...")
+            self.model = YOLO(model_file)
+            if self.use_gpu:
+                try:
+                    self.model.to('cuda')
+                except Exception as e:
+                    logger.warning(f"Could not move YOLO model to GPU: {e}")
             self.model_loaded = True
-            
-            # TODO: Replace with actual model loading
-            # Example for YOLOv8:
-            # from ultralytics import YOLO
-            # self.model = YOLO(self.model_path or 'yolov8n.pt')
-            # if self.use_gpu:
-            #     self.model.to('cuda')
-            # self.model_loaded = True
-            
+            logger.info("YOLOv8 food detection model loaded successfully.")
+        except ImportError:
+            logger.warning("ultralytics not installed. Food detection model running in mock mode.")
+            self.model_loaded = False
         except Exception as e:
             logger.error(f"Failed to load food detection model: {str(e)}")
             self.model_loaded = False
@@ -160,37 +158,41 @@ class FoodDetectionModel:
         Returns:
             List of detected foods
         """
-        # TODO: Implement actual model inference
-        # Example for YOLOv8:
-        # results = self.model(image)
-        # detected_foods = []
-        # for result in results:
-        #     boxes = result.boxes
-        #     for box in boxes:
-        #         cls = int(box.cls[0])
-        #         conf = float(box.conf[0])
-        #         xyxy = box.xyxy[0].tolist()
-        #         
-        #         # Convert to normalized coordinates
-        #         img_width, img_height = image.size
-        #         bbox = {
-        #             'x': xyxy[0] / img_width,
-        #             'y': xyxy[1] / img_height,
-        #             'width': (xyxy[2] - xyxy[0]) / img_width,
-        #             'height': (xyxy[3] - xyxy[1]) / img_height
-        #         }
-        #         
-        #         food_name = result.names[cls]
-        #         detected_foods.append(DetectedFood(
-        #             food_name=food_name,
-        #             confidence_score=conf,
-        #             bounding_box=bbox
-        #         ))
-        # 
-        # return detected_foods
-        
-        # Placeholder - use mock detection
-        return self._mock_detection(image)
+        try:
+            results = self.model(image)
+            detected_foods = []
+            for result in results:
+                boxes = result.boxes
+                for box in boxes:
+                    cls = int(box.cls[0])
+                    conf = float(box.conf[0])
+                    xyxy = box.xyxy[0].tolist()
+                    
+                    # Convert to normalized coordinates
+                    img_width, img_height = image.size
+                    bbox = {
+                        'x': xyxy[0] / img_width,
+                        'y': xyxy[1] / img_height,
+                        'width': (xyxy[2] - xyxy[0]) / img_width,
+                        'height': (xyxy[3] - img_height) / img_height
+                    }
+                    
+                    food_name = result.names[cls]
+                    
+                    # Portion estimation heuristic based on bbox size
+                    area_fraction = bbox['width'] * bbox['height']
+                    estimated_qty = max(30.0, min(500.0, float(round(area_fraction * 400.0, 1))))
+                    
+                    detected_foods.append(DetectedFood(
+                        food_name=food_name,
+                        confidence_score=conf,
+                        bounding_box=bbox,
+                        estimated_quantity_g=estimated_qty
+                    ))
+            return detected_foods
+        except Exception as e:
+            logger.error(f"Error in YOLOv8 inference: {e}")
+            return self._mock_detection(image)
     
     def _mock_detection(self, image: Image.Image) -> List[DetectedFood]:
         """

@@ -1,0 +1,233 @@
+[
+  {
+    "category_name": "Cardio",
+    "name": "Burpees",
+    "targeted_muscle": "Full Body",
+    "difficulty": "Advanced",
+    "equipment": "Bodyweight",
+    "calories_per_min": 14.0,
+    "fitness_goal": "fat_loss",
+    "description": "High-intensity burpee interval for total body conditioning.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Cardio",
+    "name": "Jump Rope",
+    "targeted_muscle": "Calves",
+    "difficulty": "Advanced",
+    "equipment": "Jump Rope",
+    "calories_per_min": 12.0,
+    "fitness_goal": "fat_loss",
+    "description": "Cardio skipping drill targeting coordination and calves.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Cardio",
+    "name": "Treadmill Sprint",
+    "targeted_muscle": "Legs",
+    "difficulty": "Advanced",
+    "equipment": "Treadmill",
+    "calories_per_min": 16.0,
+    "fitness_goal": "fat_loss",
+    "description": "High intensity interval sprint.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Cardio",
+    "name": "Rowing Machine",
+    "targeted_muscle": "Back",
+    "difficulty": "Advanced",
+    "equipment": "Rowing Machine",
+    "calories_per_min": 13.0,
+    "fitness_goal": "fat_loss",
+    "description": "Full body cardiovascular workout targeting back and legs.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Cardio",
+    "name": "Mountain Climbers",
+    "targeted_muscle": "Core",
+    "difficulty": "Intermediate",
+    "equipment": "Bodyweight",
+    "calories_per_min": 9.5,
+    "fitness_goal": "fat_loss",
+    "description": "Core-intensive cardio drill.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Chest",
+    "name": "Bench Press",
+    "targeted_muscle": "Chest",
+    "difficulty": "Intermediate",
+    "equipment": "Barbell",
+    "calories_per_min": 7.5,
+    "fitness_goal": "muscle_gain",
+    "description": "Horizontal press for chest thickness and strength.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Chest",
+    "name": "Push-up",
+    "targeted_muscle": "Chest",
+    "difficulty": "Beginner",
+    "equipment": "Bodyweight",
+    "calories_per_min": 6.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Standard bodyweight push-up.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Chest",
+    "name": "Dumbbell Fly",
+    "targeted_muscle": "Chest",
+    "difficulty": "Beginner",
+    "equipment": "Dumbbell",
+    "calories_per_min": 5.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Chest isolation fly movement.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Back",
+    "name": "Deadlift",
+    "targeted_muscle": "Full Body",
+    "difficulty": "Advanced",
+    "equipment": "Barbell",
+    "calories_per_min": 14.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Compound pull targeting posterior chain.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Back",
+    "name": "Pull-up",
+    "targeted_muscle": "Lats",
+    "difficulty": "Intermediate",
+    "equipment": "Bodyweight",
+    "calories_per_min": 8.5,
+    "fitness_goal": "muscle_gain",
+    "description": "Vertical pull for back width.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Back",
+    "name": "Barbell Row",
+    "targeted_muscle": "Back",
+    "difficulty": "Intermediate",
+    "equipment": "Barbell",
+    "calories_per_min": 8.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Bent-over horizontal pull for back thickness.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Legs",
+    "name": "Barbell Squat",
+    "targeted_muscle": "Quadriceps",
+    "difficulty": "Intermediate",
+    "equipment": "Barbell",
+    "calories_per_min": 10.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Primary compound leg builder.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Legs",
+    "name": "Romanian Deadlift",
+    "targeted_muscle": "Hamstrings",
+    "difficulty": "Intermediate",
+    "equipment": "Barbell",
+    "calories_per_min": 7.5,
+    "fitness_goal": "muscle_gain",
+    "description": "Hip hinge for hamstrings and glutes.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Legs",
+    "name": "Leg Press",
+    "targeted_muscle": "Quadriceps",
+    "difficulty": "Beginner",
+    "equipment": "Machine",
+    "calories_per_min": 6.5,
+    "fitness_goal": "muscle_gain",
+    "description": "Sled leg press for quad hypertrophy.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Arms",
+    "name": "Barbell Bicep Curl",
+    "targeted_muscle": "Biceps",
+    "difficulty": "Beginner",
+    "equipment": "Barbell",
+    "calories_per_min": 4.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Standard bicep curl.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Arms",
+    "name": "Tricep Pushdown",
+    "targeted_muscle": "Triceps",
+    "difficulty": "Beginner",
+    "equipment": "Cable Machine",
+    "calories_per_min": 4.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Tricep isolation pushdown.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Shoulders",
+    "name": "Overhead Press",
+    "targeted_muscle": "Shoulders",
+    "difficulty": "Intermediate",
+    "equipment": "Barbell",
+    "calories_per_min": 7.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Vertical overhead press for deltoid strength.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Shoulders",
+    "name": "Lateral Raise",
+    "targeted_muscle": "Shoulders",
+    "difficulty": "Beginner",
+    "equipment": "Dumbbell",
+    "calories_per_min": 4.0,
+    "fitness_goal": "muscle_gain",
+    "description": "Isolation for lateral deltoids.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Abs",
+    "name": "Plank",
+    "targeted_muscle": "Core",
+    "difficulty": "Beginner",
+    "equipment": "Bodyweight",
+    "calories_per_min": 3.5,
+    "fitness_goal": "fat_loss",
+    "description": "Isometric core stabilization.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Abs",
+    "name": "Crunches",
+    "targeted_muscle": "Abs",
+    "difficulty": "Beginner",
+    "equipment": "Bodyweight",
+    "calories_per_min": 4.0,
+    "fitness_goal": "fat_loss",
+    "description": "Standard abdominal crunch.",
+    "source": "fallback"
+  },
+  {
+    "category_name": "Calves",
+    "name": "Standing Calf Raise",
+    "targeted_muscle": "Calves",
+    "difficulty": "Beginner",
+    "equipment": "Machine",
+    "calories_per_min": 3.5,
+    "fitness_goal": "maintenance",
+    "description": "Calf extension for gastrocnemius.",
+    "source": "fallback"
+  }
+]

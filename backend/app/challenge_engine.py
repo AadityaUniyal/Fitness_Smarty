@@ -1,4 +1,11 @@
 
+"""
+[RULE-BASED PLACEHOLDER]
+Gamified Community Challenge Engine
+
+NOTE: This is currently a mock-mode random template selector and not a full
+multiplayer/social database-backed challenge platform.
+"""
 import random
 from datetime import datetime, timedelta
 

@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
     server: {
-      port: 3000,
+      port: 5173,
       host: '0.0.0.0',
     },
     plugins: [react()],
@@ -27,7 +27,6 @@ export default defineConfig(({ mode }) => {
           manualChunks: {
             // Vendor chunk for large stable libraries
             'vendor-react': ['react', 'react-dom'],
-            'vendor-gemini': ['@google/genai'],
             'vendor-ui': ['lucide-react'],
           }
         }

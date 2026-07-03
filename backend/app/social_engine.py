@@ -1,4 +1,12 @@
 
+"""
+[RULE-BASED PLACEHOLDER]
+Social Peer-Group Benchmarking Engine
+
+NOTE: This is a simple statistical benchmark calculator based on user logs
+and is currently running with mock-mode overrides for peer groups rather than
+a real-time social graph.
+"""
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 from . import models

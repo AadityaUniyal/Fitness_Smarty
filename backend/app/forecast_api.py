@@ -50,7 +50,7 @@ async def predict_future_weight(
         predictor = get_weight_predictor()
         
         # Convert Pydantic models to dicts
-        data_dicts = [point.dict() for point in historical_data]
+        data_dicts = [point.model_dump() for point in historical_data]
         
         # Predict
         results = predictor.predict_weight(data_dicts, days_ahead)
@@ -80,7 +80,7 @@ async def analyze_nutrition_trends(
         analyzer = get_trend_analyzer()
         
         # Convert to dicts
-        data_dicts = [point.dict() for point in historical_data]
+        data_dicts = [point.model_dump() for point in historical_data]
         
         # Analyze
         results = analyzer.analyze_nutrition_trends(data_dicts, forecast_days)

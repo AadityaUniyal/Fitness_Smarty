@@ -82,6 +82,9 @@ class FoodItemBase(BaseModel):
     fats: float
     serving_size: str
     is_elite: bool
+    target_muscle_group: Optional[str] = None
+    recommended_for_goal: Optional[str] = None
+    
     class Config: from_attributes = True
 
 class FoodCategoryResponse(BaseModel):
@@ -100,6 +103,7 @@ class ExerciseItemBase(BaseModel):
     difficulty: str
     equipment: str
     calories_per_min: float
+    calories_per_rep: float  # New
     class Config: from_attributes = True
 
 class ExerciseCategoryResponse(BaseModel):
@@ -176,6 +180,7 @@ class UserProfileResponse(BaseModel):
     primary_goal: str
     dietary_restrictions: List[str]
     allergies: List[str]
+    femmecare_enabled: Optional[bool] = False
     created_at: datetime
     updated_at: datetime
     
@@ -323,6 +328,7 @@ class UserProfileUpdate(BaseModel):
     primary_goal: Optional[str] = None
     dietary_restrictions: Optional[List[str]] = None
     allergies: Optional[List[str]] = None
+    femmecare_enabled: Optional[bool] = None
 
 # --- GOAL SCHEMAS ---
 class GoalCreate(BaseModel):
@@ -355,3 +361,292 @@ class RecommendationListResponse(BaseModel):
     recommendations: List[RecommendationItem]
     total_count: int
     unread_count: int
+# --- FEMME CARE SCHEMAS ---
+
+class FemaleExerciseItemBase(BaseModel):
+    id: int
+    name: str
+    targeted_muscle: Optional[str]
+    difficulty: str
+    equipment: str
+    calories_per_min: float
+    suitable_cycle_phase: str
+    description: Optional[str]
+    
+    class Config: from_attributes = True
+
+class MenstrualCycleLogBase(BaseModel):
+    id: int
+    user_id: str
+    start_date: datetime
+    end_date: Optional[datetime]
+    cycle_length_days: int
+    symptoms: Optional[List[str]]
+    mood: Optional[str]
+    flow_intensity: Optional[str]
+    notes: Optional[str]
+    created_at: datetime
+
+    class Config: from_attributes = True
+
+class MenstrualCycleLogCreate(BaseModel):
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    symptoms: Optional[List[str]] = []
+    mood: Optional[str] = None
+    flow_intensity: Optional[str] = None
+    notes: Optional[str] = None
+
+
+# ============= SOCIAL FEED SCHEMAS =============
+
+class SocialPostCreate(BaseModel):
+    text: str
+    post_type: str = "status"
+    workout_data: Optional[Dict[str, Any]] = None
+    achievement_data: Optional[Dict[str, Any]] = None
+    image_url: Optional[str] = None
+
+class SocialPostResponse(BaseModel):
+    id: int
+    user_id: int
+    user_name: str = ""
+    user_avatar: str = ""
+    text: str
+    post_type: str
+    workout_data: Optional[Dict[str, Any]] = None
+    achievement_data: Optional[Dict[str, Any]] = None
+    image_url: Optional[str] = None
+    like_count: int = 0
+    comment_count: int = 0
+    is_liked: bool = False
+    created_at: datetime
+
+    class Config: from_attributes = True
+
+class SocialCommentCreate(BaseModel):
+    text: str
+
+class SocialCommentResponse(BaseModel):
+    id: int
+    post_id: int
+    user_id: int
+    user_name: str = ""
+    user_avatar: str = ""
+    text: str
+    created_at: datetime
+
+    class Config: from_attributes = True
+
+class SocialFeedResponse(BaseModel):
+    posts: List[SocialPostResponse]
+    total_count: int
+    page: int
+    page_size: int
+
+
+# ============= ACTIVITY TRACKER SCHEMAS =============
+
+class RoutePointCreate(BaseModel):
+    lat: float
+    lng: float
+    timestamp: Optional[datetime] = None
+
+class ActivitySessionCreate(BaseModel):
+    activity_type: str = "running"
+    duration_seconds: int = 0
+    distance_km: float = 0.0
+    calories: int = 0
+    avg_pace: Optional[str] = None
+    avg_speed: float = 0.0
+    label: Optional[str] = None
+    route_points: List[RoutePointCreate] = []
+
+class RoutePointResponse(BaseModel):
+    id: int
+    lat: float
+    lng: float
+    timestamp: datetime
+
+    class Config: from_attributes = True
+
+class ActivitySessionResponse(BaseModel):
+    id: int
+    activity_type: str
+    duration_seconds: int
+    distance_km: float
+    calories: int
+    avg_pace: Optional[str]
+    avg_speed: float
+    label: Optional[str]
+    started_at: datetime
+    created_at: datetime
+    route_points: List[RoutePointResponse] = []
+
+    class Config: from_attributes = True
+
+class ActivityListResponse(BaseModel):
+    sessions: List[ActivitySessionResponse]
+    total_count: int
+    page: int
+    page_size: int
+
+
+# ============= MEAL PLAN SCHEMAS =============
+
+class MealPlanEntryCreate(BaseModel):
+    day_of_week: int
+    meal_slot: str
+    food_name: str
+    serving_size: Optional[str] = None
+    calories: float = 0
+    protein: float = 0
+    carbs: float = 0
+    fats: float = 0
+    food_id: Optional[int] = None
+
+class MealPlanCreate(BaseModel):
+    week_start: str  # ISO date
+    entries: List[MealPlanEntryCreate] = []
+
+class MealPlanEntryResponse(BaseModel):
+    id: int
+    day_of_week: int
+    meal_slot: str
+    food_name: str
+    serving_size: Optional[str]
+    calories: float
+    protein: float
+    carbs: float
+    fats: float
+    food_id: Optional[int]
+
+    class Config: from_attributes = True
+
+class MealPlanResponse(BaseModel):
+    id: int
+    week_start: datetime
+    week_end: Optional[datetime]
+    entries: List[MealPlanEntryResponse] = []
+    created_at: datetime
+    updated_at: datetime
+
+    class Config: from_attributes = True
+
+class MealPlanGenerateRequest(BaseModel):
+    week_start: str  # ISO date
+    daily_calories: Optional[int] = None
+    goal: Optional[str] = None
+    dietary_preferences: List[str] = []
+    allergies: List[str] = []
+    exclude_foods: List[str] = []
+
+
+# ============= FORM COACH SCHEMAS =============
+
+class FormFeedbackLogCreate(BaseModel):
+    message: str
+    feedback_type: str = "info"
+
+class FormCoachSessionCreate(BaseModel):
+    exercise: str
+    duration_seconds: int = 0
+    rep_count: int = 0
+    feedback_summary: Optional[str] = None
+    feedback_logs: List[FormFeedbackLogCreate] = []
+
+class FormFeedbackLogResponse(BaseModel):
+    id: int
+    message: str
+    feedback_type: str
+    timestamp: datetime
+
+    class Config: from_attributes = True
+
+class FormCoachSessionResponse(BaseModel):
+    id: int
+    exercise: str
+    duration_seconds: int
+    rep_count: int
+    feedback_summary: Optional[str]
+    feedback_logs: List[FormFeedbackLogResponse] = []
+    created_at: datetime
+
+    class Config: from_attributes = True
+
+
+# ============= WEARABLE INTEGRATION SCHEMAS =============
+
+class WearableConnectRequest(BaseModel):
+    device_id: str
+    device_name: str
+    access_token: Optional[str] = None
+
+class WearableMetricCreate(BaseModel):
+    metric_type: str
+    value: float
+    unit: Optional[str] = None
+    recorded_at: Optional[datetime] = None
+
+class WearableMetricResponse(BaseModel):
+    id: int
+    metric_type: str
+    value: float
+    unit: Optional[str]
+    recorded_at: datetime
+
+    class Config: from_attributes = True
+
+class WearableConnectionResponse(BaseModel):
+    id: int
+    device_id: str
+    device_name: str
+    connected: bool
+    last_sync: Optional[datetime]
+    created_at: datetime
+    metrics: List[WearableMetricResponse] = []
+
+    class Config: from_attributes = True
+
+
+# ============= REMINDER SCHEMAS =============
+
+class ReminderCreate(BaseModel):
+    label: str
+    description: Optional[str] = None
+    time: str
+    days: List[int] = [0,1,2,3,4,5,6]
+    enabled: bool = True
+    icon: Optional[str] = None
+
+class ReminderUpdate(BaseModel):
+    label: Optional[str] = None
+    description: Optional[str] = None
+    time: Optional[str] = None
+    days: Optional[List[int]] = None
+    enabled: Optional[bool] = None
+    icon: Optional[str] = None
+
+class ReminderResponse(BaseModel):
+    id: int
+    label: str
+    description: Optional[str]
+    time: str
+    days: List[int]
+    enabled: bool
+    icon: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+    class Config: from_attributes = True
+
+class NotificationLogResponse(BaseModel):
+    id: int
+    title: str
+    body: Optional[str]
+    icon: Optional[str]
+    source: Optional[str]
+    read: bool
+    created_at: datetime
+
+    class Config: from_attributes = True

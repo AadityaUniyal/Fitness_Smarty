@@ -4,19 +4,40 @@ Analytics API Endpoints
 Exposes advanced nutrition calculations and tracking
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Dict, List, Optional
 from datetime import datetime
-
-from app.nutrition_analytics import NutritionAnalytics, MealTracker, NutrientGapAnalyzer
+from sqlalchemy.orm import Session
+from .database import get_db
 
 router = APIRouter(prefix="/api/analytics", tags=["Nutrition Analytics"])
 
-# Initialize analytics engines
-analytics = NutritionAnalytics()
-meal_tracker = MealTracker()
-gap_analyzer = NutrientGapAnalyzer()
+# Lazy analytics engine initialization
+_analytics = None
+_meal_tracker = None
+_gap_analyzer = None
+
+def _get_analytics():
+    global _analytics
+    if _analytics is None:
+        from app.nutrition_analytics import NutritionAnalytics
+        _analytics = NutritionAnalytics()
+    return _analytics
+
+def _get_meal_tracker():
+    global _meal_tracker
+    if _meal_tracker is None:
+        from app.nutrition_analytics import MealTracker
+        _meal_tracker = MealTracker()
+    return _meal_tracker
+
+def _get_gap_analyzer():
+    global _gap_analyzer
+    if _gap_analyzer is None:
+        from app.nutrition_analytics import NutrientGapAnalyzer
+        _gap_analyzer = NutrientGapAnalyzer()
+    return _gap_analyzer
 
 
 class UserProfileRequest(BaseModel):
@@ -29,10 +50,14 @@ class UserProfileRequest(BaseModel):
 
 
 class MealNutrition(BaseModel):
-    calories: float
-    protein_g: float
-    carbs_g: float
-    fat_g: float
+    total_calories: float
+    total_protein: float
+    total_carbs: float
+    total_fats: float
+
+class QueryRequest(BaseModel):
+    query: str
+    user_id: int
     fiber_g: Optional[float] = 0
 
 
@@ -45,7 +70,7 @@ async def calculate_tdee(profile: UserProfileRequest):
     """
     try:
         # Calculate BMR
-        bmr = analytics.calculate_bmr(
+        bmr = _get_analytics().calculate_bmr(
             weight_kg=profile.weight_kg,
             height_cm=profile.height_cm,
             age=profile.age,
@@ -53,13 +78,13 @@ async def calculate_tdee(profile: UserProfileRequest):
         )
         
         # Calculate TDEE
-        tdee = analytics.calculate_tdee(
+        tdee = _get_analytics().calculate_tdee(
             bmr=bmr,
             activity_level=profile.activity_level
         )
         
         # Calculate macro targets
-        targets = analytics.calculate_macro_targets(
+        targets = _get_analytics().calculate_macro_targets(
             tdee=tdee,
             goal=profile.goal
         )
@@ -91,18 +116,18 @@ async def score_meal(
     """
     try:
         # Get targets
-        bmr = analytics.calculate_bmr(
+        bmr = _get_analytics().calculate_bmr(
             user_profile.weight_kg,
             user_profile.height_cm,
             user_profile.age,
             user_profile.gender
         )
-        tdee = analytics.calculate_tdee(bmr, user_profile.activity_level)
-        targets = analytics.calculate_macro_targets(tdee, user_profile.goal)
+        tdee = _get_analytics().calculate_tdee(bmr, user_profile.activity_level)
+        targets = _get_analytics().calculate_macro_targets(tdee, user_profile.goal)
         
         # Score the meal
-        score_data = analytics.calculate_meal_score(
-            meal_nutrition.dict(),
+        score_data = _get_analytics().calculate_meal_score(
+            meal_nutrition.model_dump(),
             targets
         )
         
@@ -110,16 +135,16 @@ async def score_meal(
         score = score_data['score']
         if score >= 80:
             rating = "Excellent"
-            emoji = "🌟"
+            emoji = "[STAR]"
         elif score >= 60:
             rating = "Good"
-            emoji = "👍"
+            emoji = "[OK]"
         elif score >= 40:
             rating = "Okay"
-            emoji = "🤔"
+            emoji = "[HMM]"
         else:
             rating = "Needs Improvement"
-            emoji = "⚠️"
+            emoji = "[!]"
         
         return {
             **score_data,
@@ -146,14 +171,14 @@ async def track_meal(
     """
     try:
         meal_data = {
-            'nutrition': meal_nutrition.dict(),
+            'nutrition': meal_nutrition.model_dump(),
             'foods': foods
         }
         
-        meal_tracker.add_meal(meal_data, user_liked)
+        _get_meal_tracker().add_meal(meal_data, user_liked)
         
         # Get updated streak
-        streak = meal_tracker.calculate_streak()
+        streak = _get_meal_tracker().calculate_streak()
         
         return {
             'message': 'Meal tracked successfully',
@@ -168,11 +193,11 @@ async def track_meal(
 @router.get("/streak")
 async def get_streak():
     """Get current meal streak statistics"""
-    streak = meal_tracker.calculate_streak()
+    streak = _get_meal_tracker().calculate_streak()
     
     return {
         **streak,
-        'encouragement': f"{'🔥' * min(streak['current_streak'], 10)} {streak['current_streak']} meal streak!"
+        'encouragement': f"{'[FIRE]' * min(streak['current_streak'], 10)} {streak['current_streak']} meal streak!"
     }
 
 
@@ -183,7 +208,7 @@ async def detect_patterns():
     
     Returns insights about consistency, timing, trends
     """
-    patterns = meal_tracker.detect_patterns()
+    patterns = _get_meal_tracker().detect_patterns()
     
     if patterns.get('status') == 'insufficient_data':
         return {
@@ -197,7 +222,7 @@ async def detect_patterns():
 @router.get("/weekly-summary")
 async def get_weekly_summary():
     """Get 7-day summary of nutrition stats"""
-    summary = meal_tracker.get_weekly_summary()
+    summary = _get_meal_tracker().get_weekly_summary()
     
     if summary.get('status') == 'no_recent_meals':
         return {
@@ -215,7 +240,7 @@ async def analyze_nutrient_gaps(daily_nutrition: MealNutrition):
     
     Compares to RDA standards
     """
-    gaps = gap_analyzer.analyze_gaps(daily_nutrition.dict())
+    gaps = _get_gap_analyzer().analyze_gaps(daily_nutrition.model_dump())
     
     recommendations = []
     
@@ -229,7 +254,7 @@ async def analyze_nutrient_gaps(daily_nutrition: MealNutrition):
         **gaps,
         'recommendations': recommendations,
         'overall_score': round(
-            (len(gaps['adequate']) / len(gap_analyzer.rda)) * 100, 1
+            (len(gaps['adequate']) / len(_get_gap_analyzer().rda)) * 100, 1
         )
     }
 
@@ -241,9 +266,9 @@ async def get_health_insights(user_id: str):
     
     Returns: Streaks, patterns, weekly summary, predictions
     """
-    streak = meal_tracker.calculate_streak()
-    patterns = meal_tracker.detect_patterns()
-    summary = meal_tracker.get_weekly_summary()
+    streak = _get_meal_tracker().calculate_streak()
+    patterns = _get_meal_tracker().detect_patterns()
+    summary = _get_meal_tracker().get_weekly_summary()
     
     insights = {
         'user_id': user_id,
@@ -259,7 +284,7 @@ async def get_health_insights(user_id: str):
         insights['insights'].append({
             'type': 'achievement',
             'message': f"Amazing! {streak['current_streak']} meal streak!",
-            'emoji': '🏆'
+            'emoji': '[TROPHY]'
         })
     
     if patterns.get('status') == 'patterns_detected':
@@ -267,21 +292,78 @@ async def get_health_insights(user_id: str):
             insights['insights'].append({
                 'type': 'positive',
                 'message': f"Excellent consistency! {patterns['calorie_consistency']:.0f}% calorie consistency",
-                'emoji': '📊'
+                'emoji': '[CHART]'
             })
         
         if patterns['calorie_trend'] == 'increasing':
             insights['insights'].append({
                 'type': 'warning',
                 'message': "Calorie intake trending upward. Consider portion sizes.",
-                'emoji': '⚠️'
+                'emoji': '[!]'
             })
     
     if summary.get('success_rate', 0) > 80:
         insights['insights'].append({
             'type': 'achievement',
             'message': f"Outstanding! {summary['success_rate']:.0f}% of meals align with your goals",
-            'emoji': '🎯'
+            'emoji': '[GOAL]'
         })
     
-    return insights
+@router.get("/daily-budget/{user_id}")
+async def get_daily_budget(user_id: int, db: Session = Depends(get_db)):
+    """Get net calories for today"""
+    return _get_analytics().calculate_daily_net_budget(db, user_id)
+
+@router.get("/db-streak/{user_id}")
+async def get_db_streak(user_id: int, db: Session = Depends(get_db)):
+    """Get current activity streak from DB"""
+    streak = _get_analytics().calculate_db_streak(db, user_id)
+    return {"streak": streak}
+
+@router.get("/powerbi-export")
+async def export_powerbi(db: Session = Depends(get_db)):
+    """Flattened data for Power BI consumption"""
+    from . import models
+    meals = db.query(models.MealLog).all()
+    workouts = db.query(models.WorkoutLog).all()
+    
+    # Flatten meal data
+    results = []
+    for m in meals:
+        results.append({
+            "type": "meal",
+            "date": m.created_at.isoformat(),
+            "calories": m.total_calories,
+            "protein": m.total_protein,
+            "carbs": m.total_carbs,
+            "fats": m.total_fats,
+            "user_id": m.user_id
+        })
+    
+    for w in workouts:
+        results.append({
+            "type": "workout",
+            "date": w.created_at.isoformat(),
+            "calories_burned": w.calories_burned,
+            "duration": w.duration_minutes,
+            "user_id": w.user_id
+        })
+        
+    return results
+
+@router.get("/plateau-detection/{user_id}")
+async def get_plateau_detection(user_id: int, db: Session = Depends(get_db)):
+    """Detect potential progress plateaus"""
+    return _get_analytics().detect_plateaus(db, user_id)
+
+@router.get("/correlative-insights/{user_id}")
+async def get_correlative_insights(user_id: int, db: Session = Depends(get_db)):
+    """Get pattern correlations for the user"""
+    return _get_analytics().get_correlative_insights(db, user_id)
+
+@router.post("/ai-query")
+async def ai_data_query(request: QueryRequest, db: Session = Depends(get_db)):
+    """Natural language query processing via AI Analyst"""
+    from .ai_analyst import AIAnalyst
+    analyst = AIAnalyst(db)
+    return await analyst.process_query(request.query, request.user_id)

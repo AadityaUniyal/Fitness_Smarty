@@ -1,4 +1,11 @@
 
+"""
+[RULE-BASED PLACEHOLDER]
+Hydration Monitoring Engine
+
+NOTE: This is currently a simple rule-based heuristic calculator for water intake
+goals and not a fully integrated hydration tracking/sensor subsystem.
+"""
 from . import models
 
 def get_hydration_requirement(user: models.EnhancedUser, activity_minutes: int = 0):

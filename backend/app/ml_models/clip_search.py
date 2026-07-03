@@ -15,7 +15,7 @@ try:
     CLIP_AVAILABLE = True
 except ImportError:
     CLIP_AVAILABLE = False
-    print("⚠️  CLIP not available. Install with: pip install git+https://github.com/openai/CLIP.git")
+    print("[!] CLIP not available. Install with: pip install git+https://github.com/openai/CLIP.git")
 
 
 class CLIPSearch:
@@ -38,12 +38,12 @@ class CLIPSearch:
         if CLIP_AVAILABLE:
             try:
                 self.model, self.preprocess = clip.load(model_name, device=self.device)
-                print(f"✓ Loaded CLIP model: {model_name} on {self.device}")
+                print(f"[OK] Loaded CLIP model: {model_name} on {self.device}")
             except Exception as e:
-                print(f"⚠️  Could not load CLIP: {e}")
+                print(f"[!] Could not load CLIP: {e}")
                 self.mock_mode = True
         else:
-            print("⚠️  CLIP not installed. Using mock mode.")
+            print("[!] CLIP not installed. Using mock mode.")
             self.mock_mode = True
     
     def encode_image(self, image_path: str) -> np.ndarray:

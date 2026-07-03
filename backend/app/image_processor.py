@@ -187,24 +187,62 @@ class ImageProcessor:
     
     def store_image(self, image_bytes: bytes, user_id: str) -> str:
         """
-        Store image to local filesystem (placeholder for cloud storage)
+        Store image. In production, uploads to configured Object Storage (S3/Cloudflare R2/GCS)
+        and returns a signed URL. Falls back to Base64 data URL in development.
         
         Args:
             image_bytes: Image data to store
             user_id: User identifier
             
         Returns:
-            Storage path/URL
+            URL string (signed object storage URL or Base64 data URL)
         """
-        filename = self.generate_filename(user_id, image_bytes)
-        filepath = os.path.join(self.storage_path, filename)
+        import base64
         
-        # Write image to file
-        with open(filepath, 'wb') as f:
-            f.write(image_bytes)
+        # Check for S3/R2 object storage configuration in production
+        bucket_name = os.getenv("STORAGE_BUCKET_NAME")
+        aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
+        aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        endpoint_url = os.getenv("STORAGE_ENDPOINT_URL") # e.g. R2 endpoint URL
         
-        # Return relative path (in production, this would be a cloud storage URL)
-        return f"/meal_images/{filename}"
+        if bucket_name and aws_access_key and aws_secret_key:
+            try:
+                import boto3
+                from botocore.config import Config
+                
+                filename = self.generate_filename(user_id, image_bytes)
+                object_name = f"meals/{user_id}/{filename}"
+                
+                s3_client = boto3.client(
+                    's3',
+                    aws_access_key_id=aws_access_key,
+                    aws_secret_access_key=aws_secret_key,
+                    endpoint_url=endpoint_url,
+                    config=Config(signature_version='s3v4')
+                )
+                
+                # Upload the image file
+                s3_client.put_object(
+                    Bucket=bucket_name,
+                    Key=object_name,
+                    Body=image_bytes,
+                    ContentType='image/jpeg'
+                )
+                
+                # Generate a signed URL valid for 24 hours (86400 seconds)
+                url = s3_client.generate_presigned_url(
+                    'get_object',
+                    Params={'Bucket': bucket_name, 'Key': object_name},
+                    ExpiresIn=86400
+                )
+                return url
+            except Exception as e:
+                # Log error and fall back to base64 URL so service doesn't break
+                import logging
+                logging.getLogger(__name__).error(f"Failed to upload image to object storage: {e}. Falling back to base64.")
+                
+        encoded = base64.b64encode(image_bytes).decode('utf-8')
+        return f"data:image/jpeg;base64,{encoded}"
     
     def process_meal_image(self, image_bytes: bytes, user_id: str) -> Dict[str, Any]:
         """

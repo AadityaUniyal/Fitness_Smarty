@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { History, Calendar, TrendingUp, Loader2 } from 'lucide-react';
+import { History, Calendar, TrendingUp, Loader2, Trash2, Check } from 'lucide-react';
 import { MealAPI } from '../services/apiService';
 import { useAPI } from '../hooks/useAPI';
 
+const LOCAL_LOGS_KEY = 'smarty_meal_logs';
+
 const MealHistory: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+
   const { data: history, loading, execute: fetchHistory } = useAPI(
     (userId: string, params: any) => MealAPI.getMealHistory(userId, params)
   );
@@ -26,6 +29,32 @@ const MealHistory: React.FC = () => {
     });
     await fetchSummary('user-1', selectedDate);
   };
+
+  const handleDeleteLocal = (index: number) => {
+    if (deleteConfirm === index) {
+      const logs = JSON.parse(localStorage.getItem(LOCAL_LOGS_KEY) || '[]');
+      logs.splice(index, 1);
+      localStorage.setItem(LOCAL_LOGS_KEY, JSON.stringify(logs));
+      setDeleteConfirm(null);
+      // Force re-render by reloading
+      loadData();
+    } else {
+      setDeleteConfirm(index);
+      setTimeout(() => setDeleteConfirm(null), 3000);
+    }
+  };
+
+  // Also show local logs for the selected date
+  const allLogs: any[] = history?.meals || [];
+  const localLogs: any[] = (() => {
+    try {
+      const logs = JSON.parse(localStorage.getItem(LOCAL_LOGS_KEY) || '[]');
+      return logs.filter((l: any) => {
+        const logDate = new Date(l.timestamp).toISOString().split('T')[0];
+        return logDate === selectedDate;
+      });
+    } catch { return []; }
+  })();
 
   return (
     <div className="space-y-6">
@@ -67,23 +96,46 @@ const MealHistory: React.FC = () => {
         <div className="py-12 flex justify-center">
           <Loader2 className="animate-spin text-cyan-400" size={32} />
         </div>
-      ) : history && history.meals.length > 0 ? (
-        <div className="space-y-3">
-          {history.meals.map((meal) => (
-            <div key={meal.meal_log_id} className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50 hover:border-cyan-500/30 transition-all">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="font-bold text-white capitalize">{meal.meal_type}</p>
-                  <p className="text-xs text-slate-500">{new Date(meal.logged_at).toLocaleTimeString()}</p>
+      ) : allLogs.length > 0 || localLogs.length > 0 ? (
+        <div className="space-y-3 stagger-children">
+          {/* Backend meals */}
+          {allLogs.map((meal: any) => (
+            <div key={meal.meal_log_id} className="bg-slate-800/30 p-4 rounded-xl border border-slate-700/50 card-hover flex items-start justify-between group">
+              <div>
+                <p className="font-bold text-white capitalize">{meal.meal_type}</p>
+                <p className="text-xs text-slate-500">{new Date(meal.logged_at).toLocaleTimeString()}</p>
+                <div className="mt-2 flex gap-4 text-xs">
+                  <span className="text-blue-400">P: {meal.total_protein_g}g</span>
+                  <span className="text-orange-400">C: {meal.total_carbs_g}g</span>
+                  <span className="text-purple-400">F: {meal.total_fat_g}g</span>
                 </div>
-                <span className="text-xs font-black bg-cyan-400/10 text-cyan-400 px-3 py-1 rounded-full">
-                  {meal.total_calories} CAL
-                </span>
               </div>
-              <div className="mt-3 flex gap-4 text-xs">
-                <span className="text-blue-400">P: {meal.total_protein_g}g</span>
-                <span className="text-orange-400">C: {meal.total_carbs_g}g</span>
-                <span className="text-purple-400">F: {meal.total_fat_g}g</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-black bg-cyan-400/10 text-cyan-400 px-3 py-1 rounded-full">{meal.total_calories} CAL</span>
+              </div>
+            </div>
+          ))}
+          {/* Local logs */}
+          {localLogs.map((log: any, i: number) => (
+            <div key={`local-${i}`} className="bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/20 card-hover flex items-start justify-between group">
+              <div>
+                <p className="font-bold text-white capitalize">{log.mealType || log.mealName || 'Meal'}</p>
+                <p className="text-xs text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</p>
+                <div className="mt-2 flex gap-4 text-xs">
+                  <span className="text-blue-400">P: {log.totalProtein || 0}g</span>
+                  <span className="text-orange-400">C: {log.totalCarbs || 0}g</span>
+                  <span className="text-purple-400">F: {log.totalFats || 0}g</span>
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-black bg-emerald-400/10 text-emerald-400 px-3 py-1 rounded-full">{log.totalCalories || 0} CAL</span>
+                <button
+                  onClick={() => handleDeleteLocal(i)}
+                  className={`p-2 rounded-lg transition-opacity ${deleteConfirm === i ? 'bg-rose-500/20 text-rose-400' : 'opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400'}`}
+                  title={deleteConfirm === i ? 'Confirm delete' : 'Delete'}
+                >
+                  {deleteConfirm === i ? <Check size={14} /> : <Trash2 size={14} />}
+                </button>
               </div>
             </div>
           ))}

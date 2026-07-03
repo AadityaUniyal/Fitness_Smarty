@@ -11,11 +11,8 @@ from typing import Dict, List
 from datetime import datetime
 from pathlib import Path
 
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-except ImportError:
-    GEMINI_AVAILABLE = False
+GEMINI_AVAILABLE = False
+genai = None
 
 
 class PersonalizedMealScanner:
@@ -28,12 +25,26 @@ class PersonalizedMealScanner:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
         
+        global GEMINI_AVAILABLE, genai
+        if self.api_key and not GEMINI_AVAILABLE:
+            try:
+                import google.genai as _genai
+                genai = _genai
+                GEMINI_AVAILABLE = True
+            except ImportError:
+                try:
+                    import google.generativeai as _genai
+                    genai = _genai
+                    GEMINI_AVAILABLE = True
+                except ImportError:
+                    GEMINI_AVAILABLE = False
+        
         if GEMINI_AVAILABLE and self.api_key:
             genai.configure(api_key=self.api_key)
             self.model = genai.GenerativeModel('gemini-1.5-flash')
         else:
             self.model = None
-            print("⚠️ Gemini API not configured. Using mock data.")
+            print("[!] Gemini API not configured. Using mock data.")
         
         # Feedback storage
         self.feedback_dir = Path("app/training/datasets")
@@ -55,9 +66,14 @@ class PersonalizedMealScanner:
             return self._mock_scan()
         
         try:
-            # Read image
-            with open(image_path, 'rb') as f:
-                image_data = f.read()
+            # Read image (handles local files or base64 data URLs)
+            if image_path.startswith("data:image/"):
+                import base64
+                _, encoded = image_path.split(",", 1)
+                image_data = base64.b64decode(encoded)
+            else:
+                with open(image_path, 'rb') as f:
+                    image_data = f.read()
             
             # Prompt for Gemini
             prompt = """
@@ -155,7 +171,7 @@ class PersonalizedMealScanner:
             return {
                 'is_good_for_you': is_good,
                 'confidence': 0.7,
-                'recommendation': f"{'✅' if is_good else '⚠️'} {reason}",
+                'recommendation': f"{'[OK]' if is_good else '[!]'} {reason}",
                 'detected_foods': meal_data.get('detected_foods', []),
                 'nutrition': nutrition,
                 'model_type': 'rule_based_fallback'

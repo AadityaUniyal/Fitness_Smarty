@@ -3,15 +3,15 @@ import subprocess
 import sys
 
 test_files = [
-    "tests/test_authentication_security_property.py",
-    "tests/test_file_classification.py",
-    "tests/test_file_classification_property.py",
-    "tests/test_food_data_validation_property.py",
-    "tests/test_goal_validation_logic_property.py",
-    "tests/test_image_upload_validation_property.py",
-    "tests/test_meal_tracking.py",
-    "tests/test_migration_data_safety_property.py",
-    "tests/test_nutrition_data_lookup_property.py",
+    "tests/test_aim_foods.py",
+    "tests/test_analytics.py",
+    "tests/test_anomaly_detector.py",
+    "tests/test_env_vars.py",
+    "tests/test_explainability.py",
+    "tests/test_meal_scanner.py",
+    "tests/test_portion_optimizer.py",
+    "tests/test_progressive_overload.py",
+    "tests/test_recovery_engine.py",
 ]
 
 print("Running quick test suite...")
@@ -30,10 +30,10 @@ for test_file in test_files:
     )
     
     if result.returncode == 0:
-        print(f"✅ PASSED")
+        print("[OK] PASSED")
         passed_tests.append(test_file)
     else:
-        print(f"❌ FAILED")
+        print("[FAIL] FAILED")
         failed_tests.append(test_file)
         # Print first few lines of error
         lines = result.stdout.split('\n')

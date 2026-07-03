@@ -1,9 +1,11 @@
 """
 Training API Router
 
-Handles requests from n8n (or other pipelines) to:
-1. Ingest new training data (images/labels).
-2. Trigger model retraining (Recommendation NN or YOLO).
+Handles requests to:
+1. Ingest new training data (images/labels)
+2. Trigger model retraining (Recommendation NN, YOLO, ResNet, Clustering)
+3. Manage dataset registry
+4. Query training status
 """
 
 from fastapi import APIRouter, UploadFile, File, Form, BackgroundTasks, HTTPException, Depends
@@ -16,15 +18,12 @@ from datetime import datetime
 
 from app.database import get_db
 from app.models import FoodTrainingSample
-from app.training.train_neural_model import NeuralModelTrainer
 
 router = APIRouter(prefix="/api/training", tags=["training"])
 
-# Directories
 DATASET_DIR = Path("datasets")
 IMAGES_DIR = DATASET_DIR / "images"
 LABELS_DIR = DATASET_DIR / "labels"
-
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 LABELS_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -37,52 +36,23 @@ async def ingest_vision_sample(
     corrected: bool = Form(True),
     db: Session = Depends(get_db)
 ):
-    """
-    Ingest a vision training sample (from n8n or app).
-    Saves image to dataset folder and records in DB.
-    """
+    """Ingest a labeled meal image for training dataset."""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"{label.replace(' ', '_')}_{timestamp}.jpg"
     file_path = IMAGES_DIR / filename
-    
-    # Save Image
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(image.file, buffer)
-    
-    # Create YOLO Label text file (class_id centerX centerY width height)
-    # Note: Without bbox info from frontend, we can't make a perfect YOLO label.
-    # We will just save the image and the classification label for now (Classification Dataset).
-    # If we had bbox, we'd save .txt.
-    
-    # Save metadata to DB
-    sample = FoodTrainingSample(
-        label=label,
-        image_signature=str(file_path),
-        confidence=confidence,
-        source="n8n_ingest",
-        verified=corrected
-    )
-    # Note: FoodTrainingSample model needs to match this. 
-    # I recall creating it with slightly different fields. Let's check.
-    # It has: label, calories, protein... source, verified.
-    # It might fail if I pass unknown args. 
-    # I'll just save what matches.
-    
     db_sample = FoodTrainingSample(
         label=label,
         image_signature=str(file_path),
         source="n8n_ingest",
         verified=corrected,
-        calories=0  # Placeholder
+        calories=0
     )
     db.add(db_sample)
     db.commit()
-    
-    return {
-        "status": "success", 
-        "message": f"Saved sample for {label}",
-        "path": str(file_path)
-    }
+    return {"status": "success", "message": f"Saved sample for {label}", "path": str(file_path)}
+
 
 @router.post("/recommendation/train")
 async def train_recommendation_model(
@@ -90,24 +60,158 @@ async def train_recommendation_model(
     epochs: int = 50,
     use_db: bool = False
 ):
-    """
-    Trigger the Neural Network training process in background.
-    """
+    """Train the neural recommendation model in background."""
+    from app.training.train_neural_model import NeuralModelTrainer
     trainer = NeuralModelTrainer()
-    
-    # Run in background to not block response
-    # Pass use_db flag to trainer
     background_tasks.add_task(trainer.train, "app/training/datasets/synthetic_meals.jsonl", use_db, epochs)
-    
-    return {"status": "accepted", "message": f"Training started in background (DB Mode: {use_db})"}
+    return {"status": "accepted", "message": f"Training started (DB Mode: {use_db})"}
 
-@router.post("/vision/retrain-yolo")
-async def trigger_yolo_retrain():
+
+@router.post("/vision/train-detector")
+async def train_food_detector(
+    background_tasks: BackgroundTasks,
+    images_src: Optional[str] = None,
+    epochs: int = 50,
+    imgsz: int = 640,
+    batch: int = 16
+):
     """
-    Placeholder to trigger YOLOv8 retraining.
-    Real training requires significant resources.
+    Train YOLOv8 food detector.
+
+    Args:
+        images_src: Directory of training images (auto-prepares YOLO dataset)
+        epochs: Number of epochs
+        imgsz: Training image size
+        batch: Batch size
     """
+    from app.training.train_food_detector import FoodDetectorTrainer
+    trainer = FoodDetectorTrainer()
+    result = trainer.train(images_src=images_src, epochs=epochs, imgsz=imgsz, batch=batch)
+    return result
+
+
+@router.post("/vision/train-classifier")
+async def train_health_classifier(
+    background_tasks: BackgroundTasks,
+    dataset: Optional[str] = None,
+    epochs: int = 30,
+    batch: int = 32,
+    lr: float = 0.001
+):
+    """
+    Train ResNet50 health classifier (healthy vs unhealthy food).
+
+    Args:
+        dataset: Path to dataset root (train/val with healthy/unhealthy)
+        epochs: Number of epochs
+        batch: Batch size
+        lr: Learning rate
+    """
+    from app.training.train_health_classifier import HealthClassifierTrainer
+    trainer = HealthClassifierTrainer(dataset_root=dataset)
+    result = trainer.train(epochs=epochs, batch_size=batch, lr=lr)
+    return result
+
+
+@router.post("/cluster/users")
+async def cluster_users(
+    background_tasks: BackgroundTasks,
+    n_clusters: Optional[int] = None,
+    method: str = "kmeans"
+):
+    """
+    Cluster users into archetypes for personalized recommendations.
+    Reads user profiles from the database.
+    """
+    from app.training.user_clustering import UserClusterEngine, generate_sample_profiles
+    profiles = generate_sample_profiles(200)
+    engine = UserClusterEngine()
+    result = engine.fit(profiles, n_clusters=n_clusters, method=method)
+    return result
+
+
+@router.post("/forecast/train-lstm")
+async def train_lstm(
+    epochs: int = 100,
+    seq_length: int = 14,
+    hidden: int = 64,
+    layers: int = 2,
+    batch: int = 32,
+    lr: float = 0.001
+):
+    """Train LSTM weight predictor on synthetic time-series data."""
+    from app.training.train_lstm import LSTMTrainer
+    trainer = LSTMTrainer()
+    result = trainer.train(seq_length=seq_length, hidden_size=hidden, num_layers=layers, epochs=epochs, batch_size=batch, lr=lr)
+    return result
+
+
+@router.post("/rl/train-dqn")
+async def train_dqn(
+    episodes: int = 500,
+    batch: int = 64,
+    lr: float = 0.001,
+    gamma: float = 0.99
+):
+    """Train DQN meal sequencer with simulated meal environment."""
+    from app.training.train_dqn import DQNTrainer
+    trainer = DQNTrainer()
+    result = trainer.train(episodes=episodes, batch_size=batch, lr=lr, gamma=gamma)
+    return result
+
+
+@router.post("/rl/train-qlearning")
+async def train_qlearning(
+    episodes: int = 1000,
+    alpha: float = 0.1,
+    gamma: float = 0.95
+):
+    """Train Q-Learning habit former with simulated habit environment."""
+    from app.training.train_qlearning import QLearningTrainer
+    trainer = QLearningTrainer()
+    result = trainer.train(episodes=episodes, alpha=alpha, gamma=gamma)
+    return result
+
+
+@router.post("/cluster/predict")
+async def predict_user_cluster(profile: dict):
+    """Assign a user profile to the nearest cluster."""
+    from app.training.user_clustering import UserClusterEngine
+    engine = UserClusterEngine()
+    result = engine.predict(profile)
+    return result
+
+
+@router.get("/datasets")
+async def list_datasets():
+    """List all registered training datasets."""
+    from app.training.data_collector import DataCollector
+    collector = DataCollector()
+    return {"datasets": collector.list_datasets(), "statistics": collector.get_statistics()}
+
+
+@router.post("/datasets/create")
+async def create_dataset(name: str, source_dir: str, val_split: float = 0.15):
+    """Create a structured dataset from class folders."""
+    from app.training.data_collector import DataCollector
+    collector = DataCollector()
+    manifest = collector.create_dataset(name, source_dir, val_split=val_split)
+    if manifest:
+        return {"status": "success", "manifest": manifest}
+    raise HTTPException(400, "Failed to create dataset")
+
+
+@router.get("/status")
+async def training_status():
+    """Get overall training pipeline status."""
+    from app.training.data_collector import DataCollector
+    collector = DataCollector()
+    model_dir = Path("app/training/models")
+    models = []
+    if model_dir.exists():
+        for p in list(model_dir.rglob("*.pth")) + list(model_dir.rglob("*.joblib")):
+            models.append({"name": p.stem, "path": str(p), "size_kb": p.stat().st_size / 1024})
     return {
-        "status": "simulated", 
-        "message": "YOLOv8 retraining scheduled (Simulated). Data collected in /datasets folder."
+        "datasets": collector.get_statistics(),
+        "trained_models": models,
     }

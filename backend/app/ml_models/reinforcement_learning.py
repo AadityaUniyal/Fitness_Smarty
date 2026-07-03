@@ -1,7 +1,10 @@
 """
-Mock Reinforcement Learning - DQN Meal Sequencer
+[SCAFFOLD / MOCK IMPLEMENTATION ONLY]
+Mock Reinforcement Learning - DQN Meal Sequencer & Habit Former
 
-Mock implementation of Deep Q-Network for optimal meal sequencing
+WARNING: This module is currently 100% mock-mode. The DQN and Q-Learning models
+defined here have not been trained to convergence or connected to live training
+loops. This file is kept as architectural scaffolding for future RL integrations.
 """
 
 import os
@@ -21,7 +24,7 @@ class DQNMealSequencer:
     def __init__(self):
         """Initialize DQN sequencer"""
         self.mock_mode = True  # Always mock for now
-        print("✓ DQN Meal Sequencer initialized (mock mode)")
+        print("[OK] DQN Meal Sequencer initialized (mock mode)")
     
     def optimize_meal_plan(
         self,
@@ -155,7 +158,7 @@ class QLearningHabitFormer:
     def __init__(self):
         """Initialize Q-learning habit former"""
         self.mock_mode = True
-        print("✓ Q-Learning Habit Former initialized (mock mode)")
+        print("[OK] Q-Learning Habit Former initialized (mock mode)")
     
     def build_habit_plan(
         self,

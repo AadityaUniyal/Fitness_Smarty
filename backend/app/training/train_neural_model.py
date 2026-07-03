@@ -163,7 +163,7 @@ class NeuralModelTrainer:
     
     def load_data(self, dataset_file: str):
         """Load and preprocess dataset"""
-        print(f"📥 Loading dataset from {dataset_file}...")
+        print(f"[LOAD] Loading dataset from {dataset_file}...")
         
         dataset_path = Path(dataset_file)
         if not dataset_path.exists():
@@ -175,21 +175,21 @@ class NeuralModelTrainer:
             for line in f:
                 records.append(json.loads(line.strip()))
         
-        print(f"✓ Loaded {len(records)} records")
+        print(f"[OK] Loaded {len(records)} records")
         
         # Extract features and labels
-        print("🔧 Extracting features...")
+        print("[SETUP] Extracting features...")
         X = np.array([self.extract_features(r) for r in records])
         y = np.array([r['label'] for r in records])
         
-        print(f"✓ Feature shape: {X.shape}")
-        print(f"✓ Positive samples: {np.sum(y)} ({np.sum(y)/len(y)*100:.1f}%)")
+        print(f"[OK] Feature shape: {X.shape}")
+        print(f"[OK] Positive samples: {np.sum(y)} ({np.sum(y)/len(y)*100:.1f}%)")
         
         return X, y
     
     def load_data_from_db(self, limit=None):
         """Load data from Training Database"""
-        print("📥 Connecting to Training Database...")
+        print("[LOAD] Connecting to Training Database...")
         db = next(get_training_db())
         
         try:
@@ -198,7 +198,7 @@ class NeuralModelTrainer:
                 query = query.limit(limit)
                 
             samples = query.all()
-            print(f"✓ Loaded {len(samples)} records from DB")
+            print(f"[OK] Loaded {len(samples)} records from DB")
             
             # Convert to training format
             # We need to map DB FoodTrainingSample to the expected "record" format for extract_features
@@ -214,7 +214,7 @@ class NeuralModelTrainer:
             # to create the training set. This simulates "different users eating these foods".
             
             records = []
-            print("🔧 Synthesizing user contexts for food samples...")
+            print("[SETUP] Synthesizing user contexts for food samples...")
             
             # Mock user profiles to mix in
             profiles = [
@@ -257,7 +257,7 @@ class NeuralModelTrainer:
                     }
                     records.append(record)
             
-            print(f"✓ Generated {len(records)} augmented training samples")
+            print(f"[OK] Generated {len(records)} augmented training samples")
             
             X = np.array([self.extract_features(r) for r in records])
             y = np.array([r['label'] for r in records])
@@ -287,10 +287,10 @@ class NeuralModelTrainer:
             X, y, test_size=0.2, random_state=42, stratify=y
         )
         
-        print(f"📊 Train: {len(X_train)} | Test: {len(X_test)}")
+        print(f"[CHART] Train: {len(X_train)} | Test: {len(X_test)}")
         
         # Scale features
-        print("🔧 Scaling features...")
+        print("[SETUP] Scaling features...")
         X_train_scaled = self.scaler.fit_transform(X_train)
         X_test_scaled = self.scaler.transform(X_test)
         
@@ -302,7 +302,7 @@ class NeuralModelTrainer:
         test_loader = DataLoader(test_dataset, batch_size=batch_size)
         
         # Initialize model
-        print(f"🧠 Initializing neural network (device: {self.device})...")
+        print(f"[AI] Initializing neural network (device: {self.device})...")
         input_size = X_train_scaled.shape[1]
         self.model = MealRecommendationNN(input_size=input_size).to(self.device)
         
@@ -311,7 +311,7 @@ class NeuralModelTrainer:
         optimizer = optim.Adam(self.model.parameters(), lr=0.001)
         
         # Training loop
-        print(f"\n🚀 Training for {epochs} epochs...")
+        print(f"\n[START] Training for {epochs} epochs...")
         print()
         
         best_accuracy = 0
@@ -357,7 +357,7 @@ class NeuralModelTrainer:
                 print(f"Epoch [{epoch+1}/{epochs}] - Loss: {avg_train_loss:.4f} - Accuracy: {accuracy:.2f}% - Best: {best_accuracy:.2f}%")
         
         print()
-        print(f"✅ Training complete! Best accuracy: {best_accuracy:.2f}%")
+        print(f"[OK] Training complete! Best accuracy: {best_accuracy:.2f}%")
         
         # Save model
         self.save_model()
@@ -372,8 +372,8 @@ class NeuralModelTrainer:
         torch.save(self.model.state_dict(), model_path)
         joblib.dump(self.scaler, scaler_path)
         
-        print(f"\n💾 Model saved to: {model_path}")
-        print(f"💾 Scaler saved to: {scaler_path}")
+        print(f"\n[SAVE] Model saved to: {model_path}")
+        print(f"[SAVE] Scaler saved to: {scaler_path}")
     
     def load_model(self, input_size=20):
         """Load trained model"""
@@ -427,21 +427,21 @@ class NeuralModelTrainer:
         
         if is_good:
             if confidence > 0.85:
-                return f"✅ Excellent choice! {calories:.0f} cal, {protein:.0f}g protein - perfect for your goals ({confidence*100:.0f}% confidence)"
+                return f"[OK] Excellent choice! {calories:.0f} cal, {protein:.0f}g protein - perfect for your goals ({confidence*100:.0f}% confidence)"
             else:
-                return f"👍 Good option. {calories:.0f} cal, {protein:.0f}g protein ({confidence*100:.0f}% confidence)"
+                return f"[OK] Good option. {calories:.0f} cal, {protein:.0f}g protein ({confidence*100:.0f}% confidence)"
         else:
             if confidence > 0.85:
-                return f"⚠️ Not ideal for your goals. Consider adjusting portions or food choices ({confidence*100:.0f}% confidence)"
+                return f"[!] Not ideal for your goals. Consider adjusting portions or food choices ({confidence*100:.0f}% confidence)"
             else:
-                return f"🤔 Uncertain. {calories:.0f} cal might work depending on your day ({confidence*100:.0f}% confidence)"
+                return f"[HMM] Uncertain. {calories:.0f} cal might work depending on your day ({confidence*100:.0f}% confidence)"
 
 
 if __name__ == "__main__":
     trainer = NeuralModelTrainer()
     
     # Train on DB data (Huge Data Mode)
-    print("🚀 Starting Huge Data Training using Neon Training Branch...")
+    print("[START] Starting Huge Data Training using Neon Training Branch...")
     accuracy = trainer.train(
         use_db=True,
         epochs=50,
@@ -449,5 +449,5 @@ if __name__ == "__main__":
     )
     
     print("\n" + "="*70)
-    print(f"🎉 Model training complete with {accuracy:.2f}% accuracy!")
+    print(f"[DONE] Model training complete with {accuracy:.2f}% accuracy!")
     print("="*70)

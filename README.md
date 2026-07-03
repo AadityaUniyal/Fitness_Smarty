@@ -1,45 +1,46 @@
-# Fitness Smarty AI
+# 🧠 Smarty AI — Elite Fitness Intelligence Platform
 
-A comprehensive full-stack fitness application with AI-powered meal analysis, personalized recommendations, and workout tracking.
+> Hybrid AI fitness platform with server-side food scanning, personalized workout plans, live AI coaching, and a Neon PostgreSQL backend.
 
-## Features
+## ✨ Core Features & Implementation Status
 
-- 🍽️ **AI Meal Analysis**: Upload meal photos for automatic food detection and nutrition calculation
-- 📹 **Live Food Tracking**: Real-time AR food detection and calorie estimation using camera feed
-- 📊 **Nutrition Tracking**: Comprehensive food database with detailed nutritional information
-- 💪 **Exercise Database**: Extensive exercise library with difficulty classifications
-- 🎯 **Goal Management**: Set and track personalized fitness goals
-- 📈 **Progress Tracking**: Monitor your fitness journey with detailed analytics
-- 🤖 **Smart Recommendations**: AI-powered personalized meal and exercise suggestions
-- 🔐 **Secure Authentication**: JWT-based user authentication and authorization
+| Module | Description | Implementation Status |
+|--------|-------------|-----------------------|
+| 🤖 **AI Chat & Coach** | Profile-aware Gemini Flash conversation with quick prompts | **Active (Production-Ready)** |
+| 📷 **Food Scanner** | Camera-based meal detection (YOLOv8 + Gemini Flash ensemble) | **Active (Server-Side Only)** |
+| 💪 **Workout Planner** | Algorithmic workout generation loaded with 300+ exercises | **Active (Rule-Based Engine)** |
+| 🥗 **Nutrition Hub** | Daily macro rings, meal logging, USDA library search | **Active (Real USDA FDC API)** |
+| 📈 **Progress Tracking** | Weight history, calorie streaks, weekly charts | **Active (Recharts Visualization)**|
+| 🌸 **FemmeCare** | Cycle-synced training and nutrition for female health | **Active (Adaptive Phase Logic + iCal Feed)** |
+| 📊 **Predictive Analytics** | Time-series forecasting for weight trends and body metrics | **Active (LSTM with Mock Fallback)** |
+| 🧬 **Personalization / RL** | DQN optimal meal sequencing & collaborative recommendations | *Scaffolded (Development Mock)* |
+| 🔐 **Auth & Security** | JWT bcrypt auth + Clerk optional integration, secure env check | **Active (Google Fit Light Theme)** |
 
-## Tech Stack
+## 🏗️ Tech Stack
 
-### Backend
-- **Framework**: FastAPI (Python)
-- **Database**: PostgreSQL (Neon) / SQLite (development)
-- **ORM**: SQLAlchemy
-- **Authentication**: JWT tokens with bcrypt password hashing
-- **AI/ML**: Computer vision for food detection, nutrition analysis
+### Active Core Systems
+- **Frontend**: React 18 + TypeScript (Vite), Recharts, Lucide Icons, Premium Material Design Light Theme.
+- **Backend API**: FastAPI (Python), Uvicorn ASGI server, CORS security configuration.
+- **Database / ORM**: Neon Serverless PostgreSQL / SQLite (local dev), SQLAlchemy.
+- **Integrations**: Google GenAI SDK (server-side Gemini Flash), USDA FoodData Central (with rate-limiting & retries).
 
-### Frontend
-- **Framework**: React with TypeScript
-- **Build Tool**: Vite
-- **UI Components**: Custom components with responsive design
-- **State Management**: React hooks
-- **API Communication**: Axios
+### Machine Learning & Scaffolding
+- **Active Vision Models**: YOLOv8 (Ultralytics / PyTorch) running COCO-pretrained weights as general detector + Gemini Flash vision.
+- **Scaffolded Modules (Mocks)**: Reinforcement Learning (DQN meal sequencing), Collaborative Filtering (personalization), BERT (recipe processing), CLIP (semantic search), SHAP (AI explainability).
 
-## 📦 Key Packages
+## 📦 Key Packages & Model Status
 
 ### Backend (Python)
-| Category | Package | Purpose |
-|----------|---------|---------|
-| **Core** | `fastapi`, `uvicorn` | High-performance API server |
-| **Data** | `sqlalchemy`, `pydantic` | ORM and Data Validation |
-| **Vision** | `ultralytics` (YOLOv8), `opencv-python` | Real-time Object Detection |
-| **AI/LLM** | `google-generativeai` | Gemini 1.5 Flash Integration |
-| **ML** | `torch`, `scikit-learn`, `prophet` | LSTM, Neural Networks, Forecasting |
-| **Auth** | `python-jose`, `bcrypt` | Security and Hashing |
+| Category | Package | Purpose | Status |
+|----------|---------|---------|--------|
+| **Core** | `fastapi`, `uvicorn` | High-performance API server | **Production-Ready** |
+| **Data** | `sqlalchemy`, `pydantic` | ORM and Data Validation | **Production-Ready** |
+| **Vision** | `ultralytics`, `opencv-python` | Object Detection & Fallbacks | **Active (COCO Fallback)** |
+| **AI/LLM** | `google-generativeai` | Gemini Flash Integration | **Production-Ready** |
+| **Time-Series**| `torch` | LSTM Weight Forecasting | **Active (7-day history req.)** |
+| **ML Scaffold**| `scikit-learn`, `prophet` | Personalization & Forecast Mocks | *Scaffolded / Mock* |
+| **Auth** | `python-jose`, `bcrypt` | Security and JWT Hashing | **Production-Ready** |
+
 
 ### Frontend (TypeScript)
 | Category | Package | Purpose |
@@ -58,8 +59,8 @@ fitness-smarty-ai/
 │   ├── app/
 │   │   ├── models.py              # Database models
 │   │   ├── schemas.py             # Pydantic schemas
-│   │   ├── database.py            # Database configuration
-│   │   ├── auth.py                # Authentication logic
+│   │   ├── database.py            # Database configuration & seeding
+│   │   ├── auth.py                # Authentication & JWT handler
 │   │   ├── meal_analysis_service.py
 │   │   ├── food_service.py
 │   │   ├── exercise_service.py
@@ -73,6 +74,7 @@ fitness-smarty-ai/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/            # React components
+│   │   ├── FemmeCare.tsx          # Dedicated female health dashboard
 │   │   ├── services/              # API services
 │   │   ├── hooks/                 # Custom React hooks
 │   │   ├── App.tsx                # Main application
@@ -88,7 +90,7 @@ fitness-smarty-ai/
 
 - Python 3.9+
 - Node.js 16+
-- PostgreSQL (optional, SQLite works for development)
+- PostgreSQL (Neon Serverless PostgreSQL recommended)
 
 ### Backend Setup
 
@@ -111,15 +113,15 @@ pip install -r requirements.txt
 4. Set up environment variables:
 Create a `.env` file in the backend directory:
 ```env
-DATABASE_URL=sqlite:///./smarty_neural_core.db
-SECRET_KEY=your-secret-key-here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+DATABASE_URL=postgresql://neondb_owner:npg_roH2CA1qBcIU@ep-orange-field-amzn4w4x.c-5.us-east-1.aws.neon.tech/neondb?sslmode=require
+JWT_SECRET_KEY=your-secret-key-here
+ENVIRONMENT=development
+GEMINI_API_KEY=your-gemini-api-key-here
 ```
 
-5. Run database migrations:
+5. Run database initialization and seeds:
 ```bash
-python migrations/create_enhanced_schema.py
+python init_database.py
 ```
 
 6. Start the backend server:
@@ -157,33 +159,36 @@ Once the backend is running, visit:
 ## Key API Endpoints
 
 ### Authentication
-- `POST /auth/register` - Register new user
-- `POST /auth/login` - User login
-- `POST /auth/token` - Get access token
+- `POST /api/auth/register` - Register new user
+- `POST /api/auth/login` - User login
+- `POST /api/auth/token` - Get access token
 
 ### Meal Analysis
-- `POST /meals/analyze` - Analyze meal photo
-- `GET /meals/history` - Get meal history
-- `GET /meals/daily-summary` - Get daily nutrition summary
+- `POST /api/meals/analyze` - Analyze meal photo
+- `GET /api/meals/history` - Get meal history
+- `GET /api/meals/daily-summary` - Get daily nutrition summary
 
 ### Food Database
-- `GET /nutrition/library` - Get food library
-- `GET /nutrition/search` - Search foods
-- `GET /nutrition/categories` - Get food categories
+- `GET /api/nutrition/library` - Get food library
+- `GET /api/nutrition/search` - Search foods
+- `GET /api/nutrition/categories` - Get food categories
 
 ### Exercise Database
-- `GET /exercise/library` - Get exercise library
-- `GET /exercise/search` - Search exercises
-- `GET /exercise/categories` - Get exercise categories
+- `GET /api/exercise/library` - Get exercise library
+- `GET /api/exercise/search` - Search exercises
+- `GET /api/exercise/categories` - Get exercise categories
 
 ### User Profile
-- `GET /users/me` - Get current user profile
-- `PUT /users/profile` - Update user profile
-- `POST /users/goals` - Create fitness goal
-- `GET /users/goals` - Get user goals
+- `GET /api/users/me` - Get current user profile
+- `PUT /api/users/profile` - Update user profile
+- `POST /api/users/goals` - Create fitness goal
+- `GET /api/users/goals` - Get user goals
 
-### Recommendations
-- `GET /recommendations` - Get personalized recommendations
+### Recommendations & Female Health
+- `GET /api/recommendations` - Get personalized recommendations
+- `GET /api/female/cycle-phase/{user_id}` - Get cycle-synced advice
+- `POST /api/female/log-period/{user_id}` - Log new menstrual cycle
+- `GET /api/female/calendar-feed/{user_id}` - Get standard iCal (.ics) calendar feed for Google Calendar
 
 ## Development
 
@@ -213,25 +218,6 @@ Frontend:
 - Use functional components with hooks
 - Maintain component modularity
 
-## Database Schema
-
-The application uses a comprehensive database schema including:
-- Users and authentication
-- User profiles and goals
-- Food items and nutrition facts
-- Exercise library
-- Meal logs and components
-- Recommendations
-- Progress tracking
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
@@ -245,3 +231,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Support
 
 For issues and questions, please open an issue on GitHub.
+

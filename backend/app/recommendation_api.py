@@ -4,21 +4,50 @@ Recommendation API Endpoints
 Advanced features for meal planning and optimization
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
+from sqlalchemy.orm import Session
 
-from app.recommendation_engine import (
-    GoalPredictor, MealRecommender, FoodSwapEngine, PortionOptimizer
-)
+from app.database import get_db
+from app.models import MenstrualCycleLog
+from app.schemas import MenstrualCycleLogCreate
 
 router = APIRouter(prefix="/api/recommendations", tags=["Smart Recommendations"])
 
-# Initialize engines
-goal_predictor = GoalPredictor()
-meal_recommender = MealRecommender()
-food_swap_engine = FoodSwapEngine()
-portion_optimizer = PortionOptimizer()
+# Lazy engine initialization
+_goal_predictor = None
+_meal_recommender = None
+_food_swap_engine = None
+_portion_optimizer = None
+
+def _get_goal_predictor():
+    global _goal_predictor
+    if _goal_predictor is None:
+        from app.recommendation_engine import GoalPredictor
+        _goal_predictor = GoalPredictor()
+    return _goal_predictor
+
+def _get_meal_recommender():
+    global _meal_recommender
+    if _meal_recommender is None:
+        from app.recommendation_engine import MealRecommender
+        _meal_recommender = MealRecommender()
+    return _meal_recommender
+
+def _get_food_swap_engine():
+    global _food_swap_engine
+    if _food_swap_engine is None:
+        from app.recommendation_engine import FoodSwapEngine
+        _food_swap_engine = FoodSwapEngine()
+    return _food_swap_engine
+
+def _get_portion_optimizer():
+    global _portion_optimizer
+    if _portion_optimizer is None:
+        from app.recommendation_engine import PortionOptimizer
+        _portion_optimizer = PortionOptimizer()
+    return _portion_optimizer
 
 
 class GoalPredictionRequest(BaseModel):
@@ -34,9 +63,63 @@ class MealRecommendationRequest(BaseModel):
     time_of_day: Optional[str] = "lunch"
 
 
+class WorkoutPlanRequest(BaseModel):
+    goal: str
+    difficulty: str
+
+class WorkoutBurnRequest(BaseModel):
+    exercises: List[Dict[str, Any]] # [{'exercise_id': int, 'reps': int, 'sets': int}]
+
+class FoodCalorieRequest(BaseModel):
+    items: List[Dict[str, Any]] # [{'food_id': int, 'grams': float}]
+
 class FoodComponent(BaseModel):
     name: str
     nutrition_per_100g: Dict
+
+@router.get("/generate-6day-plan")
+async def generate_6day_plan(
+    goal: str = Query(..., description="e.g. muscle_gain, weight_loss"),
+    difficulty: str = Query(..., description="Beginner, Intermediate, Advanced"),
+    db: Session = Depends(get_db)
+):
+    """Generate a custom 6-day workout split with exercises from the expanded database."""
+    try:
+        from app.recommendation_engine import RecommendationEngine
+        engine = RecommendationEngine(db=db)
+        plan = engine.generate_workout_plan(goal, difficulty)
+        return plan
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/calculate-workout-burn")
+async def calculate_workout_burn(request: WorkoutBurnRequest, db: Session = Depends(get_db)):
+    """Calculate total calories burned for a list of exercises with reps and sets."""
+    try:
+        from app.recommendation_engine import RecommendationEngine
+        engine = RecommendationEngine(db=db)
+        result = engine.calculate_workout_burn(request.exercises)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/calculate-food-calories")
+async def calculate_food_calories(request: FoodCalorieRequest, db: Session = Depends(get_db)):
+    """Calculate total nutritional intake based on food items and their weights in grams."""
+    try:
+        from app.models import FoodItem
+        from app.nutrition_engine import get_nutritional_summary
+        
+        items_with_grams = []
+        for entry in request.items:
+            food = db.query(FoodItem).filter_by(id=entry['food_id']).first()
+            if food:
+                items_with_grams.append((food, entry['grams']))
+        
+        summary = get_nutritional_summary(items_with_grams)
+        return summary
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/predict-goal-timeline")
@@ -48,7 +131,7 @@ async def predict_goal_timeline(request: GoalPredictionRequest):
     Returns timeline with milestones
     """
     try:
-        prediction = goal_predictor.predict_timeline(
+        prediction = _get_goal_predictor().predict_timeline(
             current_weight=request.current_weight_kg,
             target_weight=request.target_weight_kg,
             goal=request.goal,
@@ -60,10 +143,10 @@ async def predict_goal_timeline(request: GoalPredictionRequest):
         on_track = prediction['on_track']
         
         if on_track:
-            message = f"🎯 You're on track! Reach your goal in {weeks:.1f} weeks ({prediction['estimated_months']:.1f} months)"
+            message = f"[GOAL] You're on track! Reach your goal in {weeks:.1f} weeks ({prediction['estimated_months']:.1f} months)"
         else:
             needed_deficit = prediction['daily_deficit_needed']
-            message = f"💡 Increase daily deficit to {needed_deficit:.0f} cal to reach goal in {weeks:.1f} weeks"
+            message = f"[TIP] Increase daily deficit to {needed_deficit:.0f} cal to reach goal in {weeks:.1f} weeks"
         
         return {
             **prediction,
@@ -82,7 +165,7 @@ async def suggest_next_meal(request: MealRecommendationRequest):
     Returns optimized meal recommendation
     """
     try:
-        recommendation = meal_recommender.recommend_next_meal(
+        recommendation = _get_meal_recommender().recommend_next_meal(
             daily_targets=request.daily_targets,
             consumed_so_far=request.consumed_so_far,
             time_of_day=request.time_of_day
@@ -102,7 +185,7 @@ async def suggest_food_swaps(detected_foods: List[str]):
     Returns swap suggestions with benefits
     """
     try:
-        swaps = food_swap_engine.suggest_swaps(detected_foods)
+        swaps = _get_food_swap_engine().suggest_swaps(detected_foods)
         
         if not swaps:
             return {
@@ -140,7 +223,7 @@ async def optimize_portions(
             for comp in meal_components
         ]
         
-        result = portion_optimizer.optimize_portions(
+        result = _get_portion_optimizer().optimize_portions(
             meal_components=components_data,
             target_calories=target_calories,
             target_protein=target_protein
@@ -220,3 +303,141 @@ async def get_meal_ideas_for_goal(goal: str):
         'meal_ideas': ideas,
         'count': len(ideas)
     }
+
+@router.post("/daily-strategy")
+async def get_day_strategy(
+    request: Dict[str, Any], # {'consumed': dict, 'targets': dict, 'time_of_day': str, 'goal': str, 'last_meal': dict}
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze current day progress and provide proactive path correction.
+    """
+    try:
+        from app.nutrition_engine import get_meal_feedback, get_daily_strategy
+        
+        consumed = request.get('consumed', {})
+        targets = request.get('targets', {})
+        goal = request.get('goal', 'athletic')
+        last_meal = request.get('last_meal') # Optional
+        
+        strategy_data = get_daily_strategy(consumed, targets, request.get('time_of_day', 'lunch'))
+        
+        feedback = None
+        if last_meal:
+            feedback = get_meal_feedback(last_meal, goal)
+            
+        return {
+            "strategy": strategy_data,
+            "last_meal_feedback": feedback,
+            "status": "diverged" if strategy_data['is_budget_critical'] else "on_track"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/foods-by-aim")
+async def get_foods_by_aim(
+    goal: str = None, 
+    target_muscle: str = None, 
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """
+    Recommend foods based on a specific fitness goal and targeted muscle group.
+    
+    Returns a list of foods tailored to the aim and muscle focus.
+    """
+    try:
+        from app.recommendation_engine import RecommendationEngine
+        engine = RecommendationEngine(db=db)
+        foods = engine.recommend_foods_by_goal_and_muscle(goal, target_muscle, limit)
+        
+        if not foods:
+            return {
+                "message": "No specific foods found for this combination.", 
+                "foods": [], 
+                "count": 0
+            }
+            
+        return {
+            "goal": goal,
+            "target_muscle": target_muscle,
+            "foods": foods,
+            "count": len(foods)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# --- FEMME CARE ENDPOINTS ---
+
+@router.get("/femmecare/daily-advice")
+async def get_femmecare_advice(user_id: str, db: Session = Depends(get_db)):
+    """Get cycle-synced advice based on the latest period log."""
+    try:
+        # Get latest cycle log for user
+        log = db.query(MenstrualCycleLog).filter(
+            MenstrualCycleLog.user_id == user_id
+        ).order_by(MenstrualCycleLog.start_date.desc()).first()
+        
+        from app.recommendation_engine import RecommendationEngine
+        engine = RecommendationEngine(db=db)
+        
+        if not log:
+            return engine.get_cycle_sync_advice(None, user_id=user_id)
+            
+        # Decrypt symptoms
+        latest_symptoms = []
+        if log.encrypted_symptoms:
+            try:
+                from app.security_encryption import decrypt_value
+                dec = decrypt_value(log.encrypted_symptoms)
+                latest_symptoms = dec.split(",") if dec else []
+            except Exception:
+                latest_symptoms = log.symptoms or []
+        else:
+            latest_symptoms = log.symptoms or []
+
+        return engine.get_cycle_sync_advice(log.start_date, log.cycle_length_days, user_id=user_id, symptoms=latest_symptoms)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/femmecare/log-period")
+async def log_period(user_id: str, log_data: MenstrualCycleLogCreate, db: Session = Depends(get_db)):
+    """Log the start of a new menstrual cycle with application-layer encryption."""
+    try:
+        from app.security_encryption import encrypt_value
+        
+        # Check local_only flag
+        from app.models import EnhancedUser
+        user = db.query(EnhancedUser).filter(
+            (EnhancedUser.clerk_user_id == user_id) | (EnhancedUser.id == user_id)
+        ).first()
+        if user and user.local_only:
+            return {"status": "success", "message": "Saved locally only. Database synchronization skipped."}
+
+        symptoms_str = ",".join(log_data.symptoms) if log_data.symptoms else ""
+        enc_symptoms = encrypt_value(symptoms_str)
+        enc_mood = encrypt_value(log_data.mood or "")
+        enc_flow = encrypt_value(log_data.flow_intensity or "")
+        enc_notes = encrypt_value(log_data.notes or "")
+
+        new_log = MenstrualCycleLog(
+            user_id=user_id,
+            start_date=log_data.start_date,
+            cycle_length_days=log_data.cycle_length_days or 28,
+            symptoms=[],
+            mood="[ENCRYPTED]",
+            flow_intensity="[ENCRYPTED]",
+            notes="[ENCRYPTED]",
+            encrypted_symptoms=enc_symptoms,
+            encrypted_mood=enc_mood,
+            encrypted_flow_intensity=enc_flow,
+            encrypted_notes=enc_notes
+        )
+        db.add(new_log)
+        db.commit()
+        db.refresh(new_log)
+        return {"status": "success", "message": "Cycle logged successfully", "log_id": new_log.id}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+

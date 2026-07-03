@@ -14,7 +14,6 @@ import shutil
 from datetime import datetime
 
 from app.database import get_db
-from app.ml_models.yolo_food_detector import get_yolo_detector
 from app import models as db_models
 
 router = APIRouter(prefix="/api/vision", tags=["vision"])
@@ -57,6 +56,7 @@ async def detect_with_yolo(
     
     try:
         # Get YOLOv8 detector
+        from app.ml_models.yolo_food_detector import get_yolo_detector
         detector = get_yolo_detector()
         
         # Run detection
@@ -103,6 +103,7 @@ async def detect_hybrid(
     
     try:
         # 1. YOLOv8 detection
+        from app.ml_models.yolo_food_detector import get_yolo_detector
         yolo_detector = get_yolo_detector()
         yolo_results = yolo_detector.detect(str(file_path))
         
@@ -172,7 +173,7 @@ async def classify_with_resnet(
     top_k: int = 3
 ):
     """
-    Classify food using ResNet50 fine-tuned classifier
+    Classify food using ResNet18 fine-tuned classifier
     
     - **file**: Image file
     - **top_k**: Number of top predictions to return
@@ -189,7 +190,7 @@ async def classify_with_resnet(
         shutil.copyfileobj(file.file, buffer)
     
     try:
-        # Get ResNet50 classifier
+        # Get ResNet18 classifier
         from app.ml_models.resnet_classifier import get_resnet_classifier
         classifier = get_resnet_classifier()
         
@@ -199,7 +200,7 @@ async def classify_with_resnet(
         return results
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"ResNet50 classification failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"ResNet18 classification failed: {str(e)}")
 
 
 @router.post("/estimate-portions")
@@ -250,7 +251,7 @@ async def detect_ensemble(
     Ultimate ensemble: Combine ALL vision models
     
     - YOLOv8 for detection + bounding boxes
-    - ResNet50 for classification
+    - ResNet18 for classification
     - Mask R-CNN for portions
     - Gemini for context
     
@@ -275,13 +276,13 @@ async def detect_ensemble(
         results['yolo'] = yolo_result
         results['models_used'].append('yolov8')
         
-        # 2. ResNet50 classification
+        # 2. ResNet18 classification
         if use_all_models:
             from app.ml_models.resnet_classifier import get_resnet_classifier
             resnet = get_resnet_classifier()
             resnet_result = await run_in_threadpool(resnet.classify, str(file_path), top_k=3)
             results['resnet'] = resnet_result
-            results['models_used'].append('resnet50')
+            results['models_used'].append('resnet18')
         
         # 3. Mask R-CNN portions
         if use_all_models:
@@ -352,7 +353,7 @@ async def get_models_status():
             'status': 'ready' if YOLO_AVAILABLE else 'not_installed',
             'description': 'Real-time object detection with bounding boxes'
         },
-        'resnet50': {
+        'resnet18': {
             'available': TORCH_AVAILABLE,
             'status': 'ready' if TORCH_AVAILABLE else 'not_installed',
             'description': 'High-accuracy food classification'

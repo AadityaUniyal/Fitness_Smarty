@@ -17,7 +17,7 @@ try:
     TORCH_AVAILABLE = True
 except ImportError:
     TORCH_AVAILABLE = False
-    print("⚠️  PyTorch/torchvision not available")
+    print("[!] PyTorch/torchvision not available")
 
 
 class MaskRCNNPortionEstimator:
@@ -69,20 +69,20 @@ class MaskRCNNPortionEstimator:
                 # Load fine-tuned weights if available
                 if os.path.exists(self.model_path):
                     self.model.load_state_dict(torch.load(self.model_path, map_location=self.device))
-                    print(f"✓ Loaded fine-tuned Mask R-CNN from {self.model_path}")
+                    print(f"[OK] Loaded fine-tuned Mask R-CNN from {self.model_path}")
                 else:
-                    print("⚠️  Using pretrained Mask R-CNN. Fine-tune on Nutrition5k for better portions.")
+                    print("[!] Using pretrained Mask R-CNN. Fine-tune on Nutrition5k for better portions.")
                 
                 self.model = self.model.to(self.device)
                 self.model.eval()
                 
-                print(f"✓ Mask R-CNN initialized on {self.device}")
+                print(f"[OK] Mask R-CNN initialized on {self.device}")
                 
             except Exception as e:
-                print(f"⚠️  Could not load Mask R-CNN: {e}")
+                print(f"[!] Could not load Mask R-CNN: {e}")
                 self.mock_mode = True
         else:
-            print("⚠️  PyTorch not installed. Using mock mode.")
+            print("[!] PyTorch not installed. Using mock mode.")
             self.mock_mode = True
     
     def estimate_portions(

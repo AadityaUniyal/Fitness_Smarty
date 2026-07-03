@@ -348,43 +348,28 @@ class MealAnalysisService:
     ) -> MealLog:
         """
         Store meal log and components in database
-        
-        Args:
-            user_id: User identifier
-            meal_type: Type of meal
-            image_url: URL of stored image
-            enriched_foods: List of detected foods with nutrition
-            total_nutrition: Total nutrition values
-            confidence: Overall analysis confidence
-            
-        Returns:
-            Created MealLog object
         """
+        if isinstance(user_id, str):
+            try:
+                user_id = int(user_id)
+            except ValueError:
+                pass
+
         # Create meal log
         meal_log = MealLog(
             user_id=user_id,
-            meal_type=meal_type,
-            image_url=image_url,
-            analysis_confidence=Decimal(str(round(confidence, 2))),
-            total_calories=Decimal(str(round(total_nutrition['calories'], 2))),
-            total_protein_g=Decimal(str(round(total_nutrition['protein_g'], 2))),
-            total_carbs_g=Decimal(str(round(total_nutrition['carbs_g'], 2))),
-            total_fat_g=Decimal(str(round(total_nutrition['fat_g'], 2)))
+            meal_name=f"{meal_type.capitalize()}: {enriched_foods[0].get('food_name', 'Meal')}" if enriched_foods else meal_type,
+            image_path=image_url,
+            confidence=float(confidence),
+            total_calories=float(total_nutrition.get('calories', 0)),
+            total_protein=float(total_nutrition.get('protein_g', 0)),
+            total_carbs=float(total_nutrition.get('carbs_g', 0)),
+            total_fats=float(total_nutrition.get('fat_g', 0)),
+            detected_foods=enriched_foods,
+            is_good_for_user=True
         )
         
         self.db.add(meal_log)
-        self.db.flush()  # Get meal_log.id
-        
-        # Create meal components
-        for food in enriched_foods:
-            component = MealComponent(
-                meal_log_id=meal_log.id,
-                food_id=food.get('food_id'),
-                estimated_quantity_g=Decimal(str(round(food['estimated_quantity_g'], 2))),
-                confidence_score=Decimal(str(round(food['confidence_score'], 2)))
-            )
-            self.db.add(component)
-        
         self.db.commit()
         
         return meal_log
@@ -497,38 +482,41 @@ class MealAnalysisService:
             Meal log data with components
         """
         try:
-            # Convert string to UUID if needed
+            # Convert string to int if needed
             if isinstance(meal_log_id, str):
-                meal_log_id = uuid.UUID(meal_log_id)
+                try:
+                    meal_log_id = int(meal_log_id)
+                except ValueError:
+                    pass
             
             meal_log = self.db.query(MealLog).filter(MealLog.id == meal_log_id).first()
             
             if not meal_log:
                 return None
             
-            # Get components
+            # Get components from JSON
             components = []
-            for component in meal_log.components:
-                food = component.food
-                components.append({
-                    'food_name': food.name if food else 'Unknown',
-                    'quantity_g': float(component.estimated_quantity_g),
-                    'confidence_score': float(component.confidence_score)
-                })
+            if meal_log.detected_foods:
+                for f in meal_log.detected_foods:
+                    components.append({
+                        'food_name': f.get('name', f.get('food_name', 'Unknown')),
+                        'quantity_g': float(f.get('grams', f.get('estimated_quantity_g', 100))),
+                        'confidence_score': float(f.get('confidence_score', 1.0))
+                    })
             
             return {
                 'id': str(meal_log.id),
                 'meal_log_id': str(meal_log.id),
                 'user_id': str(meal_log.user_id),
-                'meal_type': meal_log.meal_type,
-                'logged_at': meal_log.logged_at.isoformat(),
-                'image_url': meal_log.image_url,
-                'analysis_confidence': float(meal_log.analysis_confidence),
+                'meal_type': meal_log.meal_name or "Meal",
+                'logged_at': (meal_log.created_at or datetime.datetime.utcnow()).isoformat(),
+                'image_url': meal_log.image_path,
+                'analysis_confidence': float(meal_log.confidence or 0.0),
                 'total_nutrition': {
-                    'calories': float(meal_log.total_calories),
-                    'protein_g': float(meal_log.total_protein_g),
-                    'carbs_g': float(meal_log.total_carbs_g),
-                    'fat_g': float(meal_log.total_fat_g)
+                    'calories': float(meal_log.total_calories or 0.0),
+                    'protein_g': float(meal_log.total_protein or 0.0),
+                    'carbs_g': float(meal_log.total_carbs or 0.0),
+                    'fat_g': float(meal_log.total_fats or 0.0)
                 },
                 'components': components
             }
@@ -561,33 +549,36 @@ class MealAnalysisService:
             Dictionary with meal logs and metadata
         """
         try:
-            # Convert string to UUID if needed
+            # Convert string to int if needed
             if isinstance(user_id, str):
-                user_id = uuid.UUID(user_id)
+                try:
+                    user_id = int(user_id)
+                except ValueError:
+                    pass
             
             # Build query
             query = self.db.query(MealLog).filter(MealLog.user_id == user_id)
             
             # Apply filters
             if start_date:
-                query = query.filter(MealLog.logged_at >= start_date)
+                query = query.filter(MealLog.created_at >= start_date)
             if end_date:
-                query = query.filter(MealLog.logged_at <= end_date)
+                query = query.filter(MealLog.created_at <= end_date)
             if meal_type:
-                query = query.filter(MealLog.meal_type == meal_type)
+                query = query.filter(MealLog.meal_name.ilike(f"%{meal_type}%"))
             
             # Get total count before pagination
             total_count = query.count()
             
             # Apply ordering and pagination
-            meal_logs = query.order_by(MealLog.logged_at.desc()).limit(limit).offset(offset).all()
+            meal_logs = query.order_by(MealLog.created_at.desc()).limit(limit).offset(offset).all()
             
             # Format results
             meals = []
             for meal_log in meal_logs:
                 meals.append({
                     'meal_log_id': str(meal_log.id),
-                    'meal_type': meal_log.meal_type,
+                    'meal_type': meal_log.meal_name or "Meal",
                     'logged_at': meal_log.logged_at.isoformat(),
                     'image_url': meal_log.image_url,
                     'analysis_confidence': float(meal_log.analysis_confidence),
@@ -635,9 +626,12 @@ class MealAnalysisService:
             Daily nutrition summary with meal breakdown
         """
         try:
-            # Convert string to UUID if needed
+            # Convert string to int if needed
             if isinstance(user_id, str):
-                user_id = uuid.UUID(user_id)
+                try:
+                    user_id = int(user_id)
+                except ValueError:
+                    pass
             
             # Default to today if no date provided
             if date is None:
@@ -650,9 +644,9 @@ class MealAnalysisService:
             # Query meals for the day
             meal_logs = self.db.query(MealLog).filter(
                 MealLog.user_id == user_id,
-                MealLog.logged_at >= start_of_day,
-                MealLog.logged_at <= end_of_day
-            ).order_by(MealLog.logged_at).all()
+                MealLog.created_at >= start_of_day,
+                MealLog.created_at <= end_of_day
+            ).order_by(MealLog.created_at).all()
             
             # Calculate totals
             total_calories = 0.0
@@ -668,22 +662,32 @@ class MealAnalysisService:
             }
             
             for meal_log in meal_logs:
-                total_calories += float(meal_log.total_calories)
-                total_protein += float(meal_log.total_protein_g)
-                total_carbs += float(meal_log.total_carbs_g)
-                total_fat += float(meal_log.total_fat_g)
+                total_calories += float(meal_log.total_calories or 0.0)
+                total_protein += float(meal_log.total_protein or 0.0)
+                total_carbs += float(meal_log.total_carbs or 0.0)
+                total_fat += float(meal_log.total_fats or 0.0)
                 
                 meal_data = {
                     'id': str(meal_log.id),
-                    'logged_at': meal_log.logged_at.isoformat(),
-                    'calories': float(meal_log.total_calories),
-                    'protein_g': float(meal_log.total_protein_g),
-                    'carbs_g': float(meal_log.total_carbs_g),
-                    'fat_g': float(meal_log.total_fat_g)
+                    'logged_at': (meal_log.created_at or datetime.datetime.utcnow()).isoformat(),
+                    'calories': float(meal_log.total_calories or 0.0),
+                    'protein_g': float(meal_log.total_protein or 0.0),
+                    'carbs_g': float(meal_log.total_carbs or 0.0),
+                    'fat_g': float(meal_log.total_fats or 0.0)
                 }
                 
-                if meal_log.meal_type in meals_by_type:
-                    meals_by_type[meal_log.meal_type].append(meal_data)
+                meal_type_str = "snack"
+                if meal_log.meal_name:
+                    name_lower = meal_log.meal_name.lower()
+                    if "breakfast" in name_lower:
+                        meal_type_str = "breakfast"
+                    elif "lunch" in name_lower:
+                        meal_type_str = "lunch"
+                    elif "dinner" in name_lower:
+                        meal_type_str = "dinner"
+                
+                if meal_type_str in meals_by_type:
+                    meals_by_type[meal_type_str].append(meal_data)
             
             return {
                 'date': date.date().isoformat(),
@@ -728,9 +732,12 @@ class MealAnalysisService:
             Nutrition trends with daily averages and patterns
         """
         try:
-            # Convert string to UUID if needed
+            # Convert string to int if needed
             if isinstance(user_id, str):
-                user_id = uuid.UUID(user_id)
+                try:
+                    user_id = int(user_id)
+                except ValueError:
+                    pass
             
             # Calculate date range
             end_date = datetime.datetime.utcnow()
@@ -739,9 +746,9 @@ class MealAnalysisService:
             # Query meals in date range
             meal_logs = self.db.query(MealLog).filter(
                 MealLog.user_id == user_id,
-                MealLog.logged_at >= start_date,
-                MealLog.logged_at <= end_date
-            ).order_by(MealLog.logged_at).all()
+                MealLog.created_at >= start_date,
+                MealLog.created_at <= end_date
+            ).order_by(MealLog.created_at).all()
             
             if not meal_logs:
                 return {
@@ -755,7 +762,7 @@ class MealAnalysisService:
             # Group by date
             daily_data = {}
             for meal_log in meal_logs:
-                date_key = meal_log.logged_at.date().isoformat()
+                date_key = (meal_log.created_at or datetime.datetime.utcnow()).date().isoformat()
                 
                 if date_key not in daily_data:
                     daily_data[date_key] = {
@@ -766,10 +773,10 @@ class MealAnalysisService:
                         'meal_count': 0
                     }
                 
-                daily_data[date_key]['calories'] += float(meal_log.total_calories)
-                daily_data[date_key]['protein_g'] += float(meal_log.total_protein_g)
-                daily_data[date_key]['carbs_g'] += float(meal_log.total_carbs_g)
-                daily_data[date_key]['fat_g'] += float(meal_log.total_fat_g)
+                daily_data[date_key]['calories'] += float(meal_log.total_calories or 0.0)
+                daily_data[date_key]['protein_g'] += float(meal_log.total_protein or 0.0)
+                daily_data[date_key]['carbs_g'] += float(meal_log.total_carbs or 0.0)
+                daily_data[date_key]['fat_g'] += float(meal_log.total_fats or 0.0)
                 daily_data[date_key]['meal_count'] += 1
             
             # Calculate averages

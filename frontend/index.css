@@ -64,3 +64,58 @@ body {
 .zoom-in-95 {
   animation-name: zoomIn;
 }
+
+/* Light Mode Overrides */
+html.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+html.light .glass-panel {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05) !important;
+}
+html.light aside {
+  background: rgba(241, 245, 249, 0.8) !important;
+  border-right-color: rgba(15, 23, 42, 0.08) !important;
+}
+html.light header {
+  background: rgba(255, 255, 255, 0.8) !important;
+  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+}
+html.light main {
+  background-color: #f8fafc !important;
+}
+html.light .bg-slate-900,
+html.light .bg-slate-950/60,
+html.light .bg-slate-950/70,
+html.light .bg-slate-950/50,
+html.light .bg-slate-900/60 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+html.light text-white,
+html.light .text-white {
+  color: #0f172a !important;
+}
+html.light .text-slate-400,
+html.light .text-slate-500 {
+  color: #64748b !important;
+}
+html.light .text-slate-200 {
+  color: #334155 !important;
+}
+html.light .text-slate-300 {
+  color: #475569 !important;
+}
+html.light .border-white\/5,
+html.light .border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+html.light .bg-white\/5 {
+  background-color: rgba(15, 23, 42, 0.03) !important;
+}
+html.light .bg-orbs .orb {
+  opacity: 0.04;
+}
+

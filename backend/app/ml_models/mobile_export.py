@@ -23,7 +23,7 @@ class MobileModelExporter:
     def __init__(self):
         """Initialize mobile exporter"""
         self.export_dir = MOBILE_DIR
-        print(f"✓ Mobile Model Exporter initialized (export dir: {self.export_dir})")
+        print(f"[OK] Mobile Model Exporter initialized (export dir: {self.export_dir})")
     
     def export_to_onnx(
         self,

@@ -1,13 +1,5 @@
-"""
-App Package Initialization
-
-Exports all models and services for easy import
-"""
-
-# Import Base first
 from .database import Base
 
-# Export database models from models module
 from .models import (
     EnhancedUser,
     ExerciseCategory,
@@ -18,23 +10,46 @@ from .models import (
     FoodDetection,
     WorkoutLog,
     BiometricReading,
-    ProgressSnapshot
+    ProgressSnapshot,
+    UserProfile,
+    UserGoal,
+    SocialActivity,
+    Achievement,
+    BiometricRecord,
+    FoodTrainingSample,
+    FemaleExerciseItem,
+    MenstrualCycleLog,
+    UserFeedback,
+    DailyTask,
+    SmartNextMove,
+    FemaleCycleEntry,
+    SocialPost,
+    SocialComment,
+    SocialLike,
+    SocialFollow,
+    ActivitySession,
+    ActivityRoutePoint,
+    MealPlan,
+    MealPlanEntry,
+    FormCoachSession,
+    FormFeedbackLog,
+    WearableConnection,
+    WearableMetric,
+    Reminder,
+    NotificationLog,
+    SubscriptionPlan,
+    UserSubscription,
+    PaymentTransaction,
+    Invoice,
 )
 
-# Compatibility alias
 User = EnhancedUser
 
 __all__ = [
-    'EnhancedUser',
-    'User',
-    'ExerciseCategory',
-    'ExerciseItem',
-    'FoodCategory',
-    'FoodItem',
-    'MealLog',
-    'FoodDetection',
-    'WorkoutLog',
-    'BiometricReading',
-    'ProgressSnapshot',
-    'Base'
+    'EnhancedUser', 'User', 'ExerciseCategory', 'ExerciseItem',
+    'FoodCategory', 'FoodItem', 'MealLog', 'FoodDetection',
+    'WorkoutLog', 'BiometricReading', 'ProgressSnapshot',
+    'UserProfile', 'UserGoal', 'SocialActivity', 'Achievement',
+    'BiometricRecord', 'FoodTrainingSample', 'FemaleExerciseItem',
+    'MenstrualCycleLog', 'UserFeedback', 'DailyTask', 'SmartNextMove', 'FemaleCycleEntry', 'Base'
 ]

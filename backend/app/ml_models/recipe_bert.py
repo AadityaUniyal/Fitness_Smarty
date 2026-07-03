@@ -14,7 +14,7 @@ try:
     TRANSFORMERS_AVAILABLE = True
 except ImportError:
     TRANSFORMERS_AVAILABLE = False
-    print("⚠️  Transformers not available. Install with: pip install transformers")
+    print("[!] Transformers not available. Install with: pip install transformers")
 
 
 class RecipeBERT:
@@ -59,13 +59,13 @@ class RecipeBERT:
                     aggregation_strategy="simple"
                 )
                 
-                print(f"✓ Loaded BERT model: {model_name}")
+                print(f"[OK] Loaded BERT model: {model_name}")
                 
             except Exception as e:
-                print(f"⚠️  Could not load BERT: {e}")
+                print(f"[!] Could not load BERT: {e}")
                 self.mock_mode = True
         else:
-            print("⚠️  Transformers not installed. Using mock mode.")
+            print("[!] Transformers not installed. Using mock mode.")
             self.mock_mode = True
     
     def analyze_recipe(self, recipe_text: str) -> Dict[str, Any]:

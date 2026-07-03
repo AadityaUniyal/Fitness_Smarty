@@ -29,10 +29,69 @@ class NutritionTarget(BaseModel):
     fat_g: float
 
 
+from app import models
+from collections import defaultdict
+
+def get_real_user_meal_ratings(db: Session) -> Dict[int, Dict[int, float]]:
+    """
+    Extract user ratings for food items from the database.
+    Ratings are derived from MealLog feedback:
+    - user_feedback = True -> 5.0 (Like)
+    - user_feedback = False -> 1.0 (Dislike)
+    - user_feedback = None -> 3.0 (Neutral/Logged)
+    """
+    user_meal_ratings = defaultdict(dict)
+    
+    # Fetch all meal logs
+    logs = db.query(models.MealLog).all()
+    if not logs:
+        return {}
+        
+    # Get all food items to map names to IDs
+    food_items = db.query(models.FoodItem).all()
+    food_name_to_id = {f.name.lower().strip(): f.id for f in food_items}
+    
+    for log in logs:
+        if not log.user_id:
+            continue
+            
+        # Determine rating
+        if log.user_feedback is True:
+            rating = 5.0
+        elif log.user_feedback is False:
+            rating = 1.0
+        else:
+            rating = 3.0
+            
+        # If detected_foods exists, map each detected food name to a FoodItem ID
+        foods_logged = []
+        if log.detected_foods:
+            for food_info in log.detected_foods:
+                if isinstance(food_info, dict) and 'food_name' in food_info:
+                    name = food_info['food_name'].lower().strip()
+                    if name in food_name_to_id:
+                        foods_logged.append(food_name_to_id[name])
+                        
+        # Fallback to parsing from meal_name if no detected_foods matched
+        if not foods_logged and log.meal_name:
+            meal_words = [w.lower().strip() for w in log.meal_name.replace(":", " ").replace(",", " ").split()]
+            for word in meal_words:
+                if word in food_name_to_id:
+                    foods_logged.append(food_name_to_id[word])
+                    
+        # Update user ratings
+        for food_id in foods_logged:
+            current = user_meal_ratings[log.user_id].get(food_id, 0.0)
+            user_meal_ratings[log.user_id][food_id] = max(current, rating)
+            
+    return dict(user_meal_ratings)
+
+
 @router.post("/collaborative/user-based")
 async def recommend_user_based(
     user_id: int,
-    top_k: int = 5
+    top_k: int = 5,
+    db: Session = Depends(get_db)
 ):
     """
     User-based collaborative filtering
@@ -43,13 +102,20 @@ async def recommend_user_based(
         from app.ml_models.collaborative_filtering import get_collaborative_recommender
         recommender = get_collaborative_recommender()
         
-        # Mock user-meal ratings (in production: fetch from DB)
-        user_meal_ratings = {
-            1: {101: 5.0, 102: 4.0, 103: 3.0},
-            2: {101: 4.0, 104: 5.0, 105: 4.0},
-            3: {102: 5.0, 104: 4.0, 106: 5.0},
-            4: {103: 3.0, 105: 4.0, 106: 5.0}
-        }
+        # Get real ratings from database
+        user_meal_ratings = get_real_user_meal_ratings(db)
+        
+        # Fallback to mock ratings if database is empty or insufficient
+        if len(user_meal_ratings) < 2 or sum(len(ratings) for ratings in user_meal_ratings.values()) < 3:
+            user_meal_ratings = {
+                1: {1: 5.0, 2: 4.0, 3: 3.0},
+                2: {1: 4.0, 4: 5.0, 5: 4.0},
+                3: {2: 5.0, 4: 4.0, 6: 5.0},
+                4: {3: 3.0, 5: 4.0, 6: 5.0}
+            }
+            is_mock_fallback = True
+        else:
+            is_mock_fallback = False
         
         # Fit the model
         recommender.fit(user_meal_ratings)
@@ -57,10 +123,30 @@ async def recommend_user_based(
         # Get recommendations
         recommendations = recommender.recommend_user_based(user_id, user_meal_ratings, top_k)
         
+        # Enrich recommendations with database FoodItem details
+        enriched_recommendations = []
+        for rec in recommendations:
+            meal_id = rec.get('meal_id')
+            food_item = db.query(models.FoodItem).filter(models.FoodItem.id == meal_id).first()
+            if food_item:
+                enriched_recommendations.append({
+                    'meal_id': meal_id,
+                    'name': food_item.name,
+                    'calories': food_item.calories,
+                    'protein': food_item.protein,
+                    'carbs': food_item.carbs,
+                    'fats': food_item.fats,
+                    'score': rec.get('score'),
+                    'reason': rec.get('reason')
+                })
+            else:
+                enriched_recommendations.append(rec)
+        
         return {
             'user_id': user_id,
             'method': 'user-based_collaborative_filtering',
-            'recommendations': recommendations
+            'is_mock_fallback': is_mock_fallback,
+            'recommendations': enriched_recommendations
         }
         
     except Exception as e:
@@ -70,7 +156,8 @@ async def recommend_user_based(
 @router.post("/collaborative/item-based")
 async def recommend_item_based(
     user_id: int,
-    top_k: int = 5
+    top_k: int = 5,
+    db: Session = Depends(get_db)
 ):
     """
     Item-based collaborative filtering
@@ -81,20 +168,48 @@ async def recommend_item_based(
         from app.ml_models.collaborative_filtering import get_collaborative_recommender
         recommender = get_collaborative_recommender()
         
-        # Mock data
-        user_meal_ratings = {
-            1: {101: 5.0, 102: 4.0, 103: 3.0},
-            2: {101: 4.0, 104: 5.0, 105: 4.0},
-            3: {102: 5.0, 104: 4.0, 106: 5.0}
-        }
+        # Get real ratings from database
+        user_meal_ratings = get_real_user_meal_ratings(db)
+        
+        # Fallback to mock ratings if database is empty or insufficient
+        if len(user_meal_ratings) < 2 or sum(len(ratings) for ratings in user_meal_ratings.values()) < 3:
+            user_meal_ratings = {
+                1: {1: 5.0, 2: 4.0, 3: 3.0},
+                2: {1: 4.0, 4: 5.0, 5: 4.0},
+                3: {2: 5.0, 4: 4.0, 6: 5.0},
+                4: {3: 3.0, 5: 4.0, 6: 5.0}
+            }
+            is_mock_fallback = True
+        else:
+            is_mock_fallback = False
         
         recommender.fit(user_meal_ratings)
         recommendations = recommender.recommend_item_based(user_id, user_meal_ratings, top_k)
         
+        # Enrich recommendations with database FoodItem details
+        enriched_recommendations = []
+        for rec in recommendations:
+            meal_id = rec.get('meal_id')
+            food_item = db.query(models.FoodItem).filter(models.FoodItem.id == meal_id).first()
+            if food_item:
+                enriched_recommendations.append({
+                    'meal_id': meal_id,
+                    'name': food_item.name,
+                    'calories': food_item.calories,
+                    'protein': food_item.protein,
+                    'carbs': food_item.carbs,
+                    'fats': food_item.fats,
+                    'score': rec.get('score'),
+                    'reason': rec.get('reason')
+                })
+            else:
+                enriched_recommendations.append(rec)
+        
         return {
             'user_id': user_id,
             'method': 'item-based_collaborative_filtering',
-            'recommendations': recommendations
+            'is_mock_fallback': is_mock_fallback,
+            'recommendations': enriched_recommendations
         }
         
     except Exception as e:
@@ -135,7 +250,7 @@ async def recommend_by_nutrition(
         )
         
         return {
-            'target': target.dict(),
+            'target': target.model_dump(),
             'method': 'content-based_nutrition',
             'recommendations': recommendations
         }

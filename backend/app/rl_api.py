@@ -49,7 +49,7 @@ async def optimize_meal_plan(
         }
         
         plan = dqn.optimize_meal_plan(
-            user_goals.dict(),
+            user_goals.model_dump(),
             current_nutrition,
             time_horizon_days
         )
