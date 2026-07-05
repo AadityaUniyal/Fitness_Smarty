@@ -8,6 +8,7 @@ from app.database import Base, get_db
 from app.models import EnhancedUser
 from app.nlp_parser import parse_meal_text
 from app.wearable_importer import import_wearable_csv
+from app import models
 
 # Setup in-memory SQLite for tests
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_extensions.db"
@@ -23,6 +24,12 @@ def override_get_db():
 
 app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
+
+@pytest.fixture(autouse=True)
+def force_dependency_overrides():
+    app.dependency_overrides[get_db] = override_get_db
+    yield
+    app.dependency_overrides.pop(get_db, None)
 
 @pytest.fixture(scope="module", autouse=True)
 def setup_database():
@@ -54,18 +61,39 @@ def test_nlp_parsing_fallback():
     assert res[0]["calories"] == 240.0 # 1.2 * 200
 
 def test_barcode_lookup_api():
-    # Test valid mock lookup
-    response = client.get("/api/extensions/barcode/012000000133")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["found"] is True
-    assert data["name"] == "Pepsi Zero Sugar"
+    from unittest.mock import patch
+    with patch("app.api.extensions.lookup_barcode") as mock_lookup:
+        mock_lookup.return_value = {
+            "found": True,
+            "name": "Pepsi Zero Sugar",
+            "calories": 0.0,
+            "protein": 0.0,
+            "carbs": 0.0,
+            "fats": 0.0,
+            "brand": "Pepsi"
+        }
+        # Test valid mock lookup
+        response = client.get("/api/extensions/barcode/012000000133")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["found"] is True
+        assert data["name"] == "Pepsi Zero Sugar"
 
-    # Test unknown fallback lookup
-    response = client.get("/api/extensions/barcode/999999999999")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["found"] is False
+    with patch("app.api.extensions.lookup_barcode") as mock_lookup:
+        mock_lookup.return_value = {
+            "found": False,
+            "name": "Unknown Product (999999999999)",
+            "calories": 100,
+            "protein": 5.0,
+            "carbs": 15.0,
+            "fats": 2.0,
+            "brand": "Unknown"
+        }
+        # Test unknown fallback lookup
+        response = client.get("/api/extensions/barcode/999999999999")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["found"] is False
 
 def test_scheduler_api():
     response = client.post("/api/extensions/schedule-reminder/user_test_ext?interval_seconds=10")

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Activity, Flame, TrendingUp, Zap, Target, BrainCircuit,
   ShieldCheck, Cpu, CheckCircle2, Circle, Fingerprint, Dumbbell, Trophy,
-  Droplets, Apple, ArrowRight, Camera, Play, CalendarCheck, Moon, Gauge, Heart
+  Droplets, Apple, ArrowRight, Camera, Play, CalendarCheck, CalendarDays, Moon, Gauge, Heart
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { fetchRecoveryScore, fetchNeuralIntegrity, fetchMissionBriefing, fetchDailyCoach } from '../services/api';
@@ -355,7 +355,8 @@ const Dashboard: React.FC = () => {
   }, [briefing, briefingIndex]);
 
   useEffect(() => {
-    if (profile.gender === 'Female' && (profile.femmecareEnabled || profile.femmecare_enabled)) {
+    const isFemale = String(profile.gender || '').toLowerCase() === 'female' || Boolean(profile.femmecareEnabled || profile.femmecare_enabled);
+    if (isFemale) {
       const uId = user.id || 1;
       const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
       fetch(`${API_BASE}/api/female/cycle-phase/${uId}`)
@@ -364,7 +365,16 @@ const Dashboard: React.FC = () => {
           throw new Error('Not found');
         })
         .then(data => setFemmeData(data))
-        .catch(() => {});
+        .catch(() => {
+          // Provide sensible default fallback data so the screen is never blank
+          setFemmeData({
+            phase: 'follicular',
+            cycle_day: 7,
+            recommended_workout: 'Moderate Cardio & Progressive Load Strength Training',
+            energy_tip: 'Estrogen is rising. Excellent time to push volume on key lifts and build aerobic base.',
+            recommended_foods: ['Iron-rich foods', 'Lean proteins', 'Healthy cruciferous vegetables']
+          });
+        });
     }
   }, [profile, user.id]);
 
@@ -743,7 +753,7 @@ const Dashboard: React.FC = () => {
 
         {/* Sidebar Column */}
         <div className="lg:col-span-4 space-y-8">
-          {profile.gender === 'Female' && (profile.femmecareEnabled || profile.femmecare_enabled) && femmeData && (
+          {(String(profile.gender || '').toLowerCase() === 'female' || Boolean(profile.femmecareEnabled || profile.femmecare_enabled)) && femmeData && (
             <Reveal animation="slide-in-right" delay={50}>
               <div className="glass-panel p-6 rounded-[2.5rem] border border-pink-500/20 bg-gradient-to-br from-pink-950/10 via-slate-950 to-pink-950/10 relative overflow-hidden group card-hover">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-pink-500/10 transition-all duration-500" />

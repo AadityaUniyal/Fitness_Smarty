@@ -1,13 +1,14 @@
-
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+
 
 class AchievementBase(BaseModel):
     title: str
     description: str
     icon: str
     unlocked_at: datetime
+
 
 class UserResponse(BaseModel):
     id: str
@@ -22,18 +23,22 @@ class UserResponse(BaseModel):
     daily_steps: int = 0
     heart_rate: int = 0
 
+
 class BiometricCreate(BaseModel):
     category: str
     value: float
+
 
 class FaultCreate(BaseModel):
     part: str
     status: str
     feedback: str
 
+
 class MealCreate(BaseModel):
     food_name: str
     calories: int
+
 
 class SocialItem(BaseModel):
     operator_name: str
@@ -41,11 +46,13 @@ class SocialItem(BaseModel):
     content: str
     timestamp: datetime
 
+
 # --- NEW ANALYTICS SCHEMAS ---
 
 class ForecastPoint(BaseModel):
     day: int
     value: float
+
 
 class ForecastResponse(BaseModel):
     trend: str
@@ -54,10 +61,12 @@ class ForecastResponse(BaseModel):
     confidence_score: float
     data_points: List[ForecastPoint]
 
+
 class SleepProtocolResponse(BaseModel):
     protocol: str
     actions: List[str]
     intensity_cap: str
+
 
 class PeerBenchmarkResponse(BaseModel):
     global_average_steps: float
@@ -66,13 +75,16 @@ class PeerBenchmarkResponse(BaseModel):
     rank_title: str
     community_status: str
 
+
 class AnalyticsReport(BaseModel):
     category: str
     average: float
     trend: str
     data_points: List[Any]
 
+
 # --- NUTRITION SCHEMAS ---
+
 class FoodItemBase(BaseModel):
     id: int
     name: str
@@ -84,17 +96,23 @@ class FoodItemBase(BaseModel):
     is_elite: bool
     target_muscle_group: Optional[str] = None
     recommended_for_goal: Optional[str] = None
-    
-    class Config: from_attributes = True
+
+    class Config:
+        from_attributes = True
+
 
 class FoodCategoryResponse(BaseModel):
     id: int
     name: str
     description: str
     items: List[FoodItemBase] = []
-    class Config: from_attributes = True
+
+    class Config:
+        from_attributes = True
+
 
 # --- EXERCISE SCHEMAS ---
+
 class ExerciseItemBase(BaseModel):
     id: int
     name: str
@@ -104,16 +122,23 @@ class ExerciseItemBase(BaseModel):
     equipment: str
     calories_per_min: float
     calories_per_rep: float  # New
-    class Config: from_attributes = True
+
+    class Config:
+        from_attributes = True
+
 
 class ExerciseCategoryResponse(BaseModel):
     id: int
     name: str
     description: str
     items: List[ExerciseItemBase] = []
-    class Config: from_attributes = True
+
+    class Config:
+        from_attributes = True
+
 
 # --- ENHANCED EXERCISE SCHEMAS ---
+
 class ExerciseBase(BaseModel):
     id: str
     name: str
@@ -124,7 +149,10 @@ class ExerciseBase(BaseModel):
     instructions: str
     safety_notes: str
     created_at: datetime
-    class Config: from_attributes = True
+
+    class Config:
+        from_attributes = True
+
 
 class ExerciseCreate(BaseModel):
     name: str
@@ -135,6 +163,7 @@ class ExerciseCreate(BaseModel):
     instructions: str
     safety_notes: str
 
+
 class ExerciseUpdate(BaseModel):
     name: Optional[str] = None
     category: Optional[str] = None
@@ -143,6 +172,7 @@ class ExerciseUpdate(BaseModel):
     difficulty_level: Optional[str] = None
     instructions: Optional[str] = None
     safety_notes: Optional[str] = None
+
 
 class ExerciseSearchRequest(BaseModel):
     name_query: Optional[str] = None
@@ -153,10 +183,12 @@ class ExerciseSearchRequest(BaseModel):
     limit: int = 100
     offset: int = 0
 
+
 class ExerciseModificationsResponse(BaseModel):
     base_exercise: ExerciseBase
     easier: List[ExerciseBase]
     harder: List[ExerciseBase]
+
 
 class ExerciseRecommendationRequest(BaseModel):
     user_experience_level: str
@@ -164,12 +196,14 @@ class ExerciseRecommendationRequest(BaseModel):
     available_equipment: Optional[List[str]] = None
     limit: int = 10
 
+
 class ExerciseValidationResponse(BaseModel):
     is_complete: bool
     missing_fields: List[str]
 
 
 # --- USER PROFILE AND GOAL SCHEMAS ---
+
 class UserProfileResponse(BaseModel):
     id: str
     user_id: str
@@ -183,14 +217,14 @@ class UserProfileResponse(BaseModel):
     femmecare_enabled: Optional[bool] = False
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
         json_encoders = {
             # Ensure UUIDs are serialized as strings
             'UUID': lambda v: str(v)
         }
-    
+
     @classmethod
     def model_validate(cls, obj):
         """Custom validation to handle UUID conversion"""
@@ -204,6 +238,7 @@ class UserProfileResponse(BaseModel):
             return cls(**data)
         return super().model_validate(obj)
 
+
 class UserGoalResponse(BaseModel):
     id: str
     user_id: str
@@ -214,13 +249,13 @@ class UserGoalResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
         json_encoders = {
             'UUID': lambda v: str(v)
         }
-    
+
     @classmethod
     def model_validate(cls, obj):
         """Custom validation to handle UUID conversion"""
@@ -233,17 +268,20 @@ class UserGoalResponse(BaseModel):
             return cls(**data)
         return super().model_validate(obj)
 
+
 class ProfileValidationResponse(BaseModel):
     is_complete: bool
     missing_fields: List[str]
     warnings: List[str]
     suggestions: List[str]
 
+
 class GoalValidationResponse(BaseModel):
     is_realistic: bool
     warnings: List[str]
     suggestions: List[str]
     recommended_timeline: Optional[str]
+
 
 class ProgressMetricsResponse(BaseModel):
     goal_id: str
@@ -254,11 +292,14 @@ class ProgressMetricsResponse(BaseModel):
     days_remaining: Optional[int]
     is_on_track: bool
 
+
 # --- MEAL ANALYSIS SCHEMAS ---
+
 class MealPhotoUploadRequest(BaseModel):
     user_id: str
     meal_type: str  # breakfast, lunch, dinner, snack
     image_data: str  # base64 encoded image
+
 
 class DetectedFoodItem(BaseModel):
     food_id: Optional[str]
@@ -269,6 +310,7 @@ class DetectedFoodItem(BaseModel):
     protein_g: float
     carbs_g: float
     fat_g: float
+
 
 class MealAnalysisResponse(BaseModel):
     meal_log_id: str
@@ -284,6 +326,7 @@ class MealAnalysisResponse(BaseModel):
     recommendations: List[str]
     logged_at: datetime
 
+
 class MealHistoryItem(BaseModel):
     meal_log_id: str
     meal_type: str
@@ -295,11 +338,13 @@ class MealHistoryItem(BaseModel):
     image_url: Optional[str]
     detected_foods_count: int
 
+
 class MealHistoryResponse(BaseModel):
     meals: List[MealHistoryItem]
     total_count: int
     page: int
     page_size: int
+
 
 class DailyNutritionSummary(BaseModel):
     date: str
@@ -310,7 +355,9 @@ class DailyNutritionSummary(BaseModel):
     meal_count: int
     meals_by_type: Dict[str, int]
 
+
 # --- USER PROFILE SCHEMAS ---
+
 class UserProfileCreate(BaseModel):
     age: Optional[int] = None
     weight_kg: Optional[float] = None
@@ -319,6 +366,7 @@ class UserProfileCreate(BaseModel):
     primary_goal: str = "maintenance"
     dietary_restrictions: List[str] = []
     allergies: List[str] = []
+
 
 class UserProfileUpdate(BaseModel):
     age: Optional[int] = None
@@ -330,11 +378,14 @@ class UserProfileUpdate(BaseModel):
     allergies: Optional[List[str]] = None
     femmecare_enabled: Optional[bool] = None
 
+
 # --- GOAL SCHEMAS ---
+
 class GoalCreate(BaseModel):
     goal_type: str  # daily_calories, weekly_exercise, weight_target
     target_value: float
     target_date: Optional[str] = None
+
 
 class GoalUpdate(BaseModel):
     target_value: Optional[float] = None
@@ -342,11 +393,14 @@ class GoalUpdate(BaseModel):
     target_date: Optional[str] = None
     is_active: Optional[bool] = None
 
+
 class GoalListResponse(BaseModel):
     goals: List[UserGoalResponse]
     total_count: int
 
+
 # --- RECOMMENDATION SCHEMAS ---
+
 class RecommendationItem(BaseModel):
     id: str
     recommendation_type: str
@@ -357,10 +411,13 @@ class RecommendationItem(BaseModel):
     created_at: datetime
     expires_at: Optional[datetime]
 
+
 class RecommendationListResponse(BaseModel):
     recommendations: List[RecommendationItem]
     total_count: int
     unread_count: int
+
+
 # --- FEMME CARE SCHEMAS ---
 
 class FemaleExerciseItemBase(BaseModel):
@@ -372,8 +429,10 @@ class FemaleExerciseItemBase(BaseModel):
     calories_per_min: float
     suitable_cycle_phase: str
     description: Optional[str]
-    
-    class Config: from_attributes = True
+
+    class Config:
+        from_attributes = True
+
 
 class MenstrualCycleLogBase(BaseModel):
     id: int
@@ -387,7 +446,9 @@ class MenstrualCycleLogBase(BaseModel):
     notes: Optional[str]
     created_at: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class MenstrualCycleLogCreate(BaseModel):
     start_date: datetime
@@ -396,7 +457,6 @@ class MenstrualCycleLogCreate(BaseModel):
     mood: Optional[str] = None
     flow_intensity: Optional[str] = None
     notes: Optional[str] = None
-<<<<<<< HEAD
 
 
 # ============= SOCIAL FEED SCHEMAS =============
@@ -407,6 +467,7 @@ class SocialPostCreate(BaseModel):
     workout_data: Optional[Dict[str, Any]] = None
     achievement_data: Optional[Dict[str, Any]] = None
     image_url: Optional[str] = None
+
 
 class SocialPostResponse(BaseModel):
     id: int
@@ -423,10 +484,13 @@ class SocialPostResponse(BaseModel):
     is_liked: bool = False
     created_at: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class SocialCommentCreate(BaseModel):
     text: str
+
 
 class SocialCommentResponse(BaseModel):
     id: int
@@ -437,7 +501,9 @@ class SocialCommentResponse(BaseModel):
     text: str
     created_at: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class SocialFeedResponse(BaseModel):
     posts: List[SocialPostResponse]
@@ -453,6 +519,7 @@ class RoutePointCreate(BaseModel):
     lng: float
     timestamp: Optional[datetime] = None
 
+
 class ActivitySessionCreate(BaseModel):
     activity_type: str = "running"
     duration_seconds: int = 0
@@ -463,13 +530,16 @@ class ActivitySessionCreate(BaseModel):
     label: Optional[str] = None
     route_points: List[RoutePointCreate] = []
 
+
 class RoutePointResponse(BaseModel):
     id: int
     lat: float
     lng: float
     timestamp: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class ActivitySessionResponse(BaseModel):
     id: int
@@ -484,7 +554,9 @@ class ActivitySessionResponse(BaseModel):
     created_at: datetime
     route_points: List[RoutePointResponse] = []
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class ActivityListResponse(BaseModel):
     sessions: List[ActivitySessionResponse]
@@ -506,9 +578,11 @@ class MealPlanEntryCreate(BaseModel):
     fats: float = 0
     food_id: Optional[int] = None
 
+
 class MealPlanCreate(BaseModel):
     week_start: str  # ISO date
     entries: List[MealPlanEntryCreate] = []
+
 
 class MealPlanEntryResponse(BaseModel):
     id: int
@@ -522,7 +596,9 @@ class MealPlanEntryResponse(BaseModel):
     fats: float
     food_id: Optional[int]
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class MealPlanResponse(BaseModel):
     id: int
@@ -532,7 +608,9 @@ class MealPlanResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class MealPlanGenerateRequest(BaseModel):
     week_start: str  # ISO date
@@ -549,6 +627,7 @@ class FormFeedbackLogCreate(BaseModel):
     message: str
     feedback_type: str = "info"
 
+
 class FormCoachSessionCreate(BaseModel):
     exercise: str
     duration_seconds: int = 0
@@ -556,13 +635,16 @@ class FormCoachSessionCreate(BaseModel):
     feedback_summary: Optional[str] = None
     feedback_logs: List[FormFeedbackLogCreate] = []
 
+
 class FormFeedbackLogResponse(BaseModel):
     id: int
     message: str
     feedback_type: str
     timestamp: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class FormCoachSessionResponse(BaseModel):
     id: int
@@ -573,7 +655,8 @@ class FormCoachSessionResponse(BaseModel):
     feedback_logs: List[FormFeedbackLogResponse] = []
     created_at: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
 
 
 # ============= WEARABLE INTEGRATION SCHEMAS =============
@@ -583,11 +666,13 @@ class WearableConnectRequest(BaseModel):
     device_name: str
     access_token: Optional[str] = None
 
+
 class WearableMetricCreate(BaseModel):
     metric_type: str
     value: float
     unit: Optional[str] = None
     recorded_at: Optional[datetime] = None
+
 
 class WearableMetricResponse(BaseModel):
     id: int
@@ -596,7 +681,9 @@ class WearableMetricResponse(BaseModel):
     unit: Optional[str]
     recorded_at: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class WearableConnectionResponse(BaseModel):
     id: int
@@ -607,7 +694,8 @@ class WearableConnectionResponse(BaseModel):
     created_at: datetime
     metrics: List[WearableMetricResponse] = []
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
 
 
 # ============= REMINDER SCHEMAS =============
@@ -616,9 +704,10 @@ class ReminderCreate(BaseModel):
     label: str
     description: Optional[str] = None
     time: str
-    days: List[int] = [0,1,2,3,4,5,6]
+    days: List[int] = [0, 1, 2, 3, 4, 5, 6]
     enabled: bool = True
     icon: Optional[str] = None
+
 
 class ReminderUpdate(BaseModel):
     label: Optional[str] = None
@@ -627,6 +716,7 @@ class ReminderUpdate(BaseModel):
     days: Optional[List[int]] = None
     enabled: Optional[bool] = None
     icon: Optional[str] = None
+
 
 class ReminderResponse(BaseModel):
     id: int
@@ -639,7 +729,9 @@ class ReminderResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config: from_attributes = True
+    class Config:
+        from_attributes = True
+
 
 class NotificationLogResponse(BaseModel):
     id: int
@@ -650,6 +742,5 @@ class NotificationLogResponse(BaseModel):
     read: bool
     created_at: datetime
 
-    class Config: from_attributes = True
-=======
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
+    class Config:
+        from_attributes = True

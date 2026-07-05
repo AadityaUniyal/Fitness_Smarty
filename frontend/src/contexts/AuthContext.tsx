@@ -32,6 +32,19 @@ const AuthContext = createContext<AuthContextType | null>(null);
 const TOKEN_KEY = 'smarty_access_token';
 const REFRESH_KEY = 'smarty_refresh_token';
 const USER_KEY = 'smarty_user_data';
+const LEGACY_USER_KEY = 'smarty_user';
+const USER_ID_KEY = 'smarty_user_id';
+
+const setLegacyUserState = (user: User) => {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.setItem(USER_ID_KEY, user.id);
+  localStorage.setItem(LEGACY_USER_KEY, JSON.stringify({
+    id: user.id,
+    name: user.full_name || user.email.split('@')[0],
+    email: user.email,
+    loggedIn: true,
+  }));
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -49,7 +62,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
-    localStorage.removeItem('smarty_user');
+    localStorage.removeItem(LEGACY_USER_KEY);
+    localStorage.removeItem(USER_ID_KEY);
     localStorage.removeItem('smarty_profile');
   };
 
@@ -62,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const userData = await AuthAPI.getCurrentUser(token);
       setUser(userData);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      setLegacyUserState(userData);
     } catch {
       const refreshToken = getRefreshToken();
       if (refreshToken) {
@@ -71,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setTokens(tokens);
           const userData = await AuthAPI.getCurrentUser(tokens.access_token);
           setUser(userData);
-          localStorage.setItem(USER_KEY, JSON.stringify(userData));
+          setLegacyUserState(userData);
         } catch {
           clearTokens();
           setUser(null);
@@ -100,7 +114,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTokens(tokens);
       const userData = await AuthAPI.getCurrentUser(tokens.access_token);
       setUser(userData);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      setLegacyUserState(userData);
     } finally {
       setLoading(false);
     }
@@ -113,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTokens(tokens);
       const userData = await AuthAPI.getCurrentUser(tokens.access_token);
       setUser(userData);
-      localStorage.setItem(USER_KEY, JSON.stringify(userData));
+      setLegacyUserState(userData);
     } finally {
       setLoading(false);
     }
@@ -123,7 +137,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setTokens(tokens);
     const userData = await AuthAPI.getCurrentUser(tokens.access_token);
     setUser(userData);
-    localStorage.setItem(USER_KEY, JSON.stringify(userData));
+    setLegacyUserState(userData);
   };
 
   const googleLogin = async (idToken: string) => {
@@ -157,8 +171,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const token = getToken();
     if (!token) return;
     const updated = await AuthAPI.updateProfile(token, data);
-    setUser(prev => prev ? { ...prev, ...updated } : updated);
-    localStorage.setItem(USER_KEY, JSON.stringify({ ...user, ...updated }));
+    const mergedUser = user ? { ...user, ...updated } : updated;
+    setUser(mergedUser);
+    setLegacyUserState(mergedUser);
   };
 
   return (

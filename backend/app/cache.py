@@ -27,7 +27,9 @@ class MemoryCache:
             return None
         return entry["value"]
 
-    def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> None:
+    def set(
+        self, key: str, value: Any, ttl_seconds: Optional[int] = None
+    ) -> None:
         ttl = ttl_seconds if ttl_seconds is not None else self.default_ttl
         self.store[key] = {
             "value": value,
@@ -44,12 +46,17 @@ class RedisCacheWrapper:
         self.redis_client = None
         if REDIS_AVAILABLE:
             try:
-                self.redis_client = redis.from_url(redis_url, socket_timeout=1.0)
+                self.redis_client = redis.from_url(
+                    redis_url, socket_timeout=1.0
+                )
                 # Test connection
                 self.redis_client.ping()
                 print(f"[OK] Connected to Redis cache at {redis_url}")
             except Exception as e:
-                print(f"[!] Redis connection failed: {e}. Falling back to in-memory cache.")
+                print(
+                    f"[!] Redis connection failed: {e}. "
+                    "Falling back to in-memory cache."
+                )
                 self.redis_client = None
         self.fallback = MemoryCache(default_ttl_seconds)
 
@@ -65,7 +72,9 @@ class RedisCacheWrapper:
                 return self.fallback.get(key)
         return self.fallback.get(key)
 
-    def set(self, key: str, value: Any, ttl_seconds: Optional[int] = None) -> None:
+    def set(
+        self, key: str, value: Any, ttl_seconds: Optional[int] = None
+    ) -> None:
         ttl = ttl_seconds if ttl_seconds is not None else self.default_ttl
         if self.redis_client:
             try:
@@ -73,7 +82,7 @@ class RedisCacheWrapper:
                 return
             except Exception as e:
                 print(f"[!] Redis SETEX error: {e}")
-                
+
         self.fallback.set(key, value, ttl_seconds)
 
     def clear(self) -> None:
@@ -89,3 +98,4 @@ class RedisCacheWrapper:
 # Global cache instance
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 local_cache = RedisCacheWrapper(redis_url)
+

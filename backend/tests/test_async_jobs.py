@@ -18,7 +18,7 @@ def test_async_scan_job_flow(client):
     
     # 1. Trigger async scan
     response = client.post(
-        "/scan",
+        "/api/meals/scan",
         files={"file": ("test.jpg", dummy_file, "image/jpeg")}
     )
     
@@ -30,7 +30,7 @@ def test_async_scan_job_flow(client):
     task_id = json_data["task_id"]
     
     # 2. Check task status polling
-    poll_response = client.get(f"/tasks/{task_id}")
+    poll_response = client.get(f"/api/meals/tasks/{task_id}")
     assert poll_response.status_code == 200
     poll_data = poll_response.json()
     assert poll_data["status"] in ["pending", "processing", "completed", "failed"]

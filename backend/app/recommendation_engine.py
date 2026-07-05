@@ -11,7 +11,7 @@ Next-level features:
 
 from sqlalchemy.orm import Session
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Optional
 from datetime import datetime, timedelta
 import math
 
@@ -499,7 +499,7 @@ class PortionOptimizer:
                 'calories_diff': round(abs(final_nut['calories'] - target_calories), 1),
                 'protein_diff': round(abs(final_nut['protein'] - target_protein), 1)
             }
-        } }
+        }
 
 
 # Export all recommendation engines
@@ -544,7 +544,6 @@ class WorkoutPlanner6Day:
         ]
     }
 
-<<<<<<< HEAD
     def generate_6day_plan(self, goal: str, difficulty: str, db: Session, user_id: Optional[str] = None) -> Dict:
         """Generate a 6-day plan with specific exercises from DB, factoring in muscle recovery gating and FemmeCare resistance priority."""
         from app.models import ExerciseItem, EnhancedUser
@@ -582,15 +581,6 @@ class WorkoutPlanner6Day:
             except Exception as e:
                 print(f"[!] Error loading recovery score for gating: {e}")
 
-=======
-    def generate_6day_plan(self, goal: str, difficulty: str, db: Session) -> Dict:
-        """Generate a 6-day plan with specific exercises from DB"""
-        from app.models import ExerciseItem
-        
-        split_type = 'ppl' if 'muscle' in goal.lower() else 'upper_lower'
-        split = self.SPLITS[split_type]
-        
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
         plan = []
         for day in split:
             if day['type'] == 'Rest':
@@ -609,25 +599,18 @@ class WorkoutPlanner6Day:
                 ).limit(3).all() # 3 per primary muscle in the group
                 
                 for ex in query:
-<<<<<<< HEAD
                     # Check if gated due to muscle recovery status
                     gated, reason = is_exercise_gated(ex.name, recovery_scores, threshold=50.0)
                     
-=======
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
                     day_exercises.append({
                         "id": ex.id,
                         "name": ex.name,
                         "muscle": ex.targeted_muscle,
                         "reps": "10-12" if difficulty == "Beginner" else "8-10",
                         "sets": 3 if difficulty == "Beginner" else 4,
-<<<<<<< HEAD
                         "cal_per_rep": ex.calories_per_rep or 0.1,
                         "restricted": gated,
                         "restriction_reason": reason if gated else ""
-=======
-                        "cal_per_rep": ex.calories_per_rep or 0.1
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
                     })
             
             plan.append({**day, 'exercises': day_exercises})
@@ -636,7 +619,6 @@ class WorkoutPlanner6Day:
             "split_type": split_type,
             "goal": goal,
             "difficulty": difficulty,
-<<<<<<< HEAD
             "weekly_plan": plan,
             "muscle_recovery_context": {m: round(v, 1) for m, v in recovery_scores.items()} if recovery_scores else None
         }
@@ -655,12 +637,6 @@ class UserRecommendation:
         self.expires_at = expires_at or (created_at + timedelta(days=1))
 
 
-=======
-            "weekly_plan": plan
-        }
-
-
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
 class RecommendationEngine:
     """Unified recommendation engine facade"""
     
@@ -671,7 +647,6 @@ class RecommendationEngine:
         self.food_swap_engine = FoodSwapEngine()
         self.portion_optimizer = PortionOptimizer()
         self.workout_planner = WorkoutPlanner6Day()
-<<<<<<< HEAD
         self.cycle_sync_engine = CycleSyncEngine()
         
         # Lazy load cluster engine
@@ -939,8 +914,6 @@ class RecommendationEngine:
             ]
         }
 
-=======
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
     
     def generate_workout_plan(self, goal: str, difficulty: str):
         if not self.db: return {}
@@ -962,7 +935,6 @@ class RecommendationEngine:
         """Analyze nutritional patterns - returns NutritionalPattern"""
         return NutritionalPattern()
     
-<<<<<<< HEAD
     def recommend_foods_by_goal_and_muscle(self, goal: str, target_muscle: str, limit: int = 10, user_id: str = None):
         """Recommend foods tailored to a specific aim and muscle group, adjusted for menstrual iron/vitamin C sync or menopause bone-health."""
         if not self.db:
@@ -991,16 +963,6 @@ class RecommendationEngine:
                         if phase == "Menstrual":
                             is_menstrual = True
 
-=======
-    def recommend_foods_by_goal_and_muscle(self, goal: str, target_muscle: str, limit: int = 10):
-        """Recommend foods tailored to a specific aim and muscle group"""
-        if not self.db:
-            return []
-            
-        from app.models import FoodItem
-        from sqlalchemy import or_
-        
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
         query = self.db.query(FoodItem)
         
         if goal:
@@ -1018,7 +980,6 @@ class RecommendationEngine:
                 FoodItem.target_muscle_group.ilike("%full_body%")
             ))
             
-<<<<<<< HEAD
         # Extract matches
         foods = query.all()
 
@@ -1061,18 +1022,6 @@ class RecommendationEngine:
         # Sort descending by score
         foods.sort(key=scoring_function, reverse=True)
         return foods[:limit]
-
-=======
-        # Prioritize elite foods and order by appropriate macro based on goal
-        if goal and 'muscle' in goal.lower():
-            query = query.order_by(FoodItem.is_elite.desc(), FoodItem.protein.desc())
-        elif goal and 'loss' in goal.lower():
-            query = query.order_by(FoodItem.is_elite.desc(), FoodItem.calories.asc())
-        else:
-            query = query.order_by(FoodItem.is_elite.desc())
-            
-        return query.limit(limit).all()
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
     
     def calculate_workout_burn(self, exercises_performed: List[Dict]) -> Dict:
         """

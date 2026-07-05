@@ -1,9 +1,12 @@
 import os
 import logging
 from pathlib import Path
-from fastapi import FastAPI
+from datetime import datetime, timedelta
+from typing import Optional, List
+from fastapi import FastAPI, Query, Depends, Body, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm import Session
 from app import models, database
 
 # Configure Logging
@@ -326,7 +329,7 @@ def log_camera_detected_meal(
         })
 
     # Save to MealLog
-    meal_log = MealLog(
+    meal_log = models.MealLog(
         user_id=data.user_id,
         meal_type=data.meal_type,
         total_calories=round(total_cal),
@@ -357,7 +360,7 @@ def log_camera_detected_meal(
 @app.post("/api/workouts/log", tags=["Workout Tracking"])
 def log_completed_workout(data: dict = Body(...), db: Session = Depends(database.get_db)):
     """Log a completed workout session with per-exercise breakdown and total calories."""
-    workout = WorkoutLog(
+    workout = models.WorkoutLog(
         user_id=data.get("user_id", "local-user"),
         plan_data=data.get("exercises_data", {}),
         intensity="medium",

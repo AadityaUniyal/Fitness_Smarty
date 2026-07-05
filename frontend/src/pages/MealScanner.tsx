@@ -137,7 +137,7 @@ const PortionPanel: React.FC<PortionPanelProps> = ({ detectedFoodNames, onLogMea
     for (const name of detectedFoodNames) {
       const grams = portions[name] || 100;
       try {
-        const res = await fetch(`${API_BASE}/api/food/calculate-portion`, {
+        const res = await fetch(`${API_BASE}/api/nutrition/calculate-portion`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ food_name: name, quantity_grams: grams }),
@@ -422,7 +422,7 @@ const FoodScannerPage: React.FC = () => {
   const handleLogManualPortions = async (items: any[], mt: string) => {
     const userId = localStorage.getItem('smarty_user_id') || 'local-user';
     try {
-      await fetch(`${API_BASE}/api/meals/log`, {
+      await fetch(`${API_BASE}/api/nutrition/cam-detect-log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

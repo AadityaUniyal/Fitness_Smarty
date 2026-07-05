@@ -15,6 +15,18 @@ GEMINI_AVAILABLE = False
 genai = None
 
 
+class _GeminiCompatModel:
+    def __init__(self, api_key: str, model_name: str):
+        self.client = genai.Client(api_key=api_key)
+        self.model_name = model_name
+
+    def generate_content(self, contents):
+        return self.client.models.generate_content(
+            model=self.model_name,
+            contents=contents,
+        )
+
+
 class PersonalizedMealScanner:
     """
     Hybrid approach:
@@ -40,8 +52,14 @@ class PersonalizedMealScanner:
                     GEMINI_AVAILABLE = False
         
         if GEMINI_AVAILABLE and self.api_key:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            if hasattr(genai, "Client"):
+                self.model = _GeminiCompatModel(
+                    api_key=self.api_key,
+                    model_name=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                )
+            else:
+                genai.configure(api_key=self.api_key)
+                self.model = genai.GenerativeModel('gemini-1.5-flash')
         else:
             self.model = None
             print("[!] Gemini API not configured. Using mock data.")
@@ -69,9 +87,11 @@ class PersonalizedMealScanner:
             # Read image (handles local files or base64 data URLs)
             if image_path.startswith("data:image/"):
                 import base64
+                from google.genai import types
                 _, encoded = image_path.split(",", 1)
                 image_data = base64.b64decode(encoded)
             else:
+                from google.genai import types
                 with open(image_path, 'rb') as f:
                     image_data = f.read()
             
@@ -97,7 +117,10 @@ class PersonalizedMealScanner:
             """
             
             # Call Gemini
-            response = self.model.generate_content([prompt, {"mime_type": "image/jpeg", "data": image_data}])
+            image_part = {"mime_type": "image/jpeg", "data": image_data}
+            if hasattr(genai, "Client"):
+                image_part = types.Part.from_bytes(data=image_data, mime_type="image/jpeg")
+            response = self.model.generate_content([prompt, image_part])
             
             # Parse response
             result_text = response.text

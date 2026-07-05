@@ -1,7 +1,8 @@
 """
 ML Models Package
 
-Contains all machine learning models for food detection, classification, and recommendations.
+Contains all machine learning models for food detection, classification,
+and recommendations.
 Modules are loaded lazily on first use to avoid slow startup.
 """
 
@@ -40,6 +41,7 @@ _LAZY_FUNCTIONS = {
     'get_mobile_exporter': 'mobile_export',
 }
 
+
 class _LazyLoader:
     def __init__(self, original_module):
         self._loaded = {}
@@ -49,19 +51,26 @@ class _LazyLoader:
         if name in _LAZY_MODULES:
             module_name = _LAZY_MODULES[name]
             if module_name not in self._loaded:
-                self._loaded[module_name] = importlib.import_module(f'.{module_name}', __package__)
+                self._loaded[module_name] = importlib.import_module(
+                    f'.{module_name}', __package__
+                )
             return getattr(self._loaded[module_name], name)
         if name in _LAZY_FUNCTIONS:
             module_name = _LAZY_FUNCTIONS[name]
             if module_name not in self._loaded:
-                self._loaded[module_name] = importlib.import_module(f'.{module_name}', __package__)
+                self._loaded[module_name] = importlib.import_module(
+                    f'.{module_name}', __package__
+                )
             return getattr(self._loaded[module_name], name)
         try:
             return getattr(self._original, name)
         except AttributeError:
-            raise AttributeError(f"Module 'ml_models' has no attribute '{name}'")
+            raise AttributeError(
+                f"Module 'ml_models' has no attribute '{name}'"
+            )
 
-# Replace the module in sys.modules with our lazy loader proxying the original module
+
+# Replace the module in sys.modules with our lazy loader proxying
+# the original module
 original_module = sys.modules[__name__]
 sys.modules[__name__] = _LazyLoader(original_module)
-

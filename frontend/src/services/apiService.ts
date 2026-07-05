@@ -88,7 +88,12 @@ async function apiRequest<T>(
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ detail: 'Request failed' }));
-      throw new Error(error.detail || `HTTP ${response.status}: ${response.statusText}`);
+      const detail = error?.detail;
+      const message =
+        typeof detail === 'string'
+          ? detail
+          : detail?.message || detail?.error || error?.message || `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(message);
     }
 
     return await response.json();

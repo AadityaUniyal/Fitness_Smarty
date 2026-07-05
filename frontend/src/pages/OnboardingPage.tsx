@@ -35,7 +35,7 @@ const DIET_OPTIONS = ['Vegetarian', 'Vegan', 'Gluten-Free', 'Keto', 'Intermitten
 
 const OnboardingPage: React.FC = () => {
     const navigate = useNavigate();
-    const { updateProfile } = useAuth();
+    const { user, updateProfile } = useAuth();
     const [step, setStep] = useState(0);
     const [saving, setSaving] = useState(false);
     const [profile, setProfile] = useState<Profile>({
@@ -46,7 +46,8 @@ const OnboardingPage: React.FC = () => {
 
     const totalSteps = 4;
     const progress = ((step + 1) / totalSteps) * 100;
-    const user = JSON.parse(localStorage.getItem('smarty_user') || '{}');
+    const storedUser = JSON.parse(localStorage.getItem('smarty_user') || '{}');
+    const displayUser = user || storedUser;
 
     const update = (field: keyof Profile, value: any) => setProfile(p => ({ ...p, [field]: value }));
 
@@ -62,22 +63,24 @@ const OnboardingPage: React.FC = () => {
 
     const handleFinish = async () => {
         setSaving(true);
+        const femmecareEnabled = profile.gender === 'Female' || profile.femmecareEnabled;
         const fullProfile = {
             ...profile,
-            name: profile.name || user?.name || 'Operator',
+            femmecareEnabled,
+            name: profile.name || displayUser?.full_name || displayUser?.name || 'Operator',
             dailyCalorieGoal: profile.goal === 'weight_loss' ? 1800 : profile.goal === 'muscle_gain' ? 2800 : 2200,
         };
         localStorage.setItem('smarty_profile', JSON.stringify(fullProfile));
         try {
             await updateProfile({
-                full_name: profile.name || user?.name,
+                full_name: profile.name || displayUser?.full_name || displayUser?.name,
                 age: profile.age ? parseInt(profile.age) : undefined,
                 weight_kg: profile.weight ? parseFloat(profile.weight) : undefined,
                 height_cm: profile.height ? parseFloat(profile.height) : undefined,
                 gender: profile.gender,
                 activity_level: profile.activityLevel,
                 primary_goal: profile.goal,
-                femmecare_enabled: profile.femmecareEnabled,
+                femmecare_enabled: femmecareEnabled,
             } as any);
         } catch {}
         setSaving(false);
@@ -97,7 +100,7 @@ const OnboardingPage: React.FC = () => {
                             type="text"
                             value={profile.name}
                             onChange={e => update('name', e.target.value)}
-                            placeholder={user?.name || 'Enter your name'}
+                            placeholder={displayUser?.full_name || displayUser?.name || 'Enter your name'}
                             className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-600"
                         />
                     </div>

@@ -271,27 +271,6 @@ const FemmeCare: React.FC = () => {
                                 </Pie>
                             </PieChart>
                         </ResponsiveContainer>
-                    <div className="h-64 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <PieChart>
-                                <Pie
-                                    data={data}
-                                    cx="50%"
-                                    cy="50%"
-                                    innerRadius={80}
-                                    outerRadius={100}
-                                    paddingAngle={5}
-                                    dataKey="value"
-                                    stroke="none"
-                                    startAngle={90}
-                                    endAngle={-270}
-                                >
-                                    {data.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    ))}
-                                </Pie>
-                            </PieChart>
-                        </ResponsiveContainer>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Day</span>
                             <span className="text-5xl font-black text-white italic">{menopauseMode ? "—" : cycleDay}</span>

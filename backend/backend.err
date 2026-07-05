@@ -1,0 +1,12 @@
+INFO:app.auth:Using development fallback JWT secret. Set JWT_SECRET_KEY in env to override this value.
+INFO:app.scheduler_service:Lightweight notification scheduler started.
+INFO:     Started server process [12672]
+INFO:     Waiting for application startup.
+INFO:__main__:Database schema initialized
+INFO:__main__:Initializing YOLOv8 weights auto-downloader...
+INFO:__main__:YOLOv8 weights verified/downloaded successfully.
+INFO:__main__:Database seeded successfully
+INFO:     Application startup complete.
+ERROR:    [Errno 10048] error while attempting to bind on address ('0.0.0.0', 8000): [winerror 10048] only one usage of each socket address (protocol/network address/port) is normally permitted
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.

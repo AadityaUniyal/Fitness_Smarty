@@ -19,8 +19,8 @@ import {
 import {
   AreaChart, Area, ResponsiveContainer
 } from 'recharts';
-import { fetchRecoveryScore, fetchNeuralIntegrity, fetchMissionBriefing } from './api';
-import { generateDailyTasks } from './geminiService';
+import { fetchRecoveryScore, fetchNeuralIntegrity, fetchMissionBriefing } from './services/api';
+import { generateDailyTasks } from './services/geminiService';
 import { DailyTask } from './types';
 
 interface WorkoutLog { name: string; duration: number; caloriesBurned: number; exercisesCompleted: number; exercisesTotal: number; timestamp: string; goal: string; }

@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -13,7 +14,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       host: '0.0.0.0',
     },
-    plugins: [react()],
+    plugins: [react(), tailwindcss()],
     // Removed process.env.API_KEY shim — all env vars now use import.meta.env.VITE_*
     resolve: {
       alias: {

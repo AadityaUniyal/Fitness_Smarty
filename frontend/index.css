@@ -1,11 +1,7 @@
+@import "tailwindcss";
+
 /* Global styles - already defined in index.html inline styles */
 /* This file is kept for Vite CSS pipeline compatibility */
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
 
 body {
   font-family: 'Inter', sans-serif;
@@ -87,14 +83,13 @@ html.light main {
   background-color: #f8fafc !important;
 }
 html.light .bg-slate-900,
-html.light .bg-slate-950/60,
-html.light .bg-slate-950/70,
-html.light .bg-slate-950/50,
-html.light .bg-slate-900/60 {
+html.light .bg-slate-950\/60,
+html.light .bg-slate-950\/70,
+html.light .bg-slate-950\/50,
+html.light .bg-slate-900\/60 {
   background-color: rgba(255, 255, 255, 0.8) !important;
   border-color: rgba(15, 23, 42, 0.08) !important;
 }
-html.light text-white,
 html.light .text-white {
   color: #0f172a !important;
 }
@@ -117,5 +112,70 @@ html.light .bg-white\/5 {
 }
 html.light .bg-orbs .orb {
   opacity: 0.04;
+}
+
+/* Femme mode remaps the shared Smarty green accent to pink after onboarding. */
+html.female-theme .text-emerald-300 {
+  color: #f9a8d4 !important;
+}
+html.female-theme .text-emerald-400 {
+  color: #f472b6 !important;
+}
+html.female-theme .text-emerald-500,
+html.female-theme .text-emerald-600,
+html.female-theme .text-emerald-700 {
+  color: #ec4899 !important;
+}
+html.female-theme .bg-emerald-400,
+html.female-theme .bg-emerald-500,
+html.female-theme .bg-emerald-600 {
+  background-color: #ec4899 !important;
+}
+html.female-theme .bg-emerald-500\/5 {
+  background-color: rgb(236 72 153 / 0.05) !important;
+}
+html.female-theme .bg-emerald-500\/10 {
+  background-color: rgb(236 72 153 / 0.10) !important;
+}
+html.female-theme .bg-emerald-500\/15 {
+  background-color: rgb(236 72 153 / 0.15) !important;
+}
+html.female-theme .bg-emerald-500\/20 {
+  background-color: rgb(236 72 153 / 0.20) !important;
+}
+html.female-theme .border-emerald-500\/10 {
+  border-color: rgb(236 72 153 / 0.10) !important;
+}
+html.female-theme .border-emerald-500\/20 {
+  border-color: rgb(236 72 153 / 0.20) !important;
+}
+html.female-theme .border-emerald-500\/25,
+html.female-theme .border-emerald-500\/30,
+html.female-theme .border-emerald-500\/40,
+html.female-theme .border-emerald-500\/50 {
+  border-color: rgb(236 72 153 / 0.35) !important;
+}
+html.female-theme .from-emerald-500 {
+  --tw-gradient-from: #ec4899 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(236 72 153 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+html.female-theme .to-emerald-400,
+html.female-theme .to-emerald-500,
+html.female-theme .to-emerald-600 {
+  --tw-gradient-to: #f472b6 var(--tw-gradient-to-position) !important;
+}
+html.female-theme .via-emerald-500\/20 {
+  --tw-gradient-to: rgb(236 72 153 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), rgb(236 72 153 / 0.20) var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+}
+html.female-theme .ring-emerald-100 {
+  --tw-ring-color: rgb(252 231 243 / 1) !important;
+}
+html.female-theme .focus\:border-emerald-400:focus {
+  border-color: #f472b6 !important;
+}
+html.female-theme .focus\:ring-emerald-100:focus {
+  --tw-ring-color: rgb(252 231 243 / 1) !important;
 }
 

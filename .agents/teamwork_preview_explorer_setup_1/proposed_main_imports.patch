@@ -1,0 +1,18 @@
+diff --git a/backend/main.py b/backend/main.py
+index a29b901..99d8b1e 100644
+--- a/backend/main.py
++++ b/backend/main.py
+@@ -1,8 +1,12 @@
+ import os
+ import logging
+ from pathlib import Path
+-from fastapi import FastAPI
++from datetime import datetime, timedelta
++from typing import Optional
++from fastapi import FastAPI, Query, Depends, Body, HTTPException
+ from fastapi.middleware.cors import CORSMiddleware
+ from fastapi.staticfiles import StaticFiles
++from sqlalchemy.orm import Session
+ from app import models, database
+ 
+ # Configure Logging

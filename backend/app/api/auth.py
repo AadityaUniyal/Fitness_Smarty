@@ -33,6 +33,19 @@ def register(
     auth_service = AuthService(db)
     try:
         user = auth_service.register_user(user_data)
+        
+        # Send welcome email asynchronously
+        try:
+            from app.email_service import send_welcome_email
+            send_welcome_email(
+                user_email=user.email,
+                user_name=user.full_name or user_data.email.split("@")[0],
+                gender=user.gender or "male"
+            )
+        except Exception as mail_err:
+            # We do not block registration on email sending failure
+            pass
+
         login_data = UserLogin(email=user_data.email, password=user_data.password)
         tokens = auth_service.login(login_data)
         return tokens

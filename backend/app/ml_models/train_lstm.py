@@ -12,7 +12,7 @@ import json
 from datetime import datetime, timedelta
 
 # Import models
-from lstm_predictor import LSTMModel, LSTMWeightPredictor
+from .lstm_predictor import LSTMModel, LSTMWeightPredictor
 
 class SyntheticDataset(Dataset):
     def __init__(self, sequences, targets):

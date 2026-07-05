@@ -11,6 +11,11 @@ API_BASE = "http://localhost:8000"
 
 def test_phase1_complete():
     """Test all Phase 1 features"""
+    import pytest
+    try:
+        requests.get(f"{API_BASE}/api/vision/models/status", timeout=1)
+    except Exception:
+        pytest.skip("FastAPI server is not running on localhost:8000")
     
     print("\n" + "="*70)
     print("  PHASE 1 COMPLETE - VERIFICATION TESTS")

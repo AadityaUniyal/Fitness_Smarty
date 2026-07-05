@@ -1,23 +1,27 @@
-
 """
 [RULE-BASED PLACEHOLDER]
 Hydration Monitoring Engine
 
-NOTE: This is currently a simple rule-based heuristic calculator for water intake
-goals and not a fully integrated hydration tracking/sensor subsystem.
+NOTE: This is currently a simple rule-based heuristic calculator for water
+intake goals and not a fully integrated hydration tracking/sensor subsystem.
 """
 from . import models
 
-def get_hydration_requirement(user: models.EnhancedUser, activity_minutes: int = 0):
+
+def get_hydration_requirement(
+    user: models.EnhancedUser, activity_minutes: int = 0
+):
     """
     Calculates target water intake in milliliters.
-    Base: 35ml per kg of body weight + 500ml per hour of high-intensity activity.
+    Base: 35ml per kg of body weight + 500ml per hour of activity.
     """
     base_ml = (user.weight_kg or 70) * 35
     activity_bonus = (activity_minutes / 60) * 500
     target = base_ml + activity_bonus
+    glasses = round(target / 250)
     return {
         "target_ml": round(target),
         "status": "hydrated" if target < 3000 else "high_demand",
-        "recommendation": f"Drink {round(target / 250)} glasses of water today."
+        "recommendation": f"Drink {glasses} glasses of water today."
     }
+

@@ -18,10 +18,13 @@ def _gemini_generate_meal_plan(prefs: schemas.MealPlanGenerateRequest) -> List[d
     if api_key:
         try:
             try:
-                import google.genai as genai
+                from google import genai
+                client = genai.Client(api_key=api_key)
+                use_client = True
             except ImportError:
                 import google.generativeai as genai
-            genai.configure(api_key=api_key)
+                genai.configure(api_key=api_key)
+                use_client = False
             day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
             slots = ["breakfast", "lunch", "dinner", "snack"]
             prompt = f"""Generate a 7-day meal plan as JSON. Return ONLY valid JSON with no markdown formatting.
@@ -43,8 +46,14 @@ Output format (array of objects):
 
 day_of_week: 0=Monday .. 6=Sunday.
 Generate all 28 meals (7 days x 4 slots)."""
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            resp = model.generate_content(prompt)
+            if use_client:
+                resp = client.models.generate_content(
+                    model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                    contents=prompt,
+                )
+            else:
+                model = genai.GenerativeModel("gemini-1.5-flash")
+                resp = model.generate_content(prompt)
             text = resp.text.strip()
             if text.startswith("```"):
                 text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()

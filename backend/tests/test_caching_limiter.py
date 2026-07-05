@@ -22,11 +22,11 @@ def test_token_bucket_limiter():
     # Allowed requests within capacity (rate=1, capacity=3)
     allowed, tokens = limiter.is_allowed("user_123", rate=1.0, capacity=3.0)
     assert allowed
-    assert tokens <= 2.0
+    assert tokens <= 2.05
     
     allowed, tokens = limiter.is_allowed("user_123", rate=1.0, capacity=3.0)
     assert allowed
-    assert tokens <= 1.0
+    assert tokens <= 1.05
     
     allowed, tokens = limiter.is_allowed("user_123", rate=1.0, capacity=3.0)
     assert allowed

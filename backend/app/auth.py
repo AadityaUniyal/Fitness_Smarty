@@ -26,11 +26,17 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY") or os.getenv("SECRET_KEY")
 
 if not SECRET_KEY:
     if ENVIRONMENT not in {"development", "dev", "test", "testing"}:
-        raise RuntimeError("JWT_SECRET_KEY or SECRET_KEY must be explicitly set in non-development environments")
-    # Dynamically generate a random session key for local development sessions if not configured, preventing hardcoded keys
-    import secrets
-    SECRET_KEY = secrets.token_hex(32)
-    logger.warning("No JWT_SECRET_KEY environment variable set. Generated a dynamic random session key for local dev.")
+        raise RuntimeError(
+            "JWT_SECRET_KEY or SECRET_KEY must be explicitly set "
+            "in non-development environments"
+        )
+    # Stable local-dev fallback avoids noisy startup warnings and token
+    # invalidation across every server restart while still staying out of prod.
+    SECRET_KEY = "smarty-local-dev-secret-key"
+    logger.info(
+        "Using development fallback JWT secret. Set JWT_SECRET_KEY in env "
+        "to override this value."
+    )
 
 
 ALGORITHM = "HS256"
@@ -40,26 +46,35 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 # Token blacklist set (stores JTI or token hash for revoked tokens)
 _token_blacklist: set = set()
 
+
 def revoke_token(token: str) -> None:
     _token_blacklist.add(token)
+
 
 def is_token_revoked(token: str) -> bool:
     return token in _token_blacklist
 
+
 # In-memory password reset tokens: email -> token
 _reset_tokens: dict = {}
+
 
 def store_reset_token(email: str, token: str) -> None:
     _reset_tokens[email] = token
 
+
 def verify_reset_token(email: str, token: str) -> bool:
     return _reset_tokens.get(email) == token
+
 
 def consume_reset_token(email: str) -> None:
     _reset_tokens.pop(email, None)
 
+
 # HTTP Bearer token scheme
 security = HTTPBearer(auto_error=False)
+
+
 class Token(BaseModel):
     """Token response model"""
     access_token: str
@@ -72,8 +87,10 @@ class TokenData(BaseModel):
     """Token payload data"""
     user_id: Optional[str] = None
 
+
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+
 
 class ResetPasswordRequest(BaseModel):
     email: EmailStr
@@ -88,16 +105,20 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str
     name: str
-    
+
     @validator('password')
     def validate_password(cls, v):
         """Validate password strength"""
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
         if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError(
+                'Password must contain at least one uppercase letter'
+            )
         if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least one lowercase letter')
+            raise ValueError(
+                'Password must contain at least one lowercase letter'
+            )
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain at least one digit')
         return v
@@ -113,16 +134,20 @@ class PasswordChange(BaseModel):
     """Password change request"""
     current_password: str
     new_password: str
-    
+
     @validator('new_password')
     def validate_password(cls, v):
         """Validate password strength"""
         if len(v) < 8:
             raise ValueError('Password must be at least 8 characters long')
         if not any(c.isupper() for c in v):
-            raise ValueError('Password must contain at least one uppercase letter')
+            raise ValueError(
+                'Password must contain at least one uppercase letter'
+            )
         if not any(c.islower() for c in v):
-            raise ValueError('Password must contain at least one lowercase letter')
+            raise ValueError(
+                'Password must contain at least one lowercase letter'
+            )
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain at least one digit')
         return v
@@ -130,13 +155,14 @@ class PasswordChange(BaseModel):
 
 class PasswordHasher:
     """Password hashing utilities using bcrypt directly"""
-    
+
     @staticmethod
     def hash_password(password: str) -> str:
         """
         Hash a password using bcrypt
-        
-        Automatically truncates passwords to 72 bytes to comply with bcrypt's limit.
+
+        Automatically truncates passwords to 72 bytes to comply with bcrypt's
+        limit.
         """
         # Truncate password to 72 bytes to comply with bcrypt's limit
         password_bytes = password.encode('utf-8')[:72]
@@ -144,13 +170,14 @@ class PasswordHasher:
         salt = bcrypt.gensalt()
         hashed = bcrypt.hashpw(password_bytes, salt)
         return hashed.decode('utf-8')
-    
+
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """
         Verify a password against its hash
-        
-        Automatically truncates passwords to 72 bytes to comply with bcrypt's limit.
+
+        Automatically truncates passwords to 72 bytes to comply with bcrypt's
+        limit.
         """
         # Truncate password to 72 bytes to comply with bcrypt's limit
         password_bytes = plain_password.encode('utf-8')[:72]
@@ -160,14 +187,18 @@ class PasswordHasher:
 
 class JWTHandler:
     """JWT token creation and validation"""
-    
+
     @staticmethod
-    def create_access_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+    def create_access_token(
+        data: Dict[str, Any], expires_delta: Optional[timedelta] = None
+    ) -> str:
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.now(timezone.utc) + expires_delta
         else:
-            expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            expire = datetime.now(timezone.utc) + timedelta(
+                minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+            )
         to_encode.update({"exp": int(expire.timestamp()), "type": "access"})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
@@ -175,11 +206,13 @@ class JWTHandler:
     @staticmethod
     def create_refresh_token(data: Dict[str, Any]) -> str:
         to_encode = data.copy()
-        expire = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        expire = datetime.now(timezone.utc) + timedelta(
+            days=REFRESH_TOKEN_EXPIRE_DAYS
+        )
         to_encode.update({"exp": int(expire.timestamp()), "type": "refresh"})
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
-    
+
     @staticmethod
     def decode_token(token: str) -> TokenData:
         try:
@@ -210,20 +243,20 @@ class JWTHandler:
 
 class AuthService:
     """Authentication service for user management"""
-    
+
     def __init__(self, db: Session):
         self.db = db
-    
+
     def register_user(self, user_data: UserRegister) -> models.EnhancedUser:
         """
         Register a new user
-        
+
         Args:
             user_data: User registration data
-            
+
         Returns:
             Created user object
-            
+
         Raises:
             HTTPException: If email already exists
         """
@@ -231,16 +264,16 @@ class AuthService:
         existing_user = self.db.query(models.EnhancedUser).filter(
             models.EnhancedUser.email == user_data.email
         ).first()
-        
+
         if existing_user:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Email already registered"
             )
-        
+
         # Hash password
         hashed_password = PasswordHasher.hash_password(user_data.password)
-        
+
         # Create user
         new_user = models.EnhancedUser(
             email=user_data.email,
@@ -248,58 +281,60 @@ class AuthService:
             hashed_password=hashed_password,
             full_name=user_data.name
         )
-        
+
         self.db.add(new_user)
         self.db.commit()
         self.db.refresh(new_user)
-        
+
         return new_user
-    
-    def authenticate_user(self, email: str, password: str) -> Optional[models.EnhancedUser]:
+
+    def authenticate_user(
+        self, email: str, password: str
+    ) -> Optional[models.EnhancedUser]:
         """
         Authenticate a user with email and password
-        
+
         Args:
             email: User email
             password: Plain text password
-            
+
         Returns:
             User object if authentication successful, None otherwise
         """
         user = self.db.query(models.EnhancedUser).filter(
             models.EnhancedUser.email == email
         ).first()
-        
+
         if not user:
             return None
-        
+
         if not PasswordHasher.verify_password(password, user.hashed_password):
             return None
-        
+
         return user
-    
+
     def login(self, login_data: UserLogin) -> Token:
         """
         Login user and generate tokens
-        
+
         Args:
             login_data: User login credentials
-            
+
         Returns:
             Token object with access and refresh tokens
-            
+
         Raises:
             HTTPException: If credentials are invalid
         """
         user = self.authenticate_user(login_data.email, login_data.password)
-        
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect email or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         # Create tokens
         access_token = JWTHandler.create_access_token(
             data={"sub": str(user.id), "email": user.email}
@@ -307,39 +342,41 @@ class AuthService:
         refresh_token = JWTHandler.create_refresh_token(
             data={"sub": str(user.id), "email": user.email}
         )
-        
+
         return Token(
             access_token=access_token,
             refresh_token=refresh_token,
             expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60
         )
-    
+
     def refresh_access_token(self, refresh_token: str) -> Token:
         """
         Generate new access token from refresh token
-        
+
         Args:
             refresh_token: Valid refresh token
-            
+
         Returns:
             New token object
-            
+
         Raises:
             HTTPException: If refresh token is invalid
         """
         try:
-            payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
-            
+            payload = jwt.decode(
+                refresh_token, SECRET_KEY, algorithms=[ALGORITHM]
+            )
+
             # Verify it's a refresh token
             if payload.get("type") != "refresh":
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token type"
                 )
-            
+
             user_id = payload.get("sub")
             email = payload.get("email")
-            
+
             # Create new tokens
             access_token = JWTHandler.create_access_token(
                 data={"sub": user_id, "email": email}
@@ -347,7 +384,7 @@ class AuthService:
             new_refresh_token = JWTHandler.create_refresh_token(
                 data={"sub": user_id, "email": email}
             )
-            
+
             return Token(
                 access_token=access_token,
                 refresh_token=new_refresh_token,
@@ -358,42 +395,48 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid refresh token"
             )
-    
-    def change_password(self, user_id: str, password_data: PasswordChange) -> bool:
+
+    def change_password(
+        self, user_id: str, password_data: PasswordChange
+    ) -> bool:
         """
         Change user password
-        
+
         Args:
             user_id: User ID
             password_data: Current and new password
-            
+
         Returns:
             True if password changed successfully
-            
+
         Raises:
             HTTPException: If current password is incorrect
         """
         user = self.db.query(models.EnhancedUser).filter(
             models.EnhancedUser.id == user_id
         ).first()
-        
+
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="User not found"
             )
-        
+
         # Verify current password
-        if not PasswordHasher.verify_password(password_data.current_password, user.hashed_password):
+        if not PasswordHasher.verify_password(
+            password_data.current_password, user.hashed_password
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Current password is incorrect"
             )
-        
+
         # Hash and update new password
-        user.hashed_password = PasswordHasher.hash_password(password_data.new_password)
+        user.hashed_password = PasswordHasher.hash_password(
+            password_data.new_password
+        )
         user.updated_at = datetime.utcnow()
-        
+
         self.db.commit()
         return True
 
@@ -404,31 +447,31 @@ async def get_current_user(
 ) -> models.EnhancedUser:
     """
     Dependency to get current authenticated user
-    
+
     Args:
         credentials: HTTP Bearer token credentials
         db: Database session
-        
+
     Returns:
         Current authenticated user
-        
+
     Raises:
         HTTPException: If token is invalid or user not found
     """
     token = credentials.credentials
     token_data = JWTHandler.decode_token(token)
-    
+
     user = db.query(models.EnhancedUser).filter(
         models.EnhancedUser.id == token_data.user_id
     ).first()
-    
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     return user
 
 
@@ -437,13 +480,13 @@ async def get_current_user_id(
 ) -> str:
     """
     Dependency to get current user ID from token
-    
+
     Args:
         credentials: HTTP Bearer token credentials
-        
+
     Returns:
         Current user ID
-        
+
     Raises:
         HTTPException: If token is invalid
     """
@@ -452,14 +495,17 @@ async def get_current_user_id(
     return token_data.user_id
 
 
-def require_auth(user: models.EnhancedUser = Depends(get_current_user)) -> models.EnhancedUser:
+def require_auth(
+    user: models.EnhancedUser = Depends(get_current_user)
+) -> models.EnhancedUser:
     """
     Dependency to require authentication
-    
+
     Args:
         user: Current authenticated user
-        
+
     Returns:
         Authenticated user
     """
     return user
+

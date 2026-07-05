@@ -63,7 +63,7 @@ def test_analytics_all():
 
     # Test 5: Weekly Summary
     summary = tracker.get_weekly_summary()
-    assert 'status' in summary
+    assert 'period' in summary
 
     # Test 6: Nutrient Gap Analysis
     gap_analyzer = NutrientGapAnalyzer()

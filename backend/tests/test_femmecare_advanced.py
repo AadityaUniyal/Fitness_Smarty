@@ -37,12 +37,12 @@ def test_adaptive_cycle_length(db_session):
     db_session.add(user)
     db_session.commit()
 
-    # Log 3 cycles: Day 1 (today), 27 days ago (diff=27), 57 days ago (diff=30)
-    # Rolling intervals: [27, 30] -> avg = 28.5 -> rounded = 29
+    # Log 3 cycles: Day 1 (today), 28 days ago (diff=28), 58 days ago (diff=30)
+    # Rolling intervals: [28, 30] -> avg = 29.0 -> rounded = 29
     now = datetime.utcnow()
     log1 = MenstrualCycleLog(user_id="test_user_1", start_date=now)
-    log2 = MenstrualCycleLog(user_id="test_user_1", start_date=now - timedelta(days=27))
-    log3 = MenstrualCycleLog(user_id="test_user_1", start_date=now - timedelta(days=57))
+    log2 = MenstrualCycleLog(user_id="test_user_1", start_date=now - timedelta(days=28))
+    log3 = MenstrualCycleLog(user_id="test_user_1", start_date=now - timedelta(days=58))
     
     db_session.add_all([log1, log2, log3])
     db_session.commit()
@@ -51,7 +51,7 @@ def test_adaptive_cycle_length(db_session):
     advice = engine.get_cycle_sync_advice(now, cycle_length=28, user_id="test_user_1")
     
     assert advice["learned_cycle_length"] == 29
-    assert advice["cycle_history_stats"]["average_cycle_length"] == 28.5
+    assert advice["cycle_history_stats"]["average_cycle_length"] == 29.0
     assert advice["cycle_history_stats"]["logged_cycles_count"] == 3
 
 def test_symptom_aware_adaptation(db_session):
@@ -76,9 +76,9 @@ def test_iron_aware_nutrition_weighting(db_session):
     db_session.commit()
 
     # Spinach (iron rich), Apple (general)
-    f1 = FoodItem(category_id=cat.id, name="Apple", calories=50, protein=1, carbs=10, fats=0)
-    f2 = FoodItem(category_id=cat.id, name="Spinach Salad", calories=30, protein=2, carbs=5, fats=0)
-    f3 = FoodItem(category_id=cat.id, name="Lean Ground Beef", calories=250, protein=26, carbs=0, fats=15)
+    f1 = FoodItem(category_id=cat.id, name="Apple", calories=50, protein=1, carbs=10, fats=0, recommended_for_goal="general", target_muscle_group="all")
+    f2 = FoodItem(category_id=cat.id, name="Spinach Salad", calories=30, protein=2, carbs=5, fats=0, recommended_for_goal="general", target_muscle_group="all")
+    f3 = FoodItem(category_id=cat.id, name="Lean Ground Beef", calories=250, protein=26, carbs=0, fats=15, recommended_for_goal="general", target_muscle_group="all")
     
     db_session.add_all([f1, f2, f3])
     

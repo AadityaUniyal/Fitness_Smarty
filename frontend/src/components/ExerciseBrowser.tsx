@@ -220,6 +220,14 @@ const ExerciseBrowser: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
+  const [selectedGoal, setSelectedGoal] = useState<string>(() => {
+    try {
+      const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
+      return profile.goal || profile.primary_goal || '';
+    } catch {
+      return '';
+    }
+  });
   
   // Hevy-style multiple selections
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
@@ -279,9 +287,16 @@ const ExerciseBrowser: React.FC = () => {
   const muscleGroups = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms', 'Core', 'Full Body'];
   const equipments = ['Barbell', 'Dumbbell', 'Machine', 'Bodyweight', 'Cable', 'Kettlebell'];
 
-  const displayExercises = showFavoritesOnly && exercises
-    ? exercises.filter((ex: any) => favorites.includes(ex.id))
-    : exercises;
+  const displayExercises = (() => {
+    let list = exercises || [];
+    if (showFavoritesOnly) {
+      list = list.filter((ex: any) => favorites.includes(ex.id));
+    }
+    if (selectedGoal) {
+      list = list.filter((ex: any) => String(ex.fitness_goal || '').toLowerCase() === String(selectedGoal).toLowerCase());
+    }
+    return list;
+  })();
 
   // Mock past history logs for Hevy-style preview
   const getMockHistory = (exerciseName: string) => {
@@ -341,11 +356,24 @@ const ExerciseBrowser: React.FC = () => {
             <h4 className="font-black uppercase tracking-widest text-xs">Library Filters</h4>
           </div>
           <button 
-            onClick={() => { setSelectedMuscles([]); setSelectedEquipments([]); setSelectedCategory(''); setSelectedDifficulty(''); }}
+            onClick={() => { setSelectedMuscles([]); setSelectedEquipments([]); setSelectedCategory(''); setSelectedDifficulty(''); setSelectedGoal(''); }}
             className="text-[10px] font-black uppercase tracking-widest text-emerald-400/70 hover:text-emerald-400 underline mb-4 block"
           >
             Clear All Filters
           </button>
+        </div>
+
+        {/* Goal Recommendation Select */}
+        <div className="space-y-3">
+          <label className="block text-[10px] font-black uppercase tracking-widest text-slate-500">Fitness Aim</label>
+          <select value={selectedGoal} onChange={(e) => setSelectedGoal(e.target.value)}
+            className="w-full bg-slate-900 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-emerald-500/50">
+            <option value="">All Aims</option>
+            <option value="weight_loss">🔥 Fat Loss</option>
+            <option value="muscle_gain">💪 Muscle Gain</option>
+            <option value="athletic">⚡ Athletic</option>
+            <option value="maintenance">🎯 Maintenance</option>
+          </select>
         </div>
 
         {/* Categories Select */}

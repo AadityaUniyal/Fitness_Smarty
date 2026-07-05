@@ -70,8 +70,45 @@ const DashboardShell: React.FC = () => {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toasts, dismissToast } = useToast();
-  const user = JSON.parse(localStorage.getItem('smarty_user') || '{}');
+  const { user: authUser, logout } = useAuth();
+  const user = authUser || JSON.parse(localStorage.getItem('smarty_user') || '{}');
   const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
+  const isFemaleExperience =
+    String(profile.gender || authUser?.gender || '').toLowerCase() === 'female' ||
+    Boolean(profile.femmecareEnabled || profile.femmecare_enabled || authUser?.femmecare_enabled);
+  const accent = isFemaleExperience
+    ? {
+      name: 'pink',
+      text: 'text-pink-400',
+      textStrong: 'text-pink-500',
+      bg: 'bg-pink-500',
+      bgSoft: 'bg-pink-500/10',
+      bgSofter: 'bg-pink-500/20',
+      border: 'border-pink-500/20',
+      borderStrong: 'border-pink-500/30',
+      hoverText: 'hover:text-pink-400',
+      glow: 'shadow-[0_0_20px_rgba(236,72,153,0.35)]',
+      dotGlow: 'shadow-[0_0_8px_#ec4899]',
+      selection: 'selection:bg-pink-500/30',
+      lineVia: 'via-pink-500/20',
+      grid: 'linear-gradient(rgba(236,72,153,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(236,72,153,0.18) 1px, transparent 1px)',
+    }
+    : {
+      name: 'green',
+      text: 'text-emerald-400',
+      textStrong: 'text-emerald-500',
+      bg: 'bg-emerald-500',
+      bgSoft: 'bg-emerald-500/10',
+      bgSofter: 'bg-emerald-500/20',
+      border: 'border-emerald-500/20',
+      borderStrong: 'border-emerald-500/30',
+      hoverText: 'hover:text-emerald-400',
+      glow: 'shadow-[0_0_20px_rgba(16,185,129,0.4)]',
+      dotGlow: 'shadow-[0_0_8px_#10b981]',
+      selection: 'selection:bg-emerald-500/30',
+      lineVia: 'via-emerald-500/20',
+      grid: 'linear-gradient(rgba(16,185,129,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.2) 1px, transparent 1px)',
+    };
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('smarty_theme');
     return saved || 'dark';
@@ -91,6 +128,11 @@ const DashboardShell: React.FC = () => {
     }
   }, [theme]);
 
+  React.useEffect(() => {
+    document.documentElement.classList.toggle('female-theme', isFemaleExperience);
+    return () => document.documentElement.classList.remove('female-theme');
+  }, [isFemaleExperience]);
+
   const navItems = [
     { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
     { path: '/dashboard/food-scanner', label: 'Food Scanner', icon: Camera },
@@ -109,7 +151,6 @@ const DashboardShell: React.FC = () => {
     { path: '/dashboard/history', label: 'History', icon: Clock },
     { path: '/dashboard/nutrition', label: 'Nutrition', icon: Utensils },
     { path: '/dashboard/progress', label: 'Progress', icon: TrendingUp },
-<<<<<<< HEAD
     { path: '/dashboard/body', label: 'Measurements', icon: Activity },
     { path: '/dashboard/achievements', label: 'Achievements', icon: Trophy },
     { path: '/dashboard/mood', label: 'Mood & Energy', icon: Heart },
@@ -118,15 +159,13 @@ const DashboardShell: React.FC = () => {
     { path: '/dashboard/coach', label: 'Voice Coach', icon: Mic },
     { path: '/dashboard/chat', label: 'Chat', icon: Bot },
     { path: '/dashboard/hydration', label: 'Hydration', icon: Droplets },
-    { path: '/dashboard/femmecare', label: 'FemmeCare', icon: Heart },
-    { path: '/dashboard/female', label: 'Femme Hub', icon: Heart },
+    ...(isFemaleExperience ? [
+      { path: '/dashboard/femmecare', label: 'FemmeCare', icon: Heart },
+      { path: '/dashboard/female', label: 'Femme Hub', icon: Heart },
+    ] : []),
     { path: '/dashboard/training', label: 'Training', icon: Brain },
     { path: '/dashboard/interpreter', label: 'AI Interpreter', icon: BrainCircuit },
     { path: '/dashboard/feedback', label: 'Feedback', icon: MessageCircle },
-=======
-    { path: '/dashboard/bio', label: 'Bio Profile', icon: Fingerprint },
-    { path: '/dashboard/coach', label: 'Live Coach', icon: Mic },
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
     { path: '/contact', label: 'Contact', icon: Phone },
   ];
 
@@ -136,7 +175,7 @@ const DashboardShell: React.FC = () => {
   };
 
   const handleSignOut = () => {
-    localStorage.removeItem('smarty_user');
+    logout();
     navigate('/');
   };
 
@@ -146,19 +185,21 @@ const DashboardShell: React.FC = () => {
   }[profile.goal as string] || profile.goal : null;
 
   return (
-    <div className="flex h-screen bg-[#020617] overflow-hidden text-slate-200 selection:bg-emerald-500/30">
+    <div className={`flex h-screen bg-[#020617] overflow-hidden text-slate-200 ${accent.selection}`}>
       {/* Sidebar */}
       <aside className="w-72 border-r border-white/5 flex-col hidden lg:flex bg-slate-950/20 backdrop-blur-2xl relative shrink-0">
-        <div className="absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-transparent via-emerald-500/20 to-transparent" />
+        <div className={`absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-transparent ${accent.lineVia} to-transparent`} />
 
         <div className="p-8">
           <div className="flex items-center space-x-4 group cursor-pointer" onClick={() => navigate('/dashboard')}>
-            <div className="w-11 h-11 bg-emerald-500 rounded-2xl flex items-center justify-center text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all group-hover:scale-110 rotate-3">
+            <div className={`w-11 h-11 ${accent.bg} rounded-2xl flex items-center justify-center text-slate-950 ${accent.glow} transition-all group-hover:scale-110 rotate-3`}>
               <Zap size={22} className="fill-slate-950" />
             </div>
             <div>
-              <h1 className="text-xl font-black italic tracking-tighter text-white">SMARTY <span className="text-emerald-400">AI</span></h1>
-              <p className="text-[7px] font-black uppercase tracking-[0.4em] text-slate-500">Neural Fitness v4.0</p>
+              <h1 className="text-xl font-black italic tracking-tighter text-white">SMARTY <span className={accent.text}>AI</span></h1>
+              <p className="text-[7px] font-black uppercase tracking-[0.4em] text-slate-500">
+                {isFemaleExperience ? 'Femme Fitness v4.0' : 'Neural Fitness v4.0'}
+              </p>
             </div>
           </div>
 
@@ -166,8 +207,8 @@ const DashboardShell: React.FC = () => {
           {user.name && (
             <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
               <div className="flex items-center space-x-3">
-                <div className="w-9 h-9 bg-emerald-500/20 rounded-xl flex items-center justify-center">
-                  <User size={16} className="text-emerald-400" />
+                <div className={`w-9 h-9 ${accent.bgSofter} rounded-xl flex items-center justify-center`}>
+                  <User size={16} className={accent.text} />
                 </div>
                 <div>
                   <p className="text-xs font-black text-white">{profile.name || user.name}</p>
@@ -186,12 +227,12 @@ const DashboardShell: React.FC = () => {
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all relative group ${active
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-inner'
+                  ? `${accent.bgSoft} ${accent.text} border ${accent.border} shadow-inner`
                   : 'text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent'}`}
               >
-                <item.icon size={18} className={active ? 'text-emerald-400' : 'group-hover:text-emerald-400 transition-colors'} />
+                <item.icon size={18} className={active ? accent.text : `transition-colors group-hover:${accent.name === 'pink' ? 'text-pink-400' : 'text-emerald-400'}`} />
                 <span className="font-black uppercase tracking-[0.12em] text-[10px]">{item.label}</span>
-                {active && <div className="absolute right-4 w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]" />}
+                {active && <div className={`absolute right-4 w-1.5 h-1.5 rounded-full ${accent.bg} ${accent.dotGlow}`} />}
               </button>
             );
           })}
@@ -222,16 +263,25 @@ const DashboardShell: React.FC = () => {
             </button>
             <div className="hidden sm:block">
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">Current</p>
-              <p className="text-sm font-black text-emerald-400 uppercase tracking-widest">
+              <p className={`text-sm font-black ${accent.text} uppercase tracking-widest`}>
                 {navItems.find(n => isActive(n))?.label || 'Dashboard'}
               </p>
             </div>
           </div>
           <div className="flex items-center space-x-4">
             {goalLabel && (
-              <div className="hidden md:flex items-center space-x-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-                <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Goal: {goalLabel}</span>
+              <div className={`hidden md:flex items-center space-x-2 px-4 py-2 ${accent.bgSoft} border ${accent.border} rounded-xl`}>
+                <span className={`text-[9px] font-black uppercase tracking-widest ${accent.text}`}>Goal: {goalLabel}</span>
               </div>
+            )}
+            {isFemaleExperience && (
+              <button
+                onClick={() => navigate('/dashboard/femmecare')}
+                className="hidden md:flex items-center space-x-2 px-4 py-2 bg-pink-500/10 border border-pink-500/20 rounded-xl text-pink-400 hover:bg-pink-500/15 transition"
+              >
+                <Heart size={14} />
+                <span className="text-[9px] font-black uppercase tracking-widest">Femme mode</span>
+              </button>
             )}
             <button
               onClick={() => {
@@ -239,7 +289,7 @@ const DashboardShell: React.FC = () => {
                 i18n.setLanguage(nextLang);
                 window.location.reload();
               }}
-              className="px-3 py-2 text-xs font-black uppercase rounded-2xl border border-white/10 hover:border-white/20 bg-slate-900 text-slate-400 hover:text-emerald-400 transition-colors"
+              className={`px-3 py-2 text-xs font-black uppercase rounded-2xl border border-white/10 hover:border-white/20 bg-slate-900 text-slate-400 ${accent.hoverText} transition-colors`}
               title="Change Language / भाषा बदलें"
               aria-label="Change translation locale language"
             >
@@ -247,14 +297,14 @@ const DashboardShell: React.FC = () => {
             </button>
             <button
               onClick={toggleTheme}
-              className="w-11 h-11 rounded-2xl border border-white/10 hover:border-white/20 bg-slate-900 flex items-center justify-center text-slate-400 hover:text-emerald-400 transition-colors"
+              className={`w-11 h-11 rounded-2xl border border-white/10 hover:border-white/20 bg-slate-900 flex items-center justify-center text-slate-400 ${accent.hoverText} transition-colors`}
               title="Toggle Theme"
               aria-label="Toggle light and dark color themes"
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
             <div className="w-11 h-11 rounded-2xl border border-white/20 bg-slate-900 flex items-center justify-center" aria-label="User avatar profile placeholder">
-              <User size={18} className="text-emerald-400" />
+              <User size={18} className={accent.text} />
             </div>
           </div>
 
@@ -264,9 +314,8 @@ const DashboardShell: React.FC = () => {
         {/* Content area */}
         <NotificationScheduler />
         <div className="flex-1 overflow-y-auto p-6 md:p-10 relative">
-          <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: 'linear-gradient(rgba(16,185,129,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(16,185,129,0.2) 1px, transparent 1px)', backgroundSize: '80px 80px' }} />
+          <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: accent.grid, backgroundSize: '80px 80px' }} />
           <div className="relative z-10">
-<<<<<<< HEAD
             <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <PageTransition>
                 <Routes>
@@ -303,17 +352,6 @@ const DashboardShell: React.FC = () => {
                 </Routes>
               </PageTransition>
             </Suspense>
-=======
-            <Routes>
-              <Route index element={<Dashboard />} />
-              <Route path="food-scanner" element={<MealScanner />} />
-              <Route path="workout" element={<WorkoutAssistant />} />
-              <Route path="nutrition" element={<NutritionHub />} />
-              <Route path="progress" element={<ProgressTracking />} />
-              <Route path="bio" element={<BioLink />} />
-              <Route path="coach" element={<LiveCoach />} />
-            </Routes>
->>>>>>> 0353e412dc8715e7f787c8e95e1aca44f058882a
           </div>
         </div>
       </main>

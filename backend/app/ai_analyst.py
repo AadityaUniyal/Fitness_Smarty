@@ -1,9 +1,11 @@
 
 import os
 try:
-    import google.genai as genai
+    from google import genai
+    _USE_GENAI_CLIENT = True
 except ImportError:
     import google.generativeai as genai
+    _USE_GENAI_CLIENT = False
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 import json
@@ -17,8 +19,11 @@ class AIAnalyst:
         # Set up Gemini
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-flash')
+            if _USE_GENAI_CLIENT:
+                self.model = genai.Client(api_key=api_key)
+            else:
+                genai.configure(api_key=api_key)
+                self.model = genai.GenerativeModel('gemini-1.5-flash')
         else:
             self.model = None
 
@@ -43,7 +48,13 @@ class AIAnalyst:
         prompt = f"Convert this natural language question into a PostgreSQL query:\nQuestion: {user_query}\n\nSchema Context:\n{schema_context}\n\nSQL Query:"
 
         try:
-            response = self.model.generate_content(prompt)
+            if _USE_GENAI_CLIENT:
+                response = self.model.models.generate_content(
+                    model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                    contents=prompt,
+                )
+            else:
+                response = self.model.generate_content(prompt)
             sql_query = response.text.strip().replace("```sql", "").replace("```", "")
             
             # Execute query Safely
@@ -53,7 +64,13 @@ class AIAnalyst:
             
             # Summarize results using Gemini
             summary_prompt = f"Summarize these data results for the user's question: '{user_query}'\nData: {json.dumps(data, default=str)}\nSummary:"
-            summary_response = self.model.generate_content(summary_prompt)
+            if _USE_GENAI_CLIENT:
+                summary_response = self.model.models.generate_content(
+                    model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                    contents=summary_prompt,
+                )
+            else:
+                summary_response = self.model.generate_content(summary_prompt)
             
             return {
                 "query": sql_query,
