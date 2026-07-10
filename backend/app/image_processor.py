@@ -221,7 +221,6 @@ class ImageProcessor:
         bucket_name = os.getenv("STORAGE_BUCKET_NAME")
         aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
         aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-        # e.g. R2 endpoint URL
         endpoint_url = os.getenv("STORAGE_ENDPOINT_URL")
 
         if bucket_name and aws_access_key and aws_secret_key:
@@ -240,7 +239,6 @@ class ImageProcessor:
                     config=Config(signature_version='s3v4')
                 )
 
-                # Upload the image file
                 s3_client.put_object(
                     Bucket=bucket_name,
                     Key=object_name,
@@ -248,7 +246,6 @@ class ImageProcessor:
                     ContentType='image/jpeg'
                 )
 
-                # Generate a signed URL valid for 24 hours (86400 seconds)
                 url = s3_client.generate_presigned_url(
                     'get_object',
                     Params={'Bucket': bucket_name, 'Key': object_name},
@@ -256,7 +253,6 @@ class ImageProcessor:
                 )
                 return url
             except Exception as e:
-                # Log error and fall back to base64 URL so service doesn't break
                 import logging
                 logging.getLogger(__name__).error(
                     f"Failed to upload image to object storage: {e}. "
@@ -395,4 +391,3 @@ class ImageProcessor:
             recommendations.append("Image quality is good for analysis")
 
         return recommendations
-

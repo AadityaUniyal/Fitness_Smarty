@@ -6,11 +6,10 @@ local JWT tokens. Supports real verification (when libraries available)
 and mock mode for development.
 """
 
-import os, json
-from datetime import datetime
+import os
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, EmailStr
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import EnhancedUser
@@ -39,8 +38,9 @@ class OAuthProvider:
         try:
             from google.oauth2 import id_token as google_id_token
             from google.auth.transport import requests
+            client_id = client_id or os.getenv("GOOGLE_CLIENT_ID", "")
             id_info = google_id_token.verify_oauth2_token(
-                id_token, requests.Request(), client_id or os.getenv("GOOGLE_CLIENT_ID", "")
+                id_token, requests.Request(), client_id
             )
             return {
                 "sub": id_info["sub"],
@@ -60,19 +60,18 @@ class OAuthProvider:
         """Verify an Apple ID token and extract user info."""
         try:
             from jwt import decode as jwt_decode, get_unverified_header
-            from cryptography.x509 import load_pem_x509_certificate
-            from cryptography.hazmat.backends import default_backend
             import requests
 
-            headers = jwt_decode(id_token, options={"verify_signature": False})
             kid = get_unverified_header(id_token).get("kid")
 
-            resp = requests.get("https://appleid.apple.com/auth/keys", timeout=10)
+            resp = requests.get(
+                "https://appleid.apple.com/auth/keys", timeout=10
+            )
             keys = resp.json().get("keys", [])
             matching_key = next((k for k in keys if k.get("kid") == kid), None)
 
             if matching_key:
-                from jwt import PyJWK, PyJWT
+                from jwt import PyJWK
                 pub_key = PyJWK(matching_key, algorithm="RS256").key
                 decoded = jwt_decode(
                     id_token, pub_key, algorithms=["RS256"],
@@ -82,7 +81,11 @@ class OAuthProvider:
                 return {
                     "sub": decoded["sub"],
                     "email": decoded.get("email", ""),
-                    "name": decoded.get("name", {}).get("firstName", "") + " " + decoded.get("name", {}).get("lastName", ""),
+                    "name": (
+                        decoded.get("name", {}).get("firstName", "")
+                        + " "
+                        + decoded.get("name", {}).get("lastName", "")
+                    ),
                 }
         except ImportError:
             pass
@@ -93,7 +96,10 @@ class OAuthProvider:
 
     @staticmethod
     def _mock_verify(provider: str, token: str) -> dict:
-        """Mock verification for development — decodes local JWT or returns test user."""
+        """Mock verification for development.
+
+        Decodes local JWT or returns test user.
+        """
         try:
             from jose import jwt
             payload = jwt.get_unverified_claims(token)
@@ -116,7 +122,9 @@ def google_login(
 ):
     """Exchange a Google ID token for local JWT tokens."""
     info = OAuthProvider.verify_google(req.id_token, req.client_id)
-    return _oauth_login_or_register(db, "google", info["sub"], info["email"], info["name"])
+    return _oauth_login_or_register(
+        db, "google", info["sub"], info["email"], info["name"]
+    )
 
 
 @router.post("/apple", response_model=Token)
@@ -131,12 +139,15 @@ def apple_login(
     return _oauth_login_or_register(db, "apple", info["sub"], email, name)
 
 
-def _oauth_login_or_register(db: Session, provider: str, provider_sub: str, email: str, name: str) -> Token:
+def _oauth_login_or_register(
+    db: Session, provider: str, provider_sub: str, email: str, name: str
+) -> Token:
     """Find or create a user from OAuth provider info, return JWT tokens."""
     provider_id = f"{provider}_{provider_sub}"
 
     user = db.query(EnhancedUser).filter(
-        (EnhancedUser.clerk_user_id == provider_id) | (EnhancedUser.email == email)
+        (EnhancedUser.clerk_user_id == provider_id)
+        | (EnhancedUser.email == email)
     ).first()
 
     if not user:

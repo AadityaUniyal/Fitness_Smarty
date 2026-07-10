@@ -1,14 +1,14 @@
 """
-Analytics Router — Elite-level endpoints for ProgressTracking, AI Query, and Power BI export.
+Analytics Router — Elite-level endpoints for ProgressTracking, AI Query,
+and Power BI export.
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlalchemy.orm import Session
-from typing import Optional, Any
+from typing import Optional
 from app.database import get_db
 from app import models
 from datetime import datetime, timedelta
-import json
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 
@@ -18,25 +18,25 @@ async def get_daily_budget(user_id: str, db: Session = Depends(get_db)):
     """Return today's calorie consumed vs burned for the user."""
     try:
         today = datetime.utcnow().date()
-        
+
         # Attempt to get meal logs for today
         meals = (
             db.query(models.MealLog)
             .filter(models.MealLog.user_id == user_id)
             .all()
         ) if hasattr(models, 'MealLog') else []
-        
+
         consumed = sum(getattr(m, 'total_calories', 0) or 0 for m in meals)
-        
+
         # Workout burns (if WorkoutLog model exists)
         workouts = (
             db.query(models.WorkoutLog)
             .filter(models.WorkoutLog.user_id == user_id)
             .all()
         ) if hasattr(models, 'WorkoutLog') else []
-        
+
         burned = sum(getattr(w, 'calories_burned', 0) or 0 for w in workouts)
-        
+
         return {
             "consumed": consumed,
             "burned": burned,
@@ -45,7 +45,15 @@ async def get_daily_budget(user_id: str, db: Session = Depends(get_db)):
         }
     except Exception as e:
         # Return safe defaults if DB tables don't exist yet
-        return {"consumed": 0, "burned": 0, "net": 0, "date": datetime.utcnow().date().isoformat()}
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.warning(f"Error fetching daily summary: {e}")
+        return {
+            "consumed": 0,
+            "burned": 0,
+            "net": 0,
+            "date": datetime.utcnow().date().isoformat(),
+        }
 
 
 @router.get("/db-streak/{user_id}")
@@ -85,16 +93,31 @@ async def ai_analytics_query(
         from google import genai
         api_key = os.environ.get("GEMINI_API_KEY", "")
         if not api_key:
-            return {"summary": "AI analytics require GEMINI_API_KEY on server. Please configure your .env file.", "data": []}
-        
+            return {
+                "summary": (
+                    "AI analytics require GEMINI_API_KEY on server. "
+                    "Please configure your .env file."
+                ),
+                "data": [],
+            }
+
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=f"User is asking about their fitness analytics: '{query}'. Provide a brief, data-driven insight (2-3 sentences max). Be specific and actionable."
+            contents=(
+                f"User is asking about their fitness analytics: '{query}'. "
+                "Provide a brief, data-driven insight (2-3 sentences max). "
+                "Be specific and actionable."
+            )
         )
         return {"summary": response.text, "data": []}
     except ImportError:
-        return {"summary": f"Server AI analytics coming soon. Query received: {query}", "data": []}
+        return {
+            "summary": (
+                f"Server AI analytics coming soon. Query received: {query}"
+            ),
+            "data": [],
+        }
     except Exception as e:
         return {"summary": f"Analytics query processed. {str(e)}", "data": []}
 
@@ -114,11 +137,19 @@ async def powerbi_export(db: Session = Depends(get_db)):
                 "export_type": "full_analytics"
             },
             "nutrition_trends": [
-                {"week": f"2025-W{49 + i}", "avg_calories": 2200 + i * 50, "avg_protein": 140 + i * 5}
+                {
+                    "week": f"2025-W{49 + i}",
+                    "avg_calories": 2200 + i * 50,
+                    "avg_protein": 140 + i * 5,
+                }
                 for i in range(8)
             ],
             "workout_trends": [
-                {"week": f"2025-W{49 + i}", "sessions": 3 + (i % 3), "avg_duration_min": 45 + i * 2}
+                {
+                    "week": f"2025-W{49 + i}",
+                    "sessions": 3 + (i % 3),
+                    "avg_duration_min": 45 + i * 2,
+                }
                 for i in range(8)
             ]
         }

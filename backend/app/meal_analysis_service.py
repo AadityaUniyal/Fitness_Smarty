@@ -9,14 +9,15 @@ Orchestrates the complete meal analysis workflow:
 """
 
 from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, asdict
-from decimal import Decimal
+from dataclasses import dataclass
 import logging
 import datetime
-import uuid
 
 from .image_processor import ImageProcessor, ImageValidationError
-from .food_detection_model import FoodDetectionModel, FoodDetectionResult, DetectedFood
+from .food_detection_model import (
+    FoodDetectionModel,
+    DetectedFood,
+)
 from .food_service import FoodDatabaseService
 from .nutrition_calculator import NutritionCalculator
 try:
@@ -24,10 +25,6 @@ try:
 except ImportError:
     from .models import MealLog
     MealComponent = None  # Not available in current schema
-from .error_handler import (
-    retry_on_failure, graceful_degradation, error_handler,
-    AIAnalysisError, ExternalAPIError, ErrorCategory
-)
 from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
@@ -72,9 +69,13 @@ class MealAnalysisService:
         """
         self.db = db
         self.image_processor = image_processor or ImageProcessor()
-        self.food_detection_model = food_detection_model or FoodDetectionModel()
+        self.food_detection_model = (
+            food_detection_model or FoodDetectionModel()
+        )
         self.food_service = food_service or FoodDatabaseService(db)
-        self.nutrition_calculator = nutrition_calculator or NutritionCalculator(self.food_service)
+        self.nutrition_calculator = (
+            nutrition_calculator or NutritionCalculator(self.food_service)
+        )
     
     def analyze_meal_photo(
         self, 
@@ -98,7 +99,9 @@ class MealAnalysisService:
             logger.info(f"Starting meal analysis for user {user_id}")
             
             try:
-                image_result = self.image_processor.process_meal_image(image_bytes, user_id)
+                image_result = self.image_processor.process_meal_image(
+                    image_bytes, user_id
+                )
                 image_url = image_result['storage_url']
                 logger.info(f"Image processed successfully: {image_url}")
             except ImageValidationError as e:
@@ -110,15 +113,23 @@ class MealAnalysisService:
                     detected_foods=[],
                     total_nutrition={},
                     analysis_confidence=0.0,
-                    recommendations=["Please check your image and try again", "You can enter meal details manually"],
+                    recommendations=[
+                        "Please check your image and try again",
+                        "You can enter meal details manually",
+                    ],
                     requires_manual_review=True,
                     error_message=f"Image validation failed: {str(e)}"
                 )
             
             # Step 2: Assess image quality
-            quality_assessment = self.image_processor.assess_image_quality(image_bytes)
+            quality_assessment = self.image_processor.assess_image_quality(
+                image_bytes
+            )
             if not quality_assessment['suitable_for_analysis']:
-                logger.warning(f"Image quality issues detected: {quality_assessment['issues']}")
+                logger.warning(
+                    f"Image quality issues detected: "
+                    f"{quality_assessment['issues']}"
+                )
                 # Add manual entry recommendation
                 recommendations = quality_assessment['recommendations'] + [
                     "Alternatively, you can enter meal details manually"
@@ -132,17 +143,36 @@ class MealAnalysisService:
                     analysis_confidence=0.0,
                     recommendations=recommendations,
                     requires_manual_review=True,
-                    error_message="Image quality too low for analysis. " + "; ".join(quality_assessment['issues'])
+                    error_message=(
+                        "Image quality too low for analysis. "
+                        + "; ".join(quality_assessment['issues'])
+                    )
                 )
             
             # Step 3: Detect foods using computer vision
-            optimized_bytes = self.image_processor.optimize_for_analysis(image_bytes)
-            detection_result = self.food_detection_model.detect_foods(optimized_bytes)
-            logger.info(f"Food detection complete: {len(detection_result.detected_foods)} items detected")
-            
+            optimized_bytes = self.image_processor.optimize_for_analysis(
+                image_bytes
+            )
+            detection_result = self.food_detection_model.detect_foods(
+                optimized_bytes
+            )
+            logger.info(
+                f"Food detection complete: "
+                f"{len(detection_result.detected_foods)} items detected"
+            )
+
             # Step 4: Check if fallback to manual entry is needed
-            if self.food_detection_model.should_request_manual_entry(detection_result):
-                fallback_msg = self.food_detection_model.get_fallback_message(detection_result)
+            should_manual = (
+                self.food_detection_model.should_request_manual_entry(
+                    detection_result
+                )
+            )
+            if should_manual:
+                fallback_msg = (
+                    self.food_detection_model.get_fallback_message(
+                        detection_result
+                    )
+                )
                 logger.warning(f"Manual entry required: {fallback_msg}")
                 return MealAnalysisResult(
                     success=False,
@@ -159,10 +189,12 @@ class MealAnalysisService:
             # Step 5: Lookup nutrition data for detected foods
             enriched_foods = []
             for detected_food in detection_result.detected_foods:
-                enriched_food = self._enrich_detected_food(detected_food, optimized_bytes)
+                enriched_food = self._enrich_detected_food(
+                    detected_food, optimized_bytes
+                )
                 if enriched_food:
                     enriched_foods.append(enriched_food)
-            
+
             if not enriched_foods:
                 logger.error("No foods could be enriched with nutrition data")
                 return MealAnalysisResult(
@@ -172,14 +204,20 @@ class MealAnalysisService:
                     detected_foods=[],
                     total_nutrition={},
                     analysis_confidence=detection_result.overall_confidence,
-                    recommendations=["Could not find nutrition data for detected foods. Please enter manually."],
+                    recommendations=[
+                        "Could not find nutrition data for detected foods. "
+                        "Please enter manually."
+                    ],
                     requires_manual_review=True,
                     error_message="Nutrition data lookup failed"
                 )
             
             # Step 6: Calculate total nutrition
             total_nutrition = self._calculate_total_nutrition(enriched_foods)
-            logger.info(f"Total nutrition calculated: {total_nutrition['calories']} calories")
+            logger.info(
+                f"Total nutrition calculated: "
+                f"{total_nutrition['calories']} calories"
+            )
             
             # Step 7: Store meal log in database
             meal_log = self._store_meal_log(
@@ -190,7 +228,6 @@ class MealAnalysisService:
                 total_nutrition=total_nutrition,
                 confidence=detection_result.overall_confidence
             )
-            
             # Step 8: Generate recommendations
             recommendations = self._generate_recommendations(
                 total_nutrition=total_nutrition,
@@ -200,14 +237,18 @@ class MealAnalysisService:
             
             # Step 9: Determine if manual review is needed
             requires_review = detection_result.overall_confidence < 0.7
-            
-            logger.info(f"Meal analysis complete for user {user_id}: meal_log_id={meal_log.id}")
-            
+
+            logger.info(
+                f"Meal analysis complete for user {user_id}: "
+                f"meal_log_id={meal_log.id}"
+            )
             return MealAnalysisResult(
                 success=True,
                 meal_log_id=str(meal_log.id),
                 image_url=image_url,
-                detected_foods=[self._format_detected_food(f) for f in enriched_foods],
+                detected_foods=[
+                    self._format_detected_food(f) for f in enriched_foods
+                ],
                 total_nutrition=total_nutrition,
                 analysis_confidence=detection_result.overall_confidence,
                 recommendations=recommendations,
@@ -216,7 +257,10 @@ class MealAnalysisService:
             )
             
         except Exception as e:
-            logger.error(f"Meal analysis failed with exception: {str(e)}", exc_info=True)
+            logger.error(
+                f"Meal analysis failed with exception: {str(e)}",
+                exc_info=True,
+            )
             return MealAnalysisResult(
                 success=False,
                 meal_log_id=None,
@@ -224,7 +268,10 @@ class MealAnalysisService:
                 detected_foods=[],
                 total_nutrition={},
                 analysis_confidence=0.0,
-                recommendations=["An error occurred during analysis. Please try again or enter manually."],
+                recommendations=[
+                    "An error occurred during analysis. "
+                    "Please try again or enter manually."
+                ],
                 requires_manual_review=True,
                 error_message=f"Analysis error: {str(e)}"
             )
@@ -246,10 +293,15 @@ class MealAnalysisService:
         """
         try:
             # Lookup food in database
-            food_results = self.food_service.search_foods(detected_food.food_name, limit=1)
-            
+            food_results = self.food_service.search_foods(
+                detected_food.food_name, limit=1
+            )
+
             if not food_results:
-                logger.warning(f"No nutrition data found for: {detected_food.food_name}")
+                logger.warning(
+                    f"No nutrition data found for: "
+                    f"{detected_food.food_name}"
+                )
                 return None
             
             food_data = food_results[0]
@@ -273,7 +325,9 @@ class MealAnalysisService:
             }
             
         except Exception as e:
-            logger.error(f"Failed to enrich food {detected_food.food_name}: {str(e)}")
+            logger.error(
+                f"Failed to enrich food {detected_food.food_name}: {str(e)}"
+            )
             return None
     
     def _calculate_portion_nutrition(
@@ -302,15 +356,22 @@ class MealAnalysisService:
         multiplier = portion_g / 100.0
         
         return {
-            'calories': float(nutrition_facts.get('calories_per_100g', 0)) * multiplier,
-            'protein_g': float(nutrition_facts.get('protein_g', 0)) * multiplier,
+            'calories': (
+                float(nutrition_facts.get('calories_per_100g', 0))
+                * multiplier
+            ),
+            'protein_g': (
+                float(nutrition_facts.get('protein_g', 0)) * multiplier
+            ),
             'carbs_g': float(nutrition_facts.get('carbs_g', 0)) * multiplier,
             'fat_g': float(nutrition_facts.get('fat_g', 0)) * multiplier,
             'fiber_g': float(nutrition_facts.get('fiber_g', 0)) * multiplier,
             'sugar_g': float(nutrition_facts.get('sugar_g', 0)) * multiplier,
         }
     
-    def _calculate_total_nutrition(self, enriched_foods: List[Dict[str, Any]]) -> Dict[str, float]:
+    def _calculate_total_nutrition(
+        self, enriched_foods: List[Dict[str, Any]]
+    ) -> Dict[str, float]:
         """
         Calculate total nutrition from all detected foods
         
@@ -356,9 +417,15 @@ class MealAnalysisService:
                 pass
 
         # Create meal log
+        meal_name_val = (
+            f"{meal_type.capitalize()}: "
+            f"{enriched_foods[0].get('food_name', 'Meal')}"
+            if enriched_foods
+            else meal_type
+        )
         meal_log = MealLog(
             user_id=user_id,
-            meal_name=f"{meal_type.capitalize()}: {enriched_foods[0].get('food_name', 'Meal')}" if enriched_foods else meal_type,
+            meal_name=meal_name_val,
             image_path=image_url,
             confidence=float(confidence),
             total_calories=float(total_nutrition.get('calories', 0)),
@@ -421,11 +488,13 @@ class MealAnalysisService:
         # Protein recommendations
         if protein < 15:
             recommendations.append(
-                "This meal is low in protein. Consider adding lean meat, fish, eggs, or legumes."
+                "This meal is low in protein. "
+                "Consider adding lean meat, fish, eggs, or legumes."
             )
         elif protein > 50:
             recommendations.append(
-                f"Great protein content ({protein:.0f}g)! This will help with muscle recovery and satiety."
+                f"Great protein content ({protein:.0f}g)! "
+                "This will help with muscle recovery and satiety."
             )
         
         # Macronutrient balance
@@ -437,17 +506,26 @@ class MealAnalysisService:
             
             if carbs_pct > 60:
                 recommendations.append(
-                    "This meal is carb-heavy. Consider adding more protein or healthy fats for balance."
+                    "This meal is carb-heavy. Consider adding more "
+                    "protein or healthy fats for balance."
                 )
             elif fat_pct > 40:
                 recommendations.append(
-                    "This meal is high in fats. Balance with vegetables and lean proteins."
+                    "This meal is high in fats. "
+                    "Balance with vegetables and lean proteins."
+                )
+            if protein_pct < 15:
+                recommendations.append(
+                    "This meal is low in protein. Consider adding "
+                    "some lean protein sources (chicken, eggs, tofu) "
+                    "to reach your daily targets."
                 )
         
         # Variety recommendations
         if len(detected_foods) == 1:
             recommendations.append(
-                "Try adding more variety to your meals with vegetables, whole grains, or fruits."
+                "Try adding more variety to your meals with "
+                "vegetables, whole grains, or fruits."
             )
         
         # Default positive message if no specific recommendations
@@ -459,12 +537,16 @@ class MealAnalysisService:
         
         return recommendations
     
-    def _format_detected_food(self, enriched_food: Dict[str, Any]) -> Dict[str, Any]:
+    def _format_detected_food(
+        self, enriched_food: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Format enriched food for API response"""
         return {
             'food_name': enriched_food['food_name'],
             'confidence_score': round(enriched_food['confidence_score'], 2),
-            'estimated_quantity_g': round(enriched_food['estimated_quantity_g'], 1),
+            'estimated_quantity_g': round(
+                enriched_food['estimated_quantity_g'], 1
+            ),
             'nutrition': {
                 k: round(v, 1) for k, v in enriched_food['nutrition'].items()
             },
@@ -489,7 +571,11 @@ class MealAnalysisService:
                 except ValueError:
                     pass
             
-            meal_log = self.db.query(MealLog).filter(MealLog.id == meal_log_id).first()
+            meal_log = (
+                self.db.query(MealLog)
+                .filter(MealLog.id == meal_log_id)
+                .first()
+            )
             
             if not meal_log:
                 return None
@@ -499,9 +585,18 @@ class MealAnalysisService:
             if meal_log.detected_foods:
                 for f in meal_log.detected_foods:
                     components.append({
-                        'food_name': f.get('name', f.get('food_name', 'Unknown')),
-                        'quantity_g': float(f.get('grams', f.get('estimated_quantity_g', 100))),
-                        'confidence_score': float(f.get('confidence_score', 1.0))
+                        'food_name': f.get(
+                            'name', f.get('food_name', 'Unknown')
+                        ),
+                        'quantity_g': float(
+                            f.get(
+                                'grams',
+                                f.get('estimated_quantity_g', 100)
+                            )
+                        ),
+                        'confidence_score': float(
+                            f.get('confidence_score', 1.0)
+                        )
                     })
             
             return {
@@ -509,7 +604,9 @@ class MealAnalysisService:
                 'meal_log_id': str(meal_log.id),
                 'user_id': str(meal_log.user_id),
                 'meal_type': meal_log.meal_name or "Meal",
-                'logged_at': (meal_log.created_at or datetime.datetime.utcnow()).isoformat(),
+                'logged_at': (
+                    meal_log.created_at or datetime.datetime.utcnow()
+                ).isoformat(),
                 'image_url': meal_log.image_path,
                 'analysis_confidence': float(meal_log.confidence or 0.0),
                 'total_nutrition': {
@@ -522,7 +619,9 @@ class MealAnalysisService:
             }
             
         except Exception as e:
-            logger.error(f"Failed to retrieve meal log {meal_log_id}: {str(e)}")
+            logger.error(
+                f"Failed to retrieve meal log {meal_log_id}: {str(e)}"
+            )
             return None
     
     def get_user_meal_history(
@@ -571,7 +670,12 @@ class MealAnalysisService:
             total_count = query.count()
             
             # Apply ordering and pagination
-            meal_logs = query.order_by(MealLog.created_at.desc()).limit(limit).offset(offset).all()
+            meal_logs = (
+                query.order_by(MealLog.created_at.desc())
+                .limit(limit)
+                .offset(offset)
+                .all()
+            )
             
             # Format results
             meals = []
@@ -600,7 +704,9 @@ class MealAnalysisService:
             }
             
         except Exception as e:
-            logger.error(f"Failed to retrieve meal history for user {user_id}: {str(e)}")
+            logger.error(
+                f"Failed to retrieve meal history for user {user_id}: {str(e)}"
+            )
             return {
                 'meals': [],
                 'total_count': 0,
@@ -638,9 +744,13 @@ class MealAnalysisService:
                 date = datetime.datetime.utcnow()
             
             # Get start and end of day
-            start_of_day = datetime.datetime.combine(date.date(), datetime.time.min)
-            end_of_day = datetime.datetime.combine(date.date(), datetime.time.max)
-            
+            start_of_day = datetime.datetime.combine(
+                date.date(), datetime.time.min
+            )
+            end_of_day = datetime.datetime.combine(
+                date.date(), datetime.time.max
+            )
+
             # Query meals for the day
             meal_logs = self.db.query(MealLog).filter(
                 MealLog.user_id == user_id,
@@ -669,7 +779,9 @@ class MealAnalysisService:
                 
                 meal_data = {
                     'id': str(meal_log.id),
-                    'logged_at': (meal_log.created_at or datetime.datetime.utcnow()).isoformat(),
+                    'logged_at': (
+                        meal_log.created_at or datetime.datetime.utcnow()
+                    ).isoformat(),
                     'calories': float(meal_log.total_calories or 0.0),
                     'protein_g': float(meal_log.total_protein or 0.0),
                     'carbs_g': float(meal_log.total_carbs or 0.0),
@@ -702,7 +814,9 @@ class MealAnalysisService:
             }
             
         except Exception as e:
-            logger.error(f"Failed to get daily summary for user {user_id}: {str(e)}")
+            logger.error(
+                f"Failed to get daily summary for user {user_id}: {str(e)}"
+            )
             return {
                 'date': date.date().isoformat() if date else None,
                 'total_nutrition': {
@@ -762,8 +876,10 @@ class MealAnalysisService:
             # Group by date
             daily_data = {}
             for meal_log in meal_logs:
-                date_key = (meal_log.created_at or datetime.datetime.utcnow()).date().isoformat()
-                
+                date_key = (
+                    meal_log.created_at or datetime.datetime.utcnow()
+                ).date().isoformat()
+
                 if date_key not in daily_data:
                     daily_data[date_key] = {
                         'calories': 0.0,
@@ -772,11 +888,19 @@ class MealAnalysisService:
                         'fat_g': 0.0,
                         'meal_count': 0
                     }
-                
-                daily_data[date_key]['calories'] += float(meal_log.total_calories or 0.0)
-                daily_data[date_key]['protein_g'] += float(meal_log.total_protein or 0.0)
-                daily_data[date_key]['carbs_g'] += float(meal_log.total_carbs or 0.0)
-                daily_data[date_key]['fat_g'] += float(meal_log.total_fats or 0.0)
+
+                daily_data[date_key]['calories'] += float(
+                    meal_log.total_calories or 0.0
+                )
+                daily_data[date_key]['protein_g'] += float(
+                    meal_log.total_protein or 0.0
+                )
+                daily_data[date_key]['carbs_g'] += float(
+                    meal_log.total_carbs or 0.0
+                )
+                daily_data[date_key]['fat_g'] += float(
+                    meal_log.total_fats or 0.0
+                )
                 daily_data[date_key]['meal_count'] += 1
             
             # Calculate averages
@@ -787,11 +911,31 @@ class MealAnalysisService:
             total_fat = sum(d['fat_g'] for d in daily_data.values())
             
             daily_averages = {
-                'calories': round(total_calories / num_days_with_data, 1) if num_days_with_data > 0 else 0,
-                'protein_g': round(total_protein / num_days_with_data, 1) if num_days_with_data > 0 else 0,
-                'carbs_g': round(total_carbs / num_days_with_data, 1) if num_days_with_data > 0 else 0,
-                'fat_g': round(total_fat / num_days_with_data, 1) if num_days_with_data > 0 else 0,
-                'meals_per_day': round(len(meal_logs) / num_days_with_data, 1) if num_days_with_data > 0 else 0
+                'calories': (
+                    round(total_calories / num_days_with_data, 1)
+                    if num_days_with_data > 0
+                    else 0
+                ),
+                'protein_g': (
+                    round(total_protein / num_days_with_data, 1)
+                    if num_days_with_data > 0
+                    else 0
+                ),
+                'carbs_g': (
+                    round(total_carbs / num_days_with_data, 1)
+                    if num_days_with_data > 0
+                    else 0
+                ),
+                'fat_g': (
+                    round(total_fat / num_days_with_data, 1)
+                    if num_days_with_data > 0
+                    else 0
+                ),
+                'meals_per_day': (
+                    round(len(meal_logs) / num_days_with_data, 1)
+                    if num_days_with_data > 0
+                    else 0
+                ),
             }
             
             # Calculate trends (simple comparison of first half vs second half)
@@ -799,11 +943,28 @@ class MealAnalysisService:
             mid_point = len(sorted_dates) // 2
             
             if mid_point > 0:
-                first_half_avg = sum(daily_data[d]['calories'] for d in sorted_dates[:mid_point]) / mid_point
-                second_half_avg = sum(daily_data[d]['calories'] for d in sorted_dates[mid_point:]) / (len(sorted_dates) - mid_point)
-                
-                calorie_trend = 'increasing' if second_half_avg > first_half_avg * 1.05 else \
-                               'decreasing' if second_half_avg < first_half_avg * 0.95 else 'stable'
+                first_half_avg = (
+                    sum(
+                        daily_data[d]['calories']
+                        for d in sorted_dates[:mid_point]
+                    )
+                    / mid_point
+                )
+                second_half_avg = (
+                    sum(
+                        daily_data[d]['calories']
+                        for d in sorted_dates[mid_point:]
+                    )
+                    / (len(sorted_dates) - mid_point)
+                )
+
+                calorie_trend = (
+                    'increasing'
+                    if second_half_avg > first_half_avg * 1.05
+                    else 'decreasing'
+                    if second_half_avg < first_half_avg * 0.95
+                    else 'stable'
+                )
             else:
                 calorie_trend = 'insufficient_data'
             
@@ -829,7 +990,9 @@ class MealAnalysisService:
             }
             
         except Exception as e:
-            logger.error(f"Failed to get nutrition trends for user {user_id}: {str(e)}")
+            logger.error(
+                f"Failed to get nutrition trends for user {user_id}: {str(e)}"
+            )
             return {
                 'period_days': days,
                 'total_meals': 0,

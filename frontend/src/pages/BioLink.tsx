@@ -93,8 +93,16 @@ const BioLink: React.FC = () => {
 
   const handleSave = async () => {
     try {
+      const updatedProfile = {
+        ...profile,
+        dailyCalorieGoal: macros.calories,
+        calorieGoal: macros.calories,
+        proteinGoal: macros.protein,
+        carbsGoal: macros.carbs,
+        fatsGoal: macros.fats,
+      };
       // Always save to localStorage first so app works offline
-      localStorage.setItem('smarty_profile', JSON.stringify(profile));
+      localStorage.setItem('smarty_profile', JSON.stringify(updatedProfile));
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
       // Also sync to backend (non-blocking)
@@ -254,7 +262,7 @@ const BioLink: React.FC = () => {
           <button
             onClick={handleSave}
             disabled={loading}
-            className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 text-slate-950 px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all flex items-center space-x-3 active:scale-95"
+            className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 text-slate-950 px-12 py-5 rounded-4xl font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 transition-all flex items-center space-x-3 active:scale-95"
           >
             {saved ? <Sparkles size={18} /> : <Save size={18} />}
             <span>{loading ? 'SYNCING...' : saved ? '✓ BIO-DATA SYNCED' : 'COMMIT TO NEURAL CORE'}</span>
