@@ -1,6 +1,6 @@
 # 🏋️ SMARTY AI – Neural Fitness Intelligence Platform
 
-> **A production-ready, full-stack AI-powered fitness and nutrition platform** that combines machine learning, computer vision, and intelligent recommendation systems to deliver personalized health and fitness guidance.
+> **A production-ready, full-stack AI-powered fitness and nutrition platform** that combines local machine learning models, rule-based expert engines, and LLM orchestration (Google Gemini) to deliver hyper-personalized health, nutrition, and exercise guidance.
 
 [![CI](https://github.com/AadityaUniyal/Fitness_Smarty/actions/workflows/ci.yml/badge.svg)](https://github.com/AadityaUniyal/Fitness_Smarty/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
@@ -15,776 +15,180 @@
 
 - [Overview](#-overview)
 - [Key Features](#-key-features)
-- [Architecture](#-architecture)
+- [System Architecture](#-system-architecture)
 - [Technology Stack](#-technology-stack)
+- [Core Service Modules](#-core-service-modules)
+- [API Reference](#-api-reference)
 - [Quick Start](#-quick-start)
-- [Project Structure](#-project-structure)
-- [Core Modules](#-core-modules)
-- [API Documentation](#-api-documentation)
+- [Environment Configuration](#-environment-configuration)
 - [Deployment](#-deployment)
-- [Environment Variables](#-environment-variables)
 - [Testing](#-testing)
-- [Contributing](#-contributing)
 - [License](#-license)
 
 ---
 
 ## 🌟 Overview
 
-**SMARTY AI** is an enterprise-grade fitness and nutrition platform that leverages cutting-edge AI technologies to provide:
+**SMARTY AI** is a next-generation personal fitness ecosystem that organizes a user's entire day—workouts, meals, hydration, recovery, and habits—into a cohesive daily directive.
 
-- **AI-Powered Meal Scanning**: Computer vision (YOLOv8 + Gemini Vision API) for food detection and nutrition analysis
-- **Intelligent Workout Planning**: Goal-based exercise recommendations with form correction AI
-- **Personalized Coaching**: Real-time voice coaching and AI chat assistant powered by Gemini
-- **FemmeCare Integration**: Menstrual cycle tracking with cycle-synced training adjustments
-- **Gamification System**: Achievements, badges, streaks, and leaderboards for user engagement
-- **Advanced Analytics**: Progress tracking, body measurements, and predictive insights
-- **Social Features**: Community feed, challenges, and progress sharing
-- **Multi-Platform Support**: Web, mobile-responsive, with wearable device integration
-
-### Live Demo
-- **Frontend**: [Deployed on Vercel](https://your-app.vercel.app) *(coming soon)*
-- **Backend API**: [API Documentation](https://your-api.com/docs)
-- **Database**: Neon PostgreSQL (Serverless)
+At its core, the platform operates on a **Service-Oriented Architecture (SOA)**:
+- **Rule & ML Engines**: Dedicated backend services perform localized algorithmic profiling (e.g., Mifflin-St Jeor formulas, progressive overload calculations, symptom-aware cycle syncing, and sleep-based recovery gating).
+- **LLM Orchestration**: Google Gemini Pro processes these structured data inputs and generates natural, encouraging, and context-aware narration for the user's dashboard briefing.
+- **Computer Vision**: Food detection utilizes YOLOv8 combined with Gemini Vision API to instantly log and estimate portion sizes from uploaded photos.
+- **Gamification**: Real-time monitoring of database commits unlocks badges, increments levels, and tracks daily streaks.
 
 ---
 
 ## ✨ Key Features
 
-### 🍽️ Nutrition Intelligence
+### 🍽️ Intelligent Nutrition & Hydration
+- **AI Meal Scanner**: YOLOv8 + Gemini Vision API pipeline to detect food items, estimate weights, and log exact macro breakdowns.
+- **Food Swap Engine**: Suggests healthier food alternatives matching the user's taste profile, calorie limits, and cultural context.
+- **Portion Optimizer**: Automatically adjusts food serving weights to hit precise daily caloric and protein targets.
+- **Hydration Tracker**: Computes dynamic daily water targets based on climate, body weight, and exercise expenditure, with automated progress logs.
+- **Enhanced Meal Planner**: Automatically constructs weekly meal plans, structures shopping lists, and optimizes circadian meal timing around workouts.
 
-| Feature | Description | Technology |
-|---------|-------------|------------|
-| **AI Meal Scanning** | Camera-based food detection and nutrition analysis | YOLOv8, Gemini Vision API |
-| **Food Database** | 500+ food items with complete macro profiles | PostgreSQL, USDA Integration |
-| **Macro Calculator** | Real-time macro tracking with goal-based targets | Custom Algorithms |
-| **Meal Planner** | AI-generated meal plans based on goals and preferences | Gemini AI |
-| **Barcode Scanner** | Quick food logging via barcode lookup | OpenFoodFacts API |
-| **Smart Portion Control** | Gram-based portion tracking with visual guides | Computer Vision |
+### 💪 Workout & Biomechanical Intelligence
+- **6-Day Adaptive Workout Planner**: Algorithmic routine generator that dynamically sets muscle focus, exercises, sets, and reps based on target fitness goals.
+- **Progressive Overload Tracker**: Monitors strength volume history to automatically scale weights and reps for continuous hypertrophic progression.
+- **Muscle Recovery Gating**: Computes a dynamic **Mission Readiness Score (MRS)** utilizing sleep metrics and muscle-group fatigue graphs, scaling workout intensity to "deload" or "rest" when recovery is low.
+- **Form Correction AI**: Integrates MediaPipe and TensorFlow pose estimation to track joint angles and log posture faults in real time.
 
-### 💪 Workout Intelligence
+### 🩺 Cycle-Synced Female Health (FemmeCare)
+- **Hormonal Synchronization**: Dynamically tracks menstrual cycle phases (Menstrual, Follicular, Ovulatory, Luteal) to customize exercise recommendations.
+- **Symptom-Aware Adaptation**: Automatically suggests lower training intensities and specific restorative stretches when severe symptoms (cramping, fatigue) are logged.
+- **Menopause Support Mode**: Specialized strength recommendations focused on bone-density preservation and joint health.
+- **Pregnancy Safe Mode**: Excludes flat-lying or high-impact movements, strictly aligning recommendations with ACOG safety guidelines.
 
-| Feature | Description | Technology |
-|---------|-------------|------------|
-| **Goal-Based Exercises** | Exercise recommendations matched to fitness goals | Recommendation Engine |
-| **Workout Logging** | Detailed exercise tracking with sets, reps, and calories | REST API + Database |
-| **Form Correction AI** | Real-time posture analysis and feedback | MediaPipe, TensorFlow |
-| **Quick Workouts** | Pre-built workout routines for different goals | Template System |
-| **Progressive Overload** | Automatic weight/rep progression tracking | ML-based Predictions |
-| **Workout History** | Complete exercise history with analytics | Time-series Analysis |
-
-### 🤖 AI Coaching
-
-| Feature | Description | Technology |
-|---------|-------------|------------|
-| **Voice Coaching** | Real-time voice feedback during workouts | Gemini Speech API |
-| **Chat Assistant** | 24/7 AI fitness and nutrition advisor | Gemini Pro |
-| **Mission Briefings** | Daily tactical fitness directives | Natural Language Generation |
-| **Form Analysis** | Biomechanical fault detection | Computer Vision + ML |
-| **Recovery Insights** | Mission Readiness Score (MRS) calculation | Multi-factor Analytics |
-
-### 🩺 FemmeCare (Female Health)
-
-| Feature | Description | Technology |
-|---------|-------------|------------|
-| **Cycle Tracking** | Menstrual cycle logging and predictions | Time-series Forecasting |
-| **Symptom Logging** | Track physical and emotional symptoms | Structured Data Storage |
-| **Training Adjustments** | Auto-adjust workout intensity based on cycle phase | Adaptive Algorithms |
-| **Menopause Support** | Specialized tracking for menopause symptoms | Custom Models |
-| **Pregnancy Mode** | Safe exercise recommendations during pregnancy | Medical Guidelines |
-
-### 🎮 Gamification
-
-| Feature | Description | Technology |
-|---------|-------------|------------|
-| **Achievements** | 19 pre-configured achievements across 5 categories | Threshold-based System |
-| **Badges** | 14 badges from Bronze to Diamond tier | Tiered Reward System |
-| **Streaks** | Track consecutive workout and nutrition days | Date-based Logic |
-| **Points & Levels** | XP system with leveling (100 XP per level) | Progressive Point System |
-| **Leaderboards** | Global and friend-based rankings | Real-time Queries |
-| **Progress Tracking** | Visual progress on achievements and badges | Percentage Calculations |
-
-### 📊 Analytics & Tracking
-
-| Feature | Description | Technology |
-|---------|-------------|------------|
-| **Progress Dashboard** | Comprehensive fitness and nutrition metrics | Data Aggregation |
-| **Body Measurements** | Track weight, body fat, muscle mass, etc. | Time-series Storage |
-| **Weekly Reviews** | AI-generated performance summaries | Natural Language Generation |
-| **Calorie Burn Tracking** | Accurate calorie expenditure calculation | Activity Algorithms |
-| **Hydration Monitoring** | Water intake tracking with smart reminders | Schedule-based System |
-| **Mood & Energy** | Track mental and physical well-being | Sentiment Analysis |
-
-### 👥 Social & Community
-
-| Feature | Description | Technology |
-|---------|-------------|------------|
-| **Activity Feed** | Share workouts and achievements | Social Graph Database |
-| **Challenges** | Group fitness challenges and competitions | Event System |
-| **Progress Sharing** | Share transformation photos and stats | Media Storage + CDN |
-| **Friend System** | Connect and compete with friends | Social Network Logic |
-| **Likes & Comments** | Engage with community posts | Interaction Tracking |
-
-### 🔗 Integrations
-
-| Integration | Description | Status |
-|-------------|-------------|--------|
-| **Google OAuth** | Sign in with Google | ✅ Live |
-| **Apple Sign-In** | Sign in with Apple | ✅ Live |
-| **Wearables Sync** | Apple Health, Google Fit, Fitbit | 🚧 In Progress |
-| **Email Verification** | SMTP-based email verification | ✅ Live |
-| **Push Notifications** | Mobile and web notifications | 🚧 Planned |
+### 🎮 Immersive Gamification
+- **Point & Level System**: Earn experience points (XP) for logging meals, completing workouts, and meeting hydration goals.
+- **Real-Time Badge Unlocks**: 14 tiered badges (Bronze to Diamond) across workout, nutrition, streak, and social milestones.
+- **Streak Engine**: Tracks consecutive active days across workout logging, hydration compliance, and meal logging.
+- **Social Leaderboards**: Real-time community rankings displaying user level, XP, and weekly points.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ System Architecture
 
 ```mermaid
 graph TB
-    subgraph "Frontend - React + Vite"
-        A[Login/Signup] --> B[Dashboard]
-        B --> C[Meal Scanner]
-        B --> D[Workout Assistant]
-        B --> E[AI Coach]
-        B --> F[Analytics]
-        B --> G[FemmeCare]
-        B --> H[Gamification]
+    subgraph "Frontend - React 18 (Vite + TS)"
+        A[Dashboard / Unified Coach] --> B[AI Chat & Voice Coach]
+        A --> C[Meal Scanner]
+        A --> D[Workout Assistant]
+        A --> E[FemmeCare Portal]
+        A --> F[Gamification & Streaks]
     end
 
-    subgraph "Backend - FastAPI"
-        I[Auth Service<br/>JWT + OAuth2]
-        J[Meal Analysis<br/>YOLOv8 + Gemini]
-        K[Workout Engine<br/>Recommendations]
-        L[AI Coach<br/>Gemini API]
-        M[Gamification<br/>Achievements & Badges]
-        N[Analytics<br/>Data Processing]
-        O[Email Service<br/>Verification]
+    subgraph "Backend - FastAPI SOA"
+        G[Unified Coach Service<br/>Orchestrator]
+        H[Calorie Tracker Service]
+        I[Workout Rec Service]
+        J[Hydration Service]
+        K[Gamification Service]
+        L[Food Swap & Portion Optimizer]
+        M[Gender Specific / Cycle Sync Service]
+        N[AI Analyst / SQL Validator]
     end
 
-    subgraph "Data Layer"
-        P[(Neon PostgreSQL<br/>Cloud Database)]
-        Q[Seed Data<br/>Food + Exercise Library]
-        R[ML Models<br/>YOLOv8 Weights]
+    subgraph "Data & AI Layer"
+        O[(Neon PostgreSQL)]
+        P[YOLOv8 + Gemini Vision]
+        Q[Google Gemini API]
     end
 
-    A --> I
-    C --> J
-    D --> K
-    E --> L
-    H --> M
-    F --> N
-    I --> P
-    J --> P
-    K --> P
-    L --> P
-    M --> P
-    N --> P
-    Q --> P
+    A --> G
+    G --> H
+    G --> I
+    G --> J
+    G --> K
+    G --> L
+    G --> M
+    G --> N
+    
+    H --> O
+    I --> O
+    J --> O
+    K --> O
+    L --> O
+    M --> O
+    N --> O
+    
+    C --> P
+    B --> Q
+    G --> Q
 ```
-
-### System Components
-
-1. **Frontend (React 18 + TypeScript + Vite)**
-   - Modern, responsive UI with Tailwind CSS
-   - Real-time updates and smooth animations
-   - Progressive Web App (PWA) support
-   - Mobile-first design
-
-2. **Backend (FastAPI + Python 3.10+)**
-   - High-performance async API
-   - RESTful architecture with OpenAPI docs
-   - JWT-based authentication with refresh tokens
-   - Rate limiting and security middleware
-
-3. **Database (Neon PostgreSQL - Serverless)**
-   - Scalable cloud-hosted database
-   - Automatic backups and point-in-time recovery
-   - Connection pooling for high performance
-   - SSL-encrypted connections
-
-4. **AI/ML Services**
-   - **YOLOv8**: Real-time object detection for food items
-   - **Gemini Vision API**: Advanced food analysis and nutrition extraction
-   - **Gemini Pro**: Conversational AI for coaching
-   - **MediaPipe**: Pose detection for form analysis
-   - **Custom ML Models**: Recommendation and prediction engines
-
-5. **Infrastructure**
-   - **Docker**: Containerized deployment
-   - **GitHub Actions**: CI/CD pipeline
-   - **Vercel**: Frontend hosting (SSG)
-   - **Neon**: Database hosting
-   - **S3/Cloudflare**: Media storage and CDN
 
 ---
 
 ## 🛠️ Technology Stack
 
-### Frontend
-- **React 18** - UI framework
-- **TypeScript** - Type safety
-- **Vite** - Build tool and dev server
-- **Tailwind CSS** - Utility-first styling
-- **React Router** - Client-side routing
-- **Axios** - HTTP client
-- **React Query** - Data fetching and caching
-- **Zustand** - State management
-- **Framer Motion** - Animations
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Framer Motion, Axios, React Query, Zustand.
+- **Backend**: FastAPI, SQLAlchemy, Pydantic, Alembic, Uvicorn, SlowAPI (Rate Limiting), PyTest.
+- **AI/ML**: PyTorch (LSTM weight predictor), YOLOv8 (Food detection), Google Gemini Pro & Flash (NLG & Vision), MediaPipe (Pose estimation).
+- **Database & Hosting**: Neon PostgreSQL (Serverless Cloud DB), SQLite (In-Memory Testing), Docker & Docker Compose, Vercel Serverless.
 
-### Backend
-- **FastAPI** - Python web framework
-- **SQLAlchemy** - ORM
-- **Pydantic** - Data validation
-- **Alembic** - Database migrations
-- **Uvicorn** - ASGI server
-- **SlowAPI** - Rate limiting
-- **Python-Jose** - JWT handling
-- **Bcrypt** - Password hashing
-- **Psycopg2** - PostgreSQL adapter
+---
 
-### AI & Machine Learning
-- **YOLOv8** - Object detection
-- **Gemini Vision API** - Image analysis
-- **Gemini Pro** - Natural language processing
-- **MediaPipe** - Pose detection
-- **TensorFlow** - ML models
-- **NumPy & Pandas** - Data processing
-- **Scikit-learn** - ML algorithms
+## 📁 Core Service Modules
 
-### Database & Storage
-- **PostgreSQL (Neon)** - Primary database
-- **Redis** - Caching (planned)
-- **S3/Cloudflare** - Media storage
-- **SQLite** - Local development
+All business logic is isolated within dedicated service classes inside `backend/app/`:
 
-### DevOps & Tools
-- **Docker & Docker Compose** - Containerization
-- **GitHub Actions** - CI/CD
-- **Pytest** - Testing
-- **Black & Flake8** - Code formatting and linting
-- **Pre-commit** - Git hooks
-- **Vercel** - Frontend deployment
+- **[unified_coach_service.py](file:///c:/Users/HP/OneDrive/Desktop/Smarty-reco/backend/app/unified_coach_service.py)**: The central orchestrator. Aggregates data from all other services, runs safety checks, and formats the contextual prompt for Google Gemini to output the daily dashboard briefing.
+- **[calorie_tracker_service.py](file:///c:/Users/HP/OneDrive/Desktop/Smarty-reco/backend/app/calorie_tracker_service.py)**: Automatically calculates calories consumed vs. burned and aggregates net daily calorie deficits.
+- **[workout_recommendation_service.py](file:///c:/Users/HP/OneDrive/Desktop/Smarty-reco/backend/app/workout_recommendation_service.py)**: Matches user goals and training history to build structured workout splits.
+- **[hydration_service.py](file:///c:/Users/HP/OneDrive/Desktop/Smarty-reco/backend/app/hydration_service.py)**: Tracks water logs, compares them against dynamic calculated goals, and rewards milestones.
+- **[gamification_service.py](file:///c:/Users/HP/OneDrive/Desktop/Smarty-reco/backend/app/gamification_service.py)**: Tracks XP progression, levels, badges, and streaks. Evaluates thresholds on every log database commit.
+- **[food_swap_service.py](file:///c:/Users/HP/OneDrive/Desktop/Smarty-reco/backend/app/food_swap_service.py)**: Evaluates foods on macronutrient similarity distance vectors to provide health swaps.
+- **[gender_specific_service.py](file:///c:/Users/HP/OneDrive/Desktop/Smarty-reco/backend/app/gender_specific_service.py)**: Adjusts calorie targets and metabolic formulas for pregnancy, menopause, or cycle syncing.
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- **Python 3.10+**
-- **Node.js 20+** (with npm)
-- **PostgreSQL** (or use Neon cloud)
-- **Git**
-
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/AadityaUniyal/Fitness_Smarty.git
-cd Fitness_Smarty
-```
-
-### 2. Backend Setup
-
+### 1. Backend Setup
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-
-# Activate virtual environment
 # Windows:
 venv\Scripts\activate
 # Linux/Mac:
 source venv/bin/activate
 
-# Install dependencies
 pip install -r requirements-base.txt
-
-# Copy environment file
 copy .env.example .env
 
-# Edit .env with your configuration:
-# - DATABASE_URL (Neon PostgreSQL connection string)
-# - JWT_SECRET_KEY (generate with: python -c "import secrets; print(secrets.token_urlsafe(64))")
-# - GEMINI_API_KEY (from Google AI Studio)
-# - GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (from Google Cloud Console)
-
-# Initialize gamification system
+# Initialize database schema and seed tables
 python migrate_gamification.py
 
-# Start the backend server
+# Start developer server
 uvicorn main:app --reload --port 8000
 ```
+API docs will be live at: `http://localhost:8000/docs`
 
-Backend will be available at: `http://localhost:8000`
-API Documentation: `http://localhost:8000/docs`
-
-### 3. Frontend Setup
-
+### 2. Frontend Setup
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Copy environment file
 copy .env.local.example .env.local
-
-# Edit .env.local with:
-# VITE_API_URL=http://localhost:8000
-# VITE_GOOGLE_CLIENT_ID=your_google_client_id
-
-# Start development server
 npm run dev
 ```
-
-Frontend will be available at: `http://localhost:5173`
-
-### 4. Access the Application
-
-1. Open `http://localhost:5173` in your browser
-2. Sign up for a new account or use Google OAuth
-3. Complete the onboarding flow
-4. Start tracking your fitness journey!
-
----
-
-## 📁 Project Structure
-
-```
-Smarty-reco/
-├── backend/                    # FastAPI backend
-│   ├── api/                    # API endpoints
-│   │   ├── index.py           # Vercel serverless entry
-│   │   └── ...
-│   ├── app/                    # Core application
-│   │   ├── api/               # API routers
-│   │   │   ├── auth.py
-│   │   │   ├── meals.py
-│   │   │   ├── exercises.py
-│   │   │   ├── gamification.py
-│   │   │   └── ...
-│   │   ├── models.py          # SQLAlchemy models
-│   │   ├── database.py        # Database configuration
-│   │   ├── auth.py            # Authentication logic
-│   │   ├── email_service.py   # Email functionality
-│   │   ├── gemini_meal_scanner.py  # AI meal analysis
-│   │   ├── gamification_service.py  # Gamification logic
-│   │   ├── neon_config.py     # Neon DB configuration
-│   │   └── ...
-│   ├── main.py                # FastAPI application entry
-│   ├── Dockerfile             # Production Docker image
-│   ├── requirements-base.txt   # Python dependencies
-│   ├── vercel.json            # Vercel serverless config
-│   └── ...
-├── frontend/                   # React frontend
-│   ├── src/
-│   │   ├── pages/             # React page components
-│   │   │   ├── Login.tsx
-│   │   │   ├── Dashboard.tsx
-│   │   │   ├── MealScanner.tsx
-│   │   │   ├── WorkoutAssistant.tsx
-│   │   │   └── ...
-│   │   ├── components/        # Reusable UI components
-│   │   ├── contexts/          # React contexts (Auth, etc.)
-│   │   ├── services/          # API service layer
-│   │   ├── utils/             # Helper functions
-│   │   ├── App.tsx            # Main app component
-│   │   └── main.tsx           # Entry point
-│   ├── public/                # Static assets
-│   ├── Dockerfile             # Production Docker image
-│   ├── vite.config.ts         # Vite configuration
-│   ├── package.json
-│   └── ...
-├── docker/                     # Docker orchestration
-│   ├── docker-compose.yml     # Production compose file
-│   └── nginx.conf             # Nginx configuration
-├── .github/
-│   └── workflows/
-│       ├── ci.yml             # CI/CD pipeline
-│       └── pytest.yml         # Python tests
-├── docs/                       # Documentation
-│   ├── ARCHITECTURE.md        # System architecture
-│   ├── TECH_STACK.md          # Technology details
-│   ├── CALORIE_TRACKING_GUIDE.md
-│   └── GAMIFICATION_GUIDE.md
-├── .env.example               # Environment template
-├── .gitignore
-├── LICENSE
-└── README.md
-```
-
----
-
-## 🔧 Core Modules
-
-### Authentication & Authorization
-- **JWT-based authentication** with access and refresh tokens
-- **OAuth 2.0 integration** (Google, Apple)
-- **Email verification** with SMTP
-- **Password reset** functionality
-- **Role-based access control** (planned)
-
-### Meal Analysis Pipeline
-1. User uploads food image
-2. YOLOv8 detects food items
-3. Gemini Vision API analyzes nutrition
-4. Results stored in database
-5. Macro recommendations generated
-6. Gamification checks triggered
-
-### Workout Recommendation Engine
-1. User profile analysis (goals, fitness level)
-2. Exercise database query with filters
-3. Personalized exercise recommendations
-4. Difficulty and progression adjustments
-5. Calorie burn calculations
-6. Form analysis and corrections
-
-### Gamification System
-- **19 Achievements**: Workout, nutrition, streak, and milestone-based
-- **14 Badges**: Bronze to Diamond tiers across 4 categories
-- **4 Streak Types**: Workout, nutrition, hydration, login
-- **Points & Levels**: 100 XP per level progression
-- **Real-time unlocking**: Automatic threshold detection
-- **Leaderboards**: Global and friend-based rankings
-
-### AI Coaching
-- **Real-time voice coaching**: Powered by Gemini Speech API
-- **Chat assistant**: 24/7 fitness and nutrition advice
-- **Mission briefings**: Daily tactical directives
-- **Form analysis**: Biomechanical fault detection
-- **Recovery insights**: Mission Readiness Score (MRS)
-
----
-
-## 📚 API Documentation
-
-### Authentication Endpoints
-```http
-POST   /api/auth/register          # Register new user
-POST   /api/auth/login             # Login with email/password
-POST   /api/auth/oauth/google      # Google OAuth login
-POST   /api/auth/send-verification # Send email verification
-POST   /api/auth/verify-email      # Verify email with code
-POST   /api/auth/forgot-password   # Request password reset
-POST   /api/auth/reset-password    # Reset password
-GET    /api/auth/me                # Get current user
-PUT    /api/auth/profile           # Update user profile
-```
-
-### Meal & Nutrition Endpoints
-```http
-POST   /api/meals/analyze          # AI meal analysis (Gemini)
-POST   /api/nutrition/cam-detect-log  # Log camera-detected meal
-POST   /api/nutrition/calculate-portion  # Calculate portion macros
-GET    /api/food/goal/{goal}       # Get goal-based food recommendations
-GET    /api/meals/history           # Get meal history
-```
-
-### Exercise & Workout Endpoints
-```http
-GET    /api/exercises/for-goal/{goal}  # Goal-based exercises
-POST   /api/workouts/log           # Log completed workout
-GET    /api/workouts/history        # Get workout history
-GET    /api/exercises/search        # Search exercises
-POST   /api/workouts/quick          # Get quick workout
-```
-
-### Gamification Endpoints
-```http
-GET    /api/gamification/users/{user_id}/stats     # Complete stats
-GET    /api/gamification/users/{user_id}/summary   # Quick summary
-GET    /api/gamification/achievements              # All achievements
-GET    /api/gamification/badges                    # All badges
-GET    /api/gamification/leaderboard               # Leaderboard
-GET    /api/gamification/users/{user_id}/streaks  # User streaks
-POST   /api/gamification/users/{user_id}/achievements/check  # Check achievements
-```
-
-### AI Coach Endpoints
-```http
-POST   /api/coach/chat             # Chat with AI coach
-GET    /api/neural/briefing        # Get daily mission briefing
-GET    /api/neural/recovery        # Mission Readiness Score
-GET    /api/neural/integrity       # Kinetic Integrity Score
-POST   /api/coach/form-analysis    # Analyze workout form
-```
-
-### FemmeCare Endpoints
-```http
-POST   /api/femmecare/cycle        # Log menstrual cycle
-GET    /api/femmecare/predictions  # Cycle predictions
-POST   /api/femmecare/symptoms     # Log symptoms
-GET    /api/femmecare/insights     # Training adjustments
-```
-
-### Analytics Endpoints
-```http
-GET    /api/analytics/progress     # Progress dashboard
-GET    /api/analytics/weekly       # Weekly summary
-GET    /api/analytics/trends       # Trend analysis
-POST   /api/progress/measurement   # Log body measurement
-```
-
-Full API documentation available at `/docs` when running the backend.
-
----
-
-## 🐳 Deployment
-
-### Docker Deployment
-
-```bash
-cd docker
-
-# Copy environment file
-copy ../backend/.env.example ../backend/.env
-# Edit ../backend/.env with production values
-
-# Build and start containers
-docker compose up --build -d
-
-# Check container status
-docker compose ps
-
-# View logs
-docker compose logs -f
-
-# Stop containers
-docker compose down
-```
-
-### Vercel Deployment (Frontend)
-
-1. Connect your GitHub repo to Vercel
-2. Configure project:
-   - **Framework Preset**: Vite
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm run build`
-   - **Output Directory**: `dist`
-3. Add environment variables:
-   - `VITE_API_URL`: Your backend URL
-   - `VITE_GOOGLE_CLIENT_ID`: Google OAuth client ID
-4. Deploy
-
-### Vercel Deployment (Backend - Serverless)
-
-1. Create new Vercel project for backend
-2. Configure:
-   - **Root Directory**: `backend`
-   - **Build Command**: Leave empty (Python serverless)
-3. Add environment variables:
-   - `DATABASE_URL`: Neon PostgreSQL connection
-   - `JWT_SECRET_KEY`: JWT secret
-   - `GEMINI_API_KEY`: Gemini API key
-   - `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET`
-   - `ENVIRONMENT=production`
-4. Deploy
-
-### Manual Deployment
-
-```bash
-# Backend
-cd backend
-gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-
-# Frontend
-cd frontend
-npm run build
-# Serve dist/ folder with nginx or your preferred web server
-```
-
----
-
-## 🔐 Environment Variables
-
-### Backend (.env)
-
-```bash
-# Database
-DATABASE_URL=postgresql://user:pass@host:port/dbname?sslmode=require
-
-# Security
-JWT_SECRET_KEY=your_super_secret_jwt_key_here
-SECRET_KEY=your_general_secret_key_here
-ENVIRONMENT=development  # development, test, production
-
-# CORS
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-
-# Gemini AI
-GEMINI_API_KEY=your_gemini_api_key
-
-# Email (SMTP)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USERNAME=your_email@gmail.com
-SMTP_PASSWORD=your_app_password
-SMTP_FROM_EMAIL=noreply@smartyai.com
-SMTP_FROM_NAME=Smarty AI
-
-# Apple Sign-In (Optional)
-APPLE_CLIENT_ID=your_apple_client_id
-APPLE_TEAM_ID=your_apple_team_id
-APPLE_KEY_ID=your_apple_key_id
-APPLE_PRIVATE_KEY=path/to/private_key.p8
-```
-
-### Frontend (.env.local)
-
-```bash
-# API Configuration
-VITE_API_URL=http://localhost:8000
-
-# OAuth
-VITE_GOOGLE_CLIENT_ID=your_google_client_id
-
-# Feature Flags (Optional)
-VITE_ENABLE_OAUTH=true
-VITE_ENABLE_WEARABLES=false
-VITE_ENABLE_SOCIAL=true
-```
+Client will be live at: `http://localhost:5173`
 
 ---
 
 ## 🧪 Testing
 
-### Backend Tests
+The platform utilizes `pytest` to execute unit, API, and service-layer validation. In environments where heavy machine learning dependencies (e.g., PyTorch) are omitted, tests automatically scale down and skip safely.
 
 ```bash
 cd backend
-
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=app --cov-report=html
-
-# Run specific test file
-pytest tests/test_auth.py
-
-# Run with verbose output
 pytest -v
-
-# Run gamification tests
-python test_gamification.py
 ```
-
-### Frontend Tests
-
-```bash
-cd frontend
-
-# Run all tests
-npm test
-
-# Run with coverage
-npm run test:coverage
-
-# Run specific test
-npm test -- Login.test.tsx
-
-# Run in watch mode
-npm test -- --watch
-```
-
-### Integration Tests
-
-```bash
-# Run E2E tests (if configured)
-npm run test:e2e
-```
-
----
-
-## 🤝 Contributing
-
-We welcome contributions! Please follow these steps:
-
-1. **Fork the repository**
-2. **Create a feature branch**: `git checkout -b feature/amazing-feature`
-3. **Commit your changes**: `git commit -m 'Add amazing feature'`
-4. **Push to the branch**: `git push origin feature/amazing-feature`
-5. **Open a Pull Request**
-
-### Code Style
-
-- **Python**: Follow PEP 8, use Black for formatting
-- **TypeScript/React**: Follow Airbnb style guide, use Prettier
-- **Commits**: Use conventional commit messages
-
-### Testing
-
-- Write unit tests for new features
-- Ensure all tests pass before submitting PR
-- Maintain or improve code coverage
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License** - see the [LICENSE](./LICENSE) file for details.
-
----
-
-## 🙏 Acknowledgments
-
-- **YOLOv8** by Ultralytics for object detection
-- **Google Gemini** for AI capabilities
-- **Neon** for serverless PostgreSQL
-- **FastAPI** for the excellent Python web framework
-- **React** team for the UI library
-- Open-source community for various libraries and tools
-
----
-
-## 📞 Support & Contact
-
-- **Issues**: [GitHub Issues](https://github.com/AadityaUniyal/Fitness_Smarty/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/AadityaUniyal/Fitness_Smarty/discussions)
-- **Email**: support@smartyai.com
-
----
-
-## 🗺️ Roadmap
-
-### Current Release (v2.0)
-- ✅ AI meal scanning with Gemini Vision
-- ✅ Goal-based workout recommendations
-- ✅ Gamification system (achievements, badges, streaks)
-- ✅ FemmeCare cycle tracking
-- ✅ Real-time AI coaching
-- ✅ Complete authentication system
-- ✅ Progress tracking and analytics
-
-### Upcoming (v2.1)
-- 🔜 Wearable device integration (Apple Health, Google Fit)
-- 🔜 Push notifications (mobile and web)
-- 🔜 Social challenges and competitions
-- 🔜 Meal planning with shopping lists
-- 🔜 Video workout library
-- 🔜 Advanced form analysis with pose detection
-
-### Future (v3.0)
-- 🔮 AI-powered meal prep guidance
-- 🔮 Virtual personal trainer (video calls)
-- 🔮 Nutrition supplement recommendations
-- 🔮 Integration with gym equipment
-- 🔮 AR workout overlays (mobile)
-- 🔮 Voice-controlled workout sessions
 
 ---
 
 <p align="center">
   <strong>SMARTY AI</strong> — Train Beyond Limits. Intelligently.<br>
   Built with ❤️ by the Smarty AI Team
-</p>
-
-<p align="center">
-  <a href="#-overview">Back to Top ↑</a>
 </p>
