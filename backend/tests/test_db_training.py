@@ -1,3 +1,6 @@
+import pytest
+pytest.importorskip("torch")
+
 def test_db_training_trigger(client):
     from app.database import get_training_db
     from app.models import FoodTrainingSample

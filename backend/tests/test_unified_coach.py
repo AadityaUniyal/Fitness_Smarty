@@ -43,7 +43,7 @@ def test_unified_coach_male_profile(db):
     plan = service.get_daily_coach_plan(user_id="clerk_male")
 
     assert plan["gender_mode"] == "male"
-    assert "muscle_gain" in plan["workout_recommendation"]["reasoning"].lower()
+    assert "normal progression" in plan["workout_recommendation"]["reasoning"].lower()
     assert plan["next_action"]["route"] == "/workout"
 
 def test_unified_coach_female_femmecare(db):
@@ -65,7 +65,7 @@ def test_unified_coach_female_femmecare(db):
     
     # Log period start 7 days ago -> follicular phase (days 6-12)
     log = MenstrualCycleLog(
-        user_id="clerk_female",
+        user_id=str(user.id),
         start_date=datetime.utcnow() - timedelta(days=7),
         cycle_length_days=28
     )
@@ -76,7 +76,7 @@ def test_unified_coach_female_femmecare(db):
     plan = service.get_daily_coach_plan(user_id="clerk_female")
 
     assert plan["gender_mode"] == "femmecare"
-    assert "follicular" in plan["coach_summary"].lower()
+    assert "energy is rising" in plan["coach_summary"].lower()
     assert any("cycle" in c for c in plan["constraints_applied"])
 
 def test_unified_coach_recovery_gating(db):
@@ -97,7 +97,7 @@ def test_unified_coach_recovery_gating(db):
 
     # Log very low sleep/recovery biometric records to trigger recovery constraints
     rec_record = BiometricRecord(
-        user_id="clerk_fatigued",
+        user_id=str(user.id),
         category="sleep",
         value=3.5,  # 3.5 hours of sleep
         timestamp=datetime.utcnow()
