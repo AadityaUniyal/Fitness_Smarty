@@ -41,12 +41,12 @@
 - **Active Environment File**: `c:\Users\HP\OneDrive\Desktop\Smarty-reco\backend\.env`
   - **Database Connection (`DATABASE_URL`)**: Configured to Neon PostgreSQL.
     ```env
-    DATABASE_URL=postgresql://neondb_owner:npg_u8mPOinQJwt0@ep-spring-forest-ae89a0gy-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
+    DATABASE_URL=postgresql://neondb_owner:REDACTED@ep-spring-forest-ae89a0gy-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require
     ```
     *Note: The database connectivity check inside `verify_setup.py` succeeded (`[OK] Database connection successful`), meaning this database URL is valid and reachable.*
   - **Gemini API Key (`GEMINI_API_KEY`)**:
     ```env
-    GEMINI_API_KEY=AIzaSyCLQ6tK5AWsMpGvpPPvv24BX0ECyz9Kzoc
+    GEMINI_API_KEY=REDACTED
     ```
   - **CORS Origins (`CORS_ORIGINS`)**:
     ```env
