@@ -4,6 +4,7 @@ Validates Requirements 1.3
 """
 
 import re
+import os
 from pathlib import Path
 from typing import Dict, List, Set, Optional, Tuple
 from dataclasses import dataclass

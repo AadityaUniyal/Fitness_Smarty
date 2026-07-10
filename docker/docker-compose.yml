@@ -1,16 +1,30 @@
+# ============================================================
+# Smarty AI – Docker Compose (Production)
+# ============================================================
+# Usage:
+#   cp ../backend/.env.example ../backend/.env  (fill in real values)
+#   docker compose up --build -d
+# ============================================================
+
 services:
   backend:
-    build: ../backend
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
     env_file:
       - ../backend/.env
     environment:
       - ENVIRONMENT=${ENVIRONMENT:-production}
-      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/smarty_neural_core.db}
-      - SQLITE_FALLBACK_URL=sqlite:////app/data/smarty_neural_core.db
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - SECRET_KEY=${SECRET_KEY:-${JWT_SECRET_KEY}}
+      - CORS_ORIGINS=${CORS_ORIGINS:-https://your-app.vercel.app}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     volumes:
-      - backend_data:/app/data
       - backend_uploads:/app/uploads
     restart: unless-stopped
     healthcheck:
@@ -18,15 +32,20 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 40s
 
   frontend:
-    build: ../frontend
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_URL=${VITE_API_URL:-http://backend:8000}
     ports:
       - "3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  backend_data:
   backend_uploads:

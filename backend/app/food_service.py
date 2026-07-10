@@ -249,26 +249,24 @@ class FoodSearchEngine:
         Returns:
             List of Food objects matching criteria
         """
-        query_obj = self.db.query(Food).join(NutritionFact)
+        query_obj = self.db.query(Food)
         
         # Apply text search
         if query:
-            query_obj = query_obj.filter(
-                or_(
-                    Food.name.ilike(f"%{query}%"),
-                    Food.brand.ilike(f"%{query}%")
-                )
-            )
+            filters = [Food.name.ilike(f"%{query}%")]
+            if hasattr(Food, "brand"):
+                filters.append(Food.brand.ilike(f"%{query}%"))
+            query_obj = query_obj.filter(or_(*filters))
         
-        # Apply nutrition filters
+        # Apply nutrition filters directly to Food table columns
         if max_calories is not None:
-            query_obj = query_obj.filter(NutritionFact.calories_per_100g <= max_calories)
+            query_obj = query_obj.filter(Food.calories <= max_calories)
         if min_protein is not None:
-            query_obj = query_obj.filter(NutritionFact.protein_g >= min_protein)
+            query_obj = query_obj.filter(Food.protein >= min_protein)
         if max_carbs is not None:
-            query_obj = query_obj.filter(NutritionFact.carbs_g <= max_carbs)
+            query_obj = query_obj.filter(Food.carbs <= max_carbs)
         if max_fat is not None:
-            query_obj = query_obj.filter(NutritionFact.fat_g <= max_fat)
+            query_obj = query_obj.filter(Food.fats <= max_fat)
         
         return query_obj.limit(limit).all()
 
@@ -307,38 +305,30 @@ class FoodDatabaseService:
             raise FoodValidationError(f"Nutrition validation failed: {'; '.join(errors)}")
         
         # Create food entry
-        food = Food(
-            id=uuid.uuid4(),
-            fdc_id=food_data.get("fdc_id"),
-            name=food_data["name"],
-            brand=food_data.get("brand"),
-            category=food_data.get("category"),
-            serving_size_g=Decimal(str(food_data["serving_size_g"])),
-            serving_description=food_data.get("serving_description")
-        )
+        food_kwargs = {
+            "name": food_data["name"],
+            "calories": float(nutrition_data.get("calories_per_100g") or 0),
+            "protein": float(nutrition_data.get("protein_g") or 0),
+            "carbs": float(nutrition_data.get("carbs_g") or 0),
+            "fats": float(nutrition_data.get("fat_g") or 0),
+        }
         
+        # Add other columns if they are defined on the Food model
+        if hasattr(Food, "fdc_id"):
+            food_kwargs["fdc_id"] = food_data.get("fdc_id")
+        if hasattr(Food, "brand"):
+            food_kwargs["brand"] = food_data.get("brand")
+        if hasattr(Food, "category"):
+            food_kwargs["category"] = food_data.get("category")
+        elif hasattr(Food, "category_id") and "category_id" in food_data:
+            food_kwargs["category_id"] = food_data["category_id"]
+        if hasattr(Food, "serving_size_g"):
+            food_kwargs["serving_size_g"] = Decimal(str(food_data["serving_size_g"]))
+        if hasattr(Food, "serving_description"):
+            food_kwargs["serving_description"] = food_data.get("serving_description")
+            
+        food = Food(**food_kwargs)
         self.db.add(food)
-        self.db.flush()  # Get the food ID
-        
-        # Create nutrition facts
-        nutrition = NutritionFact(
-            id=uuid.uuid4(),
-            food_id=food.id,
-            calories_per_100g=Decimal(str(nutrition_data["calories_per_100g"])) if nutrition_data.get("calories_per_100g") else None,
-            protein_g=Decimal(str(nutrition_data["protein_g"])) if nutrition_data.get("protein_g") else None,
-            carbs_g=Decimal(str(nutrition_data["carbs_g"])) if nutrition_data.get("carbs_g") else None,
-            fat_g=Decimal(str(nutrition_data["fat_g"])) if nutrition_data.get("fat_g") else None,
-            fiber_g=Decimal(str(nutrition_data["fiber_g"])) if nutrition_data.get("fiber_g") else None,
-            sugar_g=Decimal(str(nutrition_data["sugar_g"])) if nutrition_data.get("sugar_g") else None,
-            sodium_mg=Decimal(str(nutrition_data["sodium_mg"])) if nutrition_data.get("sodium_mg") else None,
-            potassium_mg=Decimal(str(nutrition_data["potassium_mg"])) if nutrition_data.get("potassium_mg") else None,
-            calcium_mg=Decimal(str(nutrition_data["calcium_mg"])) if nutrition_data.get("calcium_mg") else None,
-            iron_mg=Decimal(str(nutrition_data["iron_mg"])) if nutrition_data.get("iron_mg") else None,
-            vitamin_c_mg=Decimal(str(nutrition_data["vitamin_c_mg"])) if nutrition_data.get("vitamin_c_mg") else None,
-            vitamin_d_ug=Decimal(str(nutrition_data["vitamin_d_ug"])) if nutrition_data.get("vitamin_d_ug") else None
-        )
-        
-        self.db.add(nutrition)
         self.db.commit()
         self.db.refresh(food)
         
@@ -350,6 +340,8 @@ class FoodDatabaseService:
     
     def get_food_by_fdc_id(self, fdc_id: int) -> Optional[Food]:
         """Get food by USDA FDC ID"""
+        if not hasattr(Food, "fdc_id"):
+            return None
         return self.db.query(Food).filter(Food.fdc_id == fdc_id).first()
     
     def search_foods(self, query: str, use_fuzzy: bool = True, limit: int = 25) -> List[Dict[str, Any]]:
@@ -392,9 +384,11 @@ class FoodDatabaseService:
         imported_foods = []
         for usda_food in usda_foods:
             # Check if food already exists
-            if usda_food.get("fdc_id"):
-                existing = self.get_food_by_fdc_id(usda_food["fdc_id"])
+            fdc_id = usda_food.get("fdc_id")
+            if fdc_id and hasattr(Food, "fdc_id"):
+                existing = self.get_food_by_fdc_id(fdc_id)
                 if existing:
+                    imported_foods.append(existing)
                     continue
             
             try:
@@ -425,35 +419,55 @@ class FoodDatabaseService:
     
     def _food_to_dict(self, food: Food) -> Dict[str, Any]:
         """Convert Food object to dictionary with nutrition data"""
+        category_name = None
+        if hasattr(food, "category") and food.category:
+            if hasattr(food.category, "name"):
+                category_name = food.category.name
+            else:
+                category_name = str(food.category)
+        elif hasattr(food, "category_id") and food.category_id:
+            category_name = str(food.category_id)
+            
         result = {
             "id": str(food.id),
-            "fdc_id": food.fdc_id,
+            "fdc_id": getattr(food, "fdc_id", None),
             "name": food.name,
-            "brand": food.brand,
-            "category": food.category,
-            "serving_size_g": float(food.serving_size_g) if food.serving_size_g else None,
-            "serving_description": food.serving_description,
-            "nutrition": None
+            "brand": getattr(food, "brand", None),
+            "category": category_name,
+            "serving_size_g": float(getattr(food, "serving_size_g", 100.0)) if getattr(food, "serving_size_g", None) else 100.0,
+            "serving_description": getattr(food, "serving_description", None) or "per 100g",
+            "nutrition": {
+                "calories_per_100g": float(getattr(food, "calories", 0.0)) if getattr(food, "calories", None) is not None else 0.0,
+                "protein_g": float(getattr(food, "protein", 0.0)) if getattr(food, "protein", None) is not None else 0.0,
+                "carbs_g": float(getattr(food, "carbs", 0.0)) if getattr(food, "carbs", None) is not None else 0.0,
+                "fat_g": float(getattr(food, "fats", 0.0)) if getattr(food, "fats", None) is not None else 0.0,
+                "fiber_g": 0.0,
+                "sugar_g": 0.0,
+                "sodium_mg": 0.0,
+                "potassium_mg": 0.0,
+                "calcium_mg": 0.0,
+                "iron_mg": 0.0,
+                "vitamin_c_mg": 0.0,
+                "vitamin_d_ug": 0.0
+            }
         }
         
-        if food.nutrition_facts:
+        if hasattr(food, "nutrition_facts") and food.nutrition_facts:
             nf = food.nutrition_facts
             result["nutrition"] = {
-                "calories_per_100g": float(nf.calories_per_100g) if nf.calories_per_100g is not None else None,
-                "protein_g": float(nf.protein_g) if nf.protein_g is not None else None,
-                "carbs_g": float(nf.carbs_g) if nf.carbs_g is not None else None,
-                "fat_g": float(nf.fat_g) if nf.fat_g is not None else None,
-                "fiber_g": float(nf.fiber_g) if nf.fiber_g is not None else None,
-                "sugar_g": float(nf.sugar_g) if nf.sugar_g is not None else None,
-                "sodium_mg": float(nf.sodium_mg) if nf.sodium_mg is not None else None,
-                "potassium_mg": float(nf.potassium_mg) if nf.potassium_mg is not None else None,
-                "calcium_mg": float(nf.calcium_mg) if nf.calcium_mg is not None else None,
-                "iron_mg": float(nf.iron_mg) if nf.iron_mg is not None else None,
-                "vitamin_c_mg": float(nf.vitamin_c_mg) if nf.vitamin_c_mg is not None else None,
-                "vitamin_d_ug": float(nf.vitamin_d_ug) if nf.vitamin_d_ug is not None else None
+                "calories_per_100g": float(nf.calories_per_100g) if nf.calories_per_100g is not None else 0.0,
+                "protein_g": float(nf.protein_g) if nf.protein_g is not None else 0.0,
+                "carbs_g": float(nf.carbs_g) if nf.carbs_g is not None else 0.0,
+                "fat_g": float(nf.fat_g) if nf.fat_g is not None else 0.0,
+                "fiber_g": float(nf.fiber_g) if nf.fiber_g is not None else 0.0,
+                "sugar_g": float(nf.sugar_g) if nf.sugar_g is not None else 0.0,
+                "sodium_mg": float(nf.sodium_mg) if nf.sodium_mg is not None else 0.0,
+                "potassium_mg": float(nf.potassium_mg) if nf.potassium_mg is not None else 0.0,
+                "calcium_mg": float(nf.calcium_mg) if nf.calcium_mg is not None else 0.0,
+                "iron_mg": float(nf.iron_mg) if nf.iron_mg is not None else 0.0,
+                "vitamin_c_mg": float(nf.vitamin_c_mg) if nf.vitamin_c_mg is not None else 0.0,
+                "vitamin_d_ug": float(nf.vitamin_d_ug) if nf.vitamin_d_ug is not None else 0.0
             }
             
-            # Add completeness info
-            result["completeness"] = self.validator.check_completeness(result["nutrition"])
-        
+        result["completeness"] = self.validator.check_completeness(result["nutrition"])
         return result

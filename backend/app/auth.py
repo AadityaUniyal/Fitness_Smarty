@@ -14,10 +14,8 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, validator
 import os
-import secrets
 import logging
 from app import models, database
-
 
 # Configuration
 logger = logging.getLogger(__name__)
@@ -86,6 +84,8 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Token payload data"""
     user_id: Optional[str] = None
+    email: Optional[str] = None
+    exp: Optional[datetime] = None
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -96,8 +96,6 @@ class ResetPasswordRequest(BaseModel):
     email: EmailStr
     token: str
     new_password: str
-    email: Optional[str] = None
-    exp: Optional[datetime] = None
 
 
 class UserRegister(BaseModel):
@@ -508,4 +506,3 @@ def require_auth(
         Authenticated user
     """
     return user
-

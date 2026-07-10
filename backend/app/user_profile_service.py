@@ -240,6 +240,8 @@ class UserProfileService:
         """
         # Validate goal against user profile
         validation = self.validate_goal(user_id, goal_data)
+        if not validation.is_realistic:
+            raise ValueError(f"Goal is not realistic: {', '.join(validation.warnings)}")
         
         # Create goal
         goal = models.UserGoal(
@@ -441,3 +443,108 @@ class UserProfileService:
             }
         
         return metrics
+
+    def get_user_coach_profile(self, user_id: str) -> Dict[str, Any]:
+        """
+        Merge EnhancedUser + UserProfile + active UserGoal records.
+        Compute TDEE/BMR (gender-specific formulas).
+        Normalize gender values (Male/Female/Other).
+        Expose coach_mode.
+        """
+        user = self.db.query(models.EnhancedUser).filter(
+            (models.EnhancedUser.clerk_user_id == user_id) | (models.EnhancedUser.id == user_id)
+        ).first()
+        if not user:
+            raise ValueError("User not found")
+
+        profile = self.db.query(models.UserProfile).filter(
+            models.UserProfile.user_id == str(user.id)
+        ).first()
+        if not profile:
+            profile = self.db.query(models.UserProfile).filter(
+                models.UserProfile.user_id == user_id
+            ).first()
+
+        active_goals = self.db.query(models.UserGoal).filter(
+            models.UserGoal.user_id == str(user.id),
+            models.UserGoal.is_active == True
+        ).all()
+        if not active_goals:
+            active_goals = self.db.query(models.UserGoal).filter(
+                models.UserGoal.user_id == user_id,
+                models.UserGoal.is_active == True
+            ).all()
+
+        goals_dict = {}
+        for goal in active_goals:
+            goals_dict[goal.goal_type] = float(goal.target_value or 0.0)
+
+        gender = ((profile.gender if profile else None) or user.gender or "male").strip()
+        gender_lower = gender.lower()
+        if gender_lower in ("male", "m"):
+            norm_gender = "Male"
+        elif gender_lower in ("female", "f"):
+            norm_gender = "Female"
+        else:
+            norm_gender = "Other"
+
+        age = (profile.age if profile else None) or user.age or 30
+        weight = float((profile.weight_kg if profile else None) or user.weight_kg or 70.0)
+        height = float((profile.height_cm if profile else None) or user.height_cm or 170.0)
+        activity_level = ((profile.activity_level if profile else None) or user.activity_level or "moderate").lower()
+        primary_goal = ((profile.fitness_goal if profile else None) or user.primary_goal or "maintenance").lower()
+
+        if norm_gender == "Male":
+            bmr = 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age)
+        else:
+            bmr = 447.593 + (9.247 * weight) + (3.098 * height) - (4.330 * age)
+
+        multipliers = {
+            "sedentary": 1.2,
+            "light": 1.375,
+            "moderate": 1.55,
+            "active": 1.725,
+            "very_active": 1.9
+        }
+        multiplier = multipliers.get(activity_level, 1.55)
+        tdee = bmr * multiplier
+
+        femmecare_enabled = (profile.femmecare_enabled if profile else None) or user.femmecare_enabled or False
+        menopause_mode = (profile.menopause_mode if profile else None) or user.menopause_mode or False
+        pregnancy_mode = (profile.pregnancy_mode if profile else None) or user.pregnancy_mode or False
+
+        coach_mode = "standard_male"
+        if norm_gender == "Female":
+            if femmecare_enabled:
+                if pregnancy_mode:
+                    coach_mode = "pregnancy"
+                elif menopause_mode:
+                    coach_mode = "menopause"
+                else:
+                    coach_mode = "femmecare"
+            else:
+                coach_mode = "standard_female"
+
+        return {
+            "user_id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "gender": norm_gender,
+            "age": age,
+            "weight_kg": weight,
+            "height_cm": height,
+            "activity_level": activity_level,
+            "primary_goal": primary_goal,
+            "dietary_preferences": (profile.dietary_preferences if profile else None) or [],
+            "allergies": (profile.allergies if profile else None) or [],
+            "daily_calorie_target": goals_dict.get("daily_calories") or float((profile.daily_calorie_target if profile else None) or 2200.0),
+            "protein_target_g": goals_dict.get("protein_target") or float((profile.protein_target_g if profile else None) or 150.0),
+            "carbs_target_g": float((profile.carbs_target_g if profile else None) or 220.0),
+            "fat_target_g": float((profile.fat_target_g if profile else None) or 70.0),
+            "bmr": round(bmr, 2),
+            "tdee": round(tdee, 2),
+            "coach_mode": coach_mode,
+            "femmecare_enabled": femmecare_enabled,
+            "menopause_mode": menopause_mode,
+            "pregnancy_mode": pregnancy_mode
+        }

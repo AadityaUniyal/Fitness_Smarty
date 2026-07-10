@@ -202,16 +202,21 @@ async def create_dataset(name: str, source_dir: str, val_split: float = 0.15):
 
 
 @router.get("/status")
-async def training_status():
+async def training_status(db: Session = Depends(get_db)):
     """Get overall training pipeline status."""
     from app.training.data_collector import DataCollector
     collector = DataCollector()
     model_dir = Path("app/training/models")
-    models = []
+    models_list = []
     if model_dir.exists():
         for p in list(model_dir.rglob("*.pth")) + list(model_dir.rglob("*.joblib")):
-            models.append({"name": p.stem, "path": str(p), "size_kb": p.stat().st_size / 1024})
+            models_list.append({"name": p.stem, "path": str(p), "size_kb": p.stat().st_size / 1024})
+            
+    from app.models import CoachFeedback
+    feedback_count = db.query(CoachFeedback).count()
+    
     return {
         "datasets": collector.get_statistics(),
-        "trained_models": models,
+        "trained_models": models_list,
+        "feedback_samples_count": feedback_count,
     }

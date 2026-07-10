@@ -55,6 +55,84 @@ const WorkoutAssistant: React.FC = () => {
   const [sessionSaved, setSessionSaved] = useState(false);
   const [savedCalories, setSavedCalories] = useState(0);
   const [showRestTimer, setShowRestTimer] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, boolean>>({});
+
+  const handleWorkoutFeedback = async (rating: number) => {
+    try {
+      const uId = localStorage.getItem('smarty_user_id') || 'local-user';
+      const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
+      await fetch(`${API_BASE}/api/feedback/coach`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          domain: 'exercise',
+          item_id: plan?.title || 'workout_session',
+          rating,
+          context_json: {
+            goal: profile.goal || profile.primary_goal,
+            gender: profile.gender,
+            level,
+          }
+        })
+      });
+      setFeedbackSent(prev => ({ ...prev, workout_session: true }));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
+    if (profile.primary_goal || profile.goal) {
+      const g = (profile.primary_goal || profile.goal).toLowerCase();
+      if (g.includes('loss')) setGoal(BodyGoal.SLIM);
+      else if (g.includes('gain')) setGoal(BodyGoal.BULK);
+      else if (g.includes('athletic')) setGoal(BodyGoal.ATHLETIC);
+      else setGoal(BodyGoal.MAINTAIN);
+    }
+    if (profile.activityLevel || profile.activity_level) {
+      const act = profile.activityLevel || profile.activity_level;
+      if (act === 'active' || act === 'very_active') setLevel('Advanced');
+      else if (act === 'moderate') setLevel('Intermediate');
+      else setLevel('Beginner');
+    }
+
+    import('../services/api').then(({ fetchDailyCoach }) => {
+      setLoading(true);
+      fetchDailyCoach(undefined, async () => null)
+        .then(data => {
+          if (data && data.workout_recommendation) {
+            const rec = data.workout_recommendation;
+            if (rec.exercises && rec.exercises.length > 0) {
+              setPlan({
+                title: `${rec.type} Session (My Coach)`,
+                duration: "45 mins",
+                intensity: "Medium",
+                exercises: rec.exercises.map((ex: any) => ({
+                  name: ex.name,
+                  sets: ex.sets || 3,
+                  reps: ex.reps || "10-12",
+                  description: ex.reasoning || "Optimized for your current recovery status.",
+                  targeted_muscle: ex.targeted_muscle || ex.muscle || "General",
+                  difficulty: ex.difficulty || "Intermediate",
+                  equipment: ex.equipment || "Standard"
+                })),
+                nutrition_advice: {
+                  pre_workout: "Sip water and eat a light carb meal before starting.",
+                  post_workout: "Aim for 20-30g protein post-session.",
+                  recommended_foods: ["Greek Yogurt", "Protein Shake", "Chicken & Rice"],
+                  hydration_tip: "Drink at least 500ml water during exercise."
+                }
+              });
+            }
+          }
+        })
+        .catch(() => {})
+        .finally(() => setLoading(false));
+    });
+  }, []);
 
   // Timer
   useEffect(() => {
@@ -287,7 +365,7 @@ const WorkoutAssistant: React.FC = () => {
         </div>
 
         <button onClick={handleGenerate} disabled={loading}
-          className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 text-slate-950 font-black py-5 rounded-[1.5rem] transition-all flex items-center justify-center space-x-3 shadow-[0_10px_30px_rgba(16,185,129,0.2)]">
+          className="w-full bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 text-slate-950 font-black py-5 rounded-3xl transition-all flex items-center justify-center space-x-3 shadow-[0_10px_30px_rgba(16,185,129,0.2)]">
           {loading ? <Loader2 className="animate-spin" size={20} /> : <Sparkles size={20} />}
           <span className="uppercase tracking-[0.2em] text-sm">{loading ? 'Syncing with Neural Vault...' : (viewMode === 'weekly' ? 'Generate 6-Day Protocol' : 'Generate Hybrid Session')}</span>
         </button>
@@ -307,12 +385,37 @@ const WorkoutAssistant: React.FC = () => {
 
       {/* Session Success Banner */}
       {sessionSaved && (
-        <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-3xl flex items-center justify-between animate-in slide-in-from-top-4 duration-500">
+        <div className="p-6 bg-emerald-500/10 border border-emerald-500/30 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-4 duration-500">
           <div className="flex items-center space-x-4">
             <CheckCircle2 size={28} className="text-emerald-400" />
             <div>
               <p className="text-lg font-black text-emerald-400 uppercase tracking-widest">Session Logged!</p>
               <p className="text-sm text-slate-400">{completedExercises.size} movements archived • {formatTime(elapsed)} elapsed</p>
+              
+              {/* Feedback controls */}
+              <div className="mt-2 flex items-center space-x-3">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">How was this workout recommendation?</span>
+                {feedbackSent['workout_session'] ? (
+                  <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Saved</span>
+                ) : (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleWorkoutFeedback(5)}
+                      className="p-1 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition"
+                      title="Awesome"
+                    >
+                      👍
+                    </button>
+                    <button
+                      onClick={() => handleWorkoutFeedback(1)}
+                      className="p-1 hover:bg-rose-500/10 rounded-lg text-slate-400 hover:text-rose-400 transition"
+                      title="Needs changes"
+                    >
+                      👎
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="text-right">
@@ -381,7 +484,7 @@ const WorkoutAssistant: React.FC = () => {
                 <p className="text-[9px] font-black text-emerald-400">{completionPct}% complete</p>
               </div>
               <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 rounded-full transition-all duration-500"
+                <div className="h-full bg-linear-to-r from-emerald-500 to-cyan-400 rounded-full transition-all duration-500"
                   style={{ width: `${completionPct}%` }} />
               </div>
             </div>
@@ -404,7 +507,7 @@ const WorkoutAssistant: React.FC = () => {
                 return (
                   <div key={idx}>
                     <div
-                      className={`group transition-all p-6 md:p-8 ${done ? 'bg-emerald-500/[0.05]' : 'hover:bg-white/[0.02]'} ${sessionActive ? 'cursor-pointer' : ''}`}
+                      className={`group transition-all p-6 md:p-8 ${done ? 'bg-emerald-500/5' : 'hover:bg-white/2'} ${sessionActive ? 'cursor-pointer' : ''}`}
                       onClick={() => { if (sessionActive) toggleExerciseDone(idx); else setExpandedIdx(expandedIdx === idx ? null : idx); }}
                     >
                       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">

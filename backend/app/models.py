@@ -200,6 +200,116 @@ class ProgressSnapshot(Base):
     notes = Column(Text, nullable=True)
 
 
+# ============================================================
+# ===  GAMIFICATION MODELS (Streaks, Achievements, Badges) ===
+# ============================================================
+
+
+class UserStreak(Base):
+    """User activity streaks"""
+    __tablename__ = "user_streaks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    streak_type = Column(String, nullable=False)  # workout, nutrition, hydration, login
+    current_streak = Column(Integer, default=0)
+    longest_streak = Column(Integer, default=0)
+    last_activity_date = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class Achievement(Base):
+    """Achievement definitions (global templates)"""
+    __tablename__ = "achievements"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(Text, nullable=False)
+    category = Column(String, nullable=False)  # workout, nutrition, social, streak, milestone
+    achievement_type = Column(String, nullable=False)  # count, streak, goal, special
+    icon = Column(String, nullable=True)  # emoji or icon identifier
+    rarity = Column(String, default="common")  # common, rare, epic, legendary
+    points = Column(Integer, default=10)
+    
+    # Criteria (JSON with flexible conditions)
+    criteria = Column(JSON, nullable=False)
+    # Example: {"type": "workout_count", "target": 50}
+    # Example: {"type": "streak_days", "streak_type": "workout", "target": 7}
+    # Example: {"type": "calories_burned", "target": 10000}
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class UserAchievement(Base):
+    """User's earned achievements"""
+    __tablename__ = "user_achievements"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    achievement_id = Column(Integer, ForeignKey("achievements.id"), nullable=False)
+    progress = Column(Float, default=0.0)  # 0-100 percentage
+    is_completed = Column(Boolean, default=False)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    achievement = relationship("Achievement", foreign_keys=[achievement_id])
+
+
+class Badge(Base):
+    """Badge definitions (special awards)"""
+    __tablename__ = "badges"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(Text, nullable=False)
+    icon = Column(String, nullable=True)
+    tier = Column(String, default="bronze")  # bronze, silver, gold, platinum, diamond
+    category = Column(String, nullable=False)  # strength, cardio, nutrition, consistency
+    points = Column(Integer, default=25)
+    
+    # Requirements (more specific than achievements)
+    requirements = Column(JSON, nullable=False)
+    # Example: {"exercise_type": "strength", "total_reps": 1000}
+    # Example: {"meal_logs": 100, "protein_avg": 150}
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class UserBadge(Base):
+    """User's earned badges"""
+    __tablename__ = "user_badges"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    badge_id = Column(Integer, ForeignKey("badges.id"), nullable=False)
+    earned_at = Column(DateTime, default=datetime.utcnow)
+    is_equipped = Column(Boolean, default=False)  # Display on profile
+    
+    badge = relationship("Badge", foreign_keys=[badge_id])
+
+
+class UserPoints(Base):
+    """User point tracking and leaderboard"""
+    __tablename__ = "user_points"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    total_points = Column(Integer, default=0)
+    level = Column(Integer, default=1)
+    experience_points = Column(Integer, default=0)  # XP within current level
+    
+    # Point sources breakdown
+    workout_points = Column(Integer, default=0)
+    nutrition_points = Column(Integer, default=0)
+    social_points = Column(Integer, default=0)
+    streak_points = Column(Integer, default=0)
+    achievement_points = Column(Integer, default=0)
+    
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class UserProfile(Base):
     """Extended user profile for recommendations"""
     __tablename__ = "user_profiles"
@@ -224,6 +334,14 @@ class UserProfile(Base):
     local_only = Column(Boolean, default=False, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    @property
+    def dietary_restrictions(self):
+        return self.dietary_preferences
+
+    @dietary_restrictions.setter
+    def dietary_restrictions(self, value):
+        self.dietary_preferences = value
 
 
 class UserGoal(Base):
@@ -254,18 +372,6 @@ class SocialActivity(Base):
     data = Column(JSON, nullable=True)
     likes = Column(Integer, default=0)
     timestamp = Column(DateTime, default=datetime.utcnow)
-
-
-class Achievement(Base):
-    """User achievements/badges"""
-    __tablename__ = "achievements"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
-    title = Column(String)
-    description = Column(Text, nullable=True)
-    badge_type = Column(String, nullable=True)
-    earned_at = Column(DateTime, default=datetime.utcnow)
 
 
 class BiometricRecord(Base):
@@ -797,6 +903,20 @@ class ProductEvent(Base):
     event_name = Column(String, index=True, nullable=False) # e.g. "onboarding_start", "onboarding_complete"
     properties_json = Column(JSON, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class CoachFeedback(Base):
+    """Feedback for workouts, meals, or general daily plans"""
+    __tablename__ = "coach_feedbacks"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, index=True, nullable=False)
+    domain = Column(String, nullable=False)  # "exercise" | "meal" | "daily_plan"
+    item_id = Column(String, nullable=False)  # exercise_id or meal_log_id or plan_date
+    rating = Column(Integer, nullable=False)  # 1-5 or boolean (1/0)
+    context_json = Column(JSON, nullable=True)  # profile snapshot at feedback time
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 
 
 

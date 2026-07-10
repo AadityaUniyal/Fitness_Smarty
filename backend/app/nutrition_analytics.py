@@ -2,11 +2,12 @@
 Advanced Nutrition Analytics Engine
 
 Sophisticated math calculations and tracking logic:
-1. TDEE/BMR calculations (Mifflin-St Jeor equation)
+1. TDEE/BMR calculations (Mifflin-St Jeor equation) - Now delegated to GenderSpecificService
 2. Dynamic macro targets based on goals
 3. Meal streak tracking
 4. Pattern detection in eating habits
 5. Progress analytics
+6. Integration with CalorieTrackerService for automatic calculations
 """
 
 import math
@@ -20,13 +21,16 @@ from sqlalchemy.orm import Session
 class NutritionAnalytics:
     """Advanced nutrition calculations and analytics"""
     
-    def __init__(self):
-        pass
+    def __init__(self, db: Session = None):
+        self.db = db
     
     def calculate_bmr(self, weight_kg: float, height_cm: float, 
                       age: int, gender: str) -> float:
         """
         Calculate Basal Metabolic Rate using Mifflin-St Jeor Equation
+        
+        NOTE: For gender-specific calculations with FemmeCare support,
+        use GenderSpecificService.calculate_bmr_gender_specific() instead.
         
         BMR = (10 × weight in kg) + (6.25 × height in cm) - (5 × age in years) + s
         where s = +5 for males, -161 for females
@@ -45,6 +49,9 @@ class NutritionAnalytics:
     def calculate_tdee(self, bmr: float, activity_level: str) -> float:
         """
         Calculate Total Daily Energy Expenditure
+        
+        NOTE: For comprehensive gender-specific TDEE with FemmeCare adjustments,
+        use GenderSpecificService.calculate_tdee_gender_specific() instead.
         
         TDEE = BMR × Activity Multiplier
         
@@ -73,6 +80,9 @@ class NutritionAnalytics:
     def calculate_macro_targets(self, tdee: float, goal: str) -> Dict[str, float]:
         """
         Calculate optimal macro targets based on goal
+        
+        NOTE: For gender-specific macro targets (females get higher fat %),
+        use GenderSpecificService.get_gender_specific_macro_targets() instead.
         
         Macro distributions:
         - Weight Loss: 40% protein, 30% carbs, 30% fat (calorie deficit)
@@ -454,8 +464,6 @@ class NutrientGapAnalyzer:
         from . import models
         from sqlalchemy import desc
         
-        # Get weight logs for the last 14 days
-        cutoff = datetime.utcnow() - timedelta(days=14)
         # Assuming there's a WeightLog model, checking if it exists or using placeholder logic
         # For now, let's use simulated logic based on calorie consistency if weight isn't available
         

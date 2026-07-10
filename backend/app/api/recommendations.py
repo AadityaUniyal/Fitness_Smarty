@@ -1,13 +1,9 @@
-from fastapi import APIRouter, Depends, Query, Body, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
-from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
 from app.database import get_db
 from app import schemas, models
-from app.recommendation_engine import RecommendationEngine, RecommendationRequest, CycleSyncEngine
-from app.api_validation import APIValidator, ErrorHandler
-from app import ai_analyzer, sleep_optimization, social_engine, recovery_engine, hydration_monitor, challenge_engine
-
+from app.recommendation_engine import RecommendationEngine, RecommendationRequest
+from app import ai_analyzer, sleep_optimization, recovery_engine, hydration_monitor
 from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
 
 router = APIRouter(prefix="/api/recommendations", tags=["Smart Recommendations & AI"])

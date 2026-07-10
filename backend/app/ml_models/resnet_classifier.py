@@ -90,7 +90,9 @@ class ResNetFoodClassifier:
     def _load_model(self):
         """Build ResNet18 architecture and load weights if available."""
         # Build the model with the same architecture as the training script
-        self.model = models.resnet18(weights=ResNet18_Weights.DEFAULT)
+        # Use a local-only initialization so importing the app never depends
+        # on network access or a model hub download.
+        self.model = models.resnet18(weights=None)
 
         # Replace FC head to match 101 food classes (same structure as training)
         num_features = self.model.fc.in_features  # 512 for ResNet18

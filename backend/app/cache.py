@@ -4,6 +4,7 @@ Proper Caching System with Redis support and local fallback.
 import time
 import os
 import json
+import logging
 from typing import Any, Optional
 
 try:
@@ -11,6 +12,8 @@ try:
     REDIS_AVAILABLE = True
 except ImportError:
     REDIS_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 class MemoryCache:
@@ -51,11 +54,11 @@ class RedisCacheWrapper:
                 )
                 # Test connection
                 self.redis_client.ping()
-                print(f"[OK] Connected to Redis cache at {redis_url}")
+                logger.info("Connected to Redis cache at %s", redis_url)
             except Exception as e:
-                print(
-                    f"[!] Redis connection failed: {e}. "
-                    "Falling back to in-memory cache."
+                logger.warning(
+                    "Redis connection failed: %s. Falling back to in-memory cache.",
+                    e,
                 )
                 self.redis_client = None
         self.fallback = MemoryCache(default_ttl_seconds)
@@ -68,7 +71,7 @@ class RedisCacheWrapper:
                     return json.loads(val)
                 return None
             except Exception as e:
-                print(f"[!] Redis GET error: {e}")
+                logger.warning("Redis GET error: %s", e)
                 return self.fallback.get(key)
         return self.fallback.get(key)
 
@@ -81,7 +84,7 @@ class RedisCacheWrapper:
                 self.redis_client.setex(key, ttl, json.dumps(value))
                 return
             except Exception as e:
-                print(f"[!] Redis SETEX error: {e}")
+                logger.warning("Redis SETEX error: %s", e)
 
         self.fallback.set(key, value, ttl_seconds)
 
@@ -91,7 +94,7 @@ class RedisCacheWrapper:
                 self.redis_client.flushdb()
                 return
             except Exception as e:
-                print(f"[!] Redis FLUSHDB error: {e}")
+                logger.warning("Redis FLUSHDB error: %s", e)
         self.fallback.clear()
 
 

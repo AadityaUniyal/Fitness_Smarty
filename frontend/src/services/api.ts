@@ -96,28 +96,33 @@ export const fetchMissionBriefing = async (getToken: () => Promise<string | null
   }
 }
 
-export const fetchDailyCoach = async (payload: any, getToken: () => Promise<string | null> = async () => null): Promise<any> => {
+export const fetchDailyCoach = async (payload?: any, getToken: () => Promise<string | null> = async () => null): Promise<any> => {
+  let actualGetToken = getToken;
+  if (typeof payload === 'function') {
+    actualGetToken = payload;
+  }
   try {
-    const headers = await getAuthHeaders(getToken);
-    const res = await fetch(`${API_BASE}/api/ai/daily-coach`, {
-      method: 'POST',
+    const headers = await getAuthHeaders(actualGetToken);
+    const res = await fetch(`${API_BASE}/api/coach/daily`, {
+      method: 'GET',
       headers,
-      body: JSON.stringify(payload),
     });
     if (!res.ok) throw new Error('AI coach sync failed');
     return await res.json();
   } catch (e) {
     return {
-      summary: 'Your day is ready to steer. Start with one logged action, then let SMARTY adjust the next move.',
+      coach_summary: 'Your day is ready to steer. Start with one logged action, then let SMARTY adjust the next move.',
+      gender_mode: 'male',
+      today_focus: { training: 'Lighter movement block', nutrition: 'Daily consistency' },
+      workout_recommendation: { type: 'rest', exercises: [], reasoning: 'Rest day recommended.' },
+      meal_recommendation: { next_meal: 'Balanced Meal', foods: [], macro_gap: {} },
       next_action: {
         title: 'Start a focused workout',
         detail: 'A short movement block will anchor today.',
         route: '/dashboard/quick',
         priority: 'High',
       },
-      focus_area: 'Daily consistency',
-      risk: 'low',
-      tasks: [],
+      daily_tasks: [],
     };
   }
 }

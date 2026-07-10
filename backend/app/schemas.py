@@ -744,3 +744,41 @@ class NotificationLogResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ============= UNIFIED COACH SCHEMAS =============
+
+class CoachFocus(BaseModel):
+    training: str
+    nutrition: str
+
+
+class CoachWorkoutRecommendation(BaseModel):
+    type: str  # "single" | "rest" | "deload"
+    exercises: List[Dict[str, Any]] = []
+    reasoning: str
+
+
+class CoachMealRecommendation(BaseModel):
+    next_meal: str
+    foods: List[Dict[str, Any]] = []
+    macro_gap: Dict[str, float] = {}
+
+
+class CoachNextAction(BaseModel):
+    title: str
+    route: str
+    priority: str
+    detail: Optional[str] = None
+
+
+class CoachDailyResponse(BaseModel):
+    coach_summary: str
+    gender_mode: str  # "male" | "female" | "femmecare"
+    today_focus: CoachFocus
+    workout_recommendation: CoachWorkoutRecommendation
+    meal_recommendation: CoachMealRecommendation
+    daily_tasks: List[Dict[str, Any]] = []
+    next_action: CoachNextAction
+    constraints_applied: List[str] = []
+

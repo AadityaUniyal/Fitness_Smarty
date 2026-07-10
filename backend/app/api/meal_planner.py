@@ -1,19 +1,50 @@
-import json, os, logging
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from typing import List
+import json
+import logging
+import os
 from datetime import datetime, timedelta
-from app.database import get_db
-from app import schemas, models
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
+from app import models, schemas
 from app.auth import get_current_user
+from app.database import get_db
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/meal-plans", tags=["Meal Planner"])
 
 
-def _gemini_generate_meal_plan(prefs: schemas.MealPlanGenerateRequest) -> List[dict]:
-    """Call Gemini API to generate a 7-day meal plan. Falls back to mock data."""
+def _gemini_generate_meal_plan(
+    prefs: schemas.MealPlanGenerateRequest,
+    db: Session,
+    user: models.EnhancedUser,
+) -> List[dict]:
+    """Use HybridRanker to rank candidate meals and structure them."""
+    from ..hybrid_ranker import HybridRanker
+    from app.user_profile_service import UserProfileService
+
+    profile_service = UserProfileService(db)
+    try:
+        profile = profile_service.get_user_coach_profile(str(user.id))
+    except Exception:
+        dietary_prefs = prefs.dietary_preferences
+        profile = {
+            "primary_goal": prefs.goal or "maintenance",
+            "dietary_restrictions": (
+                dietary_prefs.split(",") if dietary_prefs else []
+            ),
+            "allergies": prefs.allergies.split(",") if prefs.allergies else [],
+        }
+
+    ranker = HybridRanker(db)
+    macro_gap = {
+        "calories": prefs.daily_calories or 2000,
+        "protein_g": profile.get("protein_target_g", 140),
+    }
+    ranked_foods = ranker.rank_meals_from_db(profile, macro_gap, limit=40)
+
     api_key = os.getenv("GEMINI_API_KEY", "")
     if api_key:
         try:
@@ -25,27 +56,29 @@ def _gemini_generate_meal_plan(prefs: schemas.MealPlanGenerateRequest) -> List[d
                 import google.generativeai as genai
                 genai.configure(api_key=api_key)
                 use_client = False
-            day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-            slots = ["breakfast", "lunch", "dinner", "snack"]
-            prompt = f"""Generate a 7-day meal plan as JSON. Return ONLY valid JSON with no markdown formatting.
 
-Rules:
-- Daily calorie target: {prefs.daily_calories or 2000}
-- Goal: {prefs.goal or 'general'}
-- Dietary preferences: {prefs.dietary_preferences or 'none'}
-- Allergies: {prefs.allergies or 'none'}
-- Exclude: {prefs.exclude_foods or 'none'}
-- 4 meals per day: breakfast, lunch, dinner, snack
-- Include realistic calorie, protein(g), carbs(g), fats(g) for each meal
-
-Output format (array of objects):
-[
-  {{"day_of_week": 0, "meal_slot": "breakfast", "food_name": "...", "serving_size": "...", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}},
-  ...
-]
-
-day_of_week: 0=Monday .. 6=Sunday.
-Generate all 28 meals (7 days x 4 slots)."""
+            prompt = (
+                "Generate a 7-day meal plan as JSON using ONLY the "
+                "provided food candidates. Return ONLY valid JSON with no "
+                "markdown formatting.\n\n"
+                f"Candidates: "
+                f"{json.dumps(ranked_foods, ensure_ascii=True)}\n\n"
+                "Rules:\n"
+                f"- Daily calorie target: {prefs.daily_calories or 2000}\n"
+                f"- Goal: {prefs.goal or 'general'}\n"
+                "- 4 meals per day: breakfast, lunch, dinner, snack\n"
+                "- Include realistic calorie, protein(g), carbs(g), fats(g) "
+                "for each meal based on candidate details\n\n"
+                "Output format (array of objects):\n"
+                "[\n"
+                '  {"day_of_week": 0, "meal_slot": "breakfast", '
+                '"food_name": "...", "serving_size": "...", '
+                '"calories": 0, "protein": 0, "carbs": 0, "fats": 0},\n'
+                "  ...\n"
+                "]\n\n"
+                "day_of_week: 0=Monday .. 6=Sunday.\n"
+                "Generate all 28 meals (7 days x 4 slots)."
+            )
             if use_client:
                 resp = client.models.generate_content(
                     model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
@@ -138,7 +171,10 @@ def list_plans(
             entries=[schemas.MealPlanEntryResponse(
                 id=e.id, day_of_week=e.day_of_week, meal_slot=e.meal_slot,
                 food_name=e.food_name, serving_size=e.serving_size,
-                calories=e.calories, protein=e.protein, carbs=e.carbs, fats=e.fats,
+                calories=e.calories,
+                protein=e.protein,
+                carbs=e.carbs,
+                fats=e.fats,
                 food_id=e.food_id,
             ) for e in p.entries],
             created_at=p.created_at, updated_at=p.updated_at,
@@ -146,7 +182,9 @@ def list_plans(
     return result
 
 
-@router.post("/plans", response_model=schemas.MealPlanResponse, status_code=201)
+@router.post(
+    "/plans", response_model=schemas.MealPlanResponse, status_code=201
+)
 def create_plan(
     data: schemas.MealPlanCreate,
     db: Session = Depends(get_db),
@@ -158,7 +196,11 @@ def create_plan(
         raise HTTPException(400, "Invalid week_start format (use ISO date)")
     plan = models.MealPlan(
         user_id=current_user.id, week_start=ws,
-        week_end=datetime(ws.year, ws.month, ws.day, 23, 59, 59) if ws else None,
+        week_end=(
+            datetime(ws.year, ws.month, ws.day, 23, 59, 59)
+            if ws
+            else None
+        ),
     )
     db.add(plan)
     db.flush()
@@ -176,7 +218,10 @@ def create_plan(
         entries=[schemas.MealPlanEntryResponse(
             id=e.id, day_of_week=e.day_of_week, meal_slot=e.meal_slot,
             food_name=e.food_name, serving_size=e.serving_size,
-            calories=e.calories, protein=e.protein, carbs=e.carbs, fats=e.fats,
+            calories=e.calories,
+            protein=e.protein,
+            carbs=e.carbs,
+            fats=e.fats,
             food_id=e.food_id,
         ) for e in plan.entries],
         created_at=plan.created_at, updated_at=plan.updated_at,
@@ -200,7 +245,10 @@ def get_plan(
         entries=[schemas.MealPlanEntryResponse(
             id=e.id, day_of_week=e.day_of_week, meal_slot=e.meal_slot,
             food_name=e.food_name, serving_size=e.serving_size,
-            calories=e.calories, protein=e.protein, carbs=e.carbs, fats=e.fats,
+            calories=e.calories,
+            protein=e.protein,
+            carbs=e.carbs,
+            fats=e.fats,
             food_id=e.food_id,
         ) for e in plan.entries],
         created_at=plan.created_at, updated_at=plan.updated_at,
@@ -223,7 +271,9 @@ def delete_plan(
     db.commit()
 
 
-@router.post("/generate", response_model=schemas.MealPlanResponse, status_code=201)
+@router.post(
+    "/generate", response_model=schemas.MealPlanResponse, status_code=201
+)
 def generate_plan(
     prefs: schemas.MealPlanGenerateRequest,
     db: Session = Depends(get_db),
@@ -233,16 +283,21 @@ def generate_plan(
         ws = datetime.fromisoformat(prefs.week_start)
     except ValueError:
         raise HTTPException(400, "Invalid week_start format (use ISO date)")
-    entries_data = _gemini_generate_meal_plan(prefs)
+    entries_data = _gemini_generate_meal_plan(prefs, db, current_user)
     plan = models.MealPlan(
         user_id=current_user.id, week_start=ws,
-        week_end=datetime(ws.year, ws.month, ws.day, 23, 59, 59) + timedelta(days=6),
+        week_end=(
+            datetime(ws.year, ws.month, ws.day, 23, 59, 59)
+            + timedelta(days=6)
+        ),
     )
     db.add(plan)
     db.flush()
     for e in entries_data:
         db.add(models.MealPlanEntry(
-            plan_id=plan.id, day_of_week=e["day_of_week"], meal_slot=e["meal_slot"],
+            plan_id=plan.id,
+            day_of_week=e["day_of_week"],
+            meal_slot=e["meal_slot"],
             food_name=e["food_name"], serving_size=e.get("serving_size"),
             calories=e.get("calories", 0), protein=e.get("protein", 0),
             carbs=e.get("carbs", 0), fats=e.get("fats", 0),
@@ -254,7 +309,10 @@ def generate_plan(
         entries=[schemas.MealPlanEntryResponse(
             id=e.id, day_of_week=e.day_of_week, meal_slot=e.meal_slot,
             food_name=e.food_name, serving_size=e.serving_size,
-            calories=e.calories, protein=e.protein, carbs=e.carbs, fats=e.fats,
+            calories=e.calories,
+            protein=e.protein,
+            carbs=e.carbs,
+            fats=e.fats,
             food_id=e.food_id,
         ) for e in plan.entries],
         created_at=plan.created_at, updated_at=plan.updated_at,

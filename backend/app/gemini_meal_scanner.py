@@ -27,6 +27,40 @@ class _GeminiCompatModel:
         )
 
 
+def get_gemini_client():
+    """
+    Returns a client wrapper for Gemini API compatible with generate_content(prompt).
+    """
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY is not configured on the backend")
+
+    try:
+        from google import genai
+        model_name = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        
+        class GenAIClientWrapper:
+            def __init__(self, api_key: str, model: str):
+                self.client = genai.Client(api_key=api_key)
+                self.model_name = model
+                
+            def generate_content(self, contents):
+                return self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=contents,
+                )
+        return GenAIClientWrapper(api_key, model_name)
+    except ImportError:
+        try:
+            import google.generativeai as legacy_genai
+            legacy_genai.configure(api_key=api_key)
+            model_name = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+            return legacy_genai.GenerativeModel(model_name)
+        except ImportError:
+            raise ImportError("Neither google-genai nor google-generativeai is installed")
+
+
+
 class PersonalizedMealScanner:
     """
     Hybrid approach:

@@ -17,3 +17,7 @@ cryptography
 python-multipart
 stripe>=5.0.0
 slowapi
+google-auth>=2.0.0
+email-validator>=2.0.0
+gunicorn>=21.2.0
+alembic>=1.13.0

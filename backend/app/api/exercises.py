@@ -8,26 +8,69 @@ from app.exercise_service import ExerciseService
 router = APIRouter(prefix="/api/exercises", tags=["Exercises"])
 
 @router.get("/library")
-def get_exercise_library(db: Session = Depends(get_db)):
+def get_exercise_library(
+    muscle_group: Optional[str] = Query(None, description="Filter by muscle group"),
+    difficulty: Optional[str] = Query(None, description="Filter by difficulty level"),
+    goal: Optional[str] = Query(None, description="Filter by fitness goal"),
+    db: Session = Depends(get_db)
+):
+    """
+    Get exercise library with optional filters.
+    
+    Filters:
+    - muscle_group: Chest, Back, Legs, Shoulders, Arms, Abs, Cardio, Calves, Female-Specific
+    - difficulty: beginner, intermediate, advanced
+    - goal: fat_loss, muscle_gain, athletic, maintenance
+    """
     cats = db.query(models.ExerciseCategory).all()
     result = []
+    
     for cat in cats:
-        result.append({
-            "id": cat.id,
-            "name": cat.name,
-            "description": cat.description or "",
-            "items": [{
-                "id": ex.id,
-                "name": ex.name,
-                "description": ex.description or "",
-                "targeted_muscle": ex.targeted_muscle or "",
-                "difficulty": ex.difficulty or "beginner",
-                "equipment": ex.equipment or "",
-                "calories_per_min": ex.calories_per_min or 5.0,
-                "calories_per_rep": getattr(ex, 'calories_per_rep', 0.1)
-            } for ex in cat.exercises]
-        })
-    return result
+        # Filter by muscle group if specified
+        if muscle_group and cat.name.lower() != muscle_group.lower():
+            continue
+        
+        filtered_exercises = cat.exercises
+        
+        # Apply difficulty filter
+        if difficulty:
+            filtered_exercises = [ex for ex in filtered_exercises 
+                                if ex.difficulty and ex.difficulty.lower() == difficulty.lower()]
+        
+        # Apply goal filter
+        if goal:
+            filtered_exercises = [ex for ex in filtered_exercises 
+                                if ex.fitness_goal and ex.fitness_goal.lower() == goal.lower()]
+        
+        # Only include category if it has exercises after filtering
+        if filtered_exercises or not any([muscle_group, difficulty, goal]):
+            result.append({
+                "id": cat.id,
+                "name": cat.name,
+                "description": cat.description or "",
+                "total_exercises": len(filtered_exercises),
+                "items": [{
+                    "id": ex.id,
+                    "name": ex.name,
+                    "description": ex.description or "",
+                    "targeted_muscle": ex.targeted_muscle or "",
+                    "difficulty": ex.difficulty or "beginner",
+                    "equipment": ex.equipment or "",
+                    "calories_per_min": ex.calories_per_min or 5.0,
+                    "calories_per_rep": getattr(ex, 'calories_per_rep', 0.1),
+                    "fitness_goal": ex.fitness_goal or "maintenance"
+                } for ex in filtered_exercises]
+            })
+    
+    return {
+        "filters_applied": {
+            "muscle_group": muscle_group,
+            "difficulty": difficulty,
+            "goal": goal
+        },
+        "total_categories": len(result),
+        "categories": result
+    }
 
 @router.post("/")
 def create_exercise(

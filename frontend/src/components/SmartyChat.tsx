@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, User, Bot, Loader2, Zap, Trash2 } from 'lucide-react';
 import { sendCoachMessage } from '../services/geminiService';
+import { fetchDailyCoach } from '../services/api';
 
 interface Message {
   role: 'user' | 'model';
@@ -43,7 +44,15 @@ const SmartyChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>(loadMessages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [dailyCoach, setDailyCoach] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // Preload today's coach context
+    fetchDailyCoach(undefined, async () => null)
+      .then(data => setDailyCoach(data))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
@@ -70,6 +79,32 @@ const SmartyChat: React.FC = () => {
     setLoading(true);
 
     const lowerText = userMessage.toLowerCase();
+
+    // Map Quick Prompts to coach actions
+    if (lowerText.includes('workout today') || lowerText.includes('what workout')) {
+      const workoutType = dailyCoach?.workout_recommendation?.type || 'rest';
+      const reasoning = dailyCoach?.workout_recommendation?.reasoning || 'Active recovery.';
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: 'model',
+          text: `Your recommended training protocol today is a **${workoutType}** session. \nReasoning: *${reasoning}* \n\nYou can view and start the full session here: [Go to Today's Workout](/dashboard/quick)`
+        }]);
+        setLoading(false);
+      }, 500);
+      return;
+    }
+
+    if (lowerText.includes('should i eat') || lowerText.includes('what should i eat') || lowerText.includes('what eat')) {
+      const nextMeal = dailyCoach?.meal_recommendation?.next_meal || 'Balanced Meal';
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: 'model',
+          text: `Your next recommended meal option is **${nextMeal}**. \n\nYou can view your fully optimized meal plans and log your foods here: [Go to Meal Scanner](/dashboard/food-scanner)`
+        }]);
+        setLoading(false);
+      }, 500);
+      return;
+    }
     
     // Rule-grounded query interception
     if (lowerText.includes('protein') || lowerText.includes('target') || lowerText.includes('why') || lowerText.includes('rule')) {
@@ -102,7 +137,14 @@ const SmartyChat: React.FC = () => {
 
     try {
       const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
-      const response = await sendCoachMessage(userMessage, profile, messages);
+      const enhancedProfile = {
+        ...profile,
+        today_coach_summary: dailyCoach?.coach_summary || '',
+        today_coach_workout: dailyCoach?.workout_recommendation?.reasoning || '',
+        today_coach_meal: dailyCoach?.meal_recommendation?.next_meal || '',
+        today_coach_tasks: dailyCoach?.daily_tasks || [],
+      };
+      const response = await sendCoachMessage(userMessage, enhancedProfile, messages);
       setMessages(prev => [...prev, { role: 'model', text: response || "I couldn't process that. Try again." }]);
     } catch (err) {
       console.error(err);
@@ -117,7 +159,7 @@ const SmartyChat: React.FC = () => {
     <div className="max-w-4xl mx-auto h-[calc(100vh-12rem)] flex flex-col bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden animate-in zoom-in-95 duration-500">
       <div className="p-6 border-b border-slate-800 flex items-center justify-between bg-slate-900/60 backdrop-blur-md shrink-0">
         <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 relative">
+          <div className="w-12 h-12 bg-linear-to-br from-emerald-500 to-cyan-500 rounded-2xl flex items-center justify-center text-slate-950 shadow-lg shadow-emerald-500/20 relative">
             <Bot size={26} />
             <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-900 animate-ping" />
           </div>
@@ -157,7 +199,7 @@ const SmartyChat: React.FC = () => {
           >
             <div className={`flex max-w-[85%] space-x-3 ${msg.role === 'user' ? 'flex-row-reverse space-x-reverse' : 'flex-row'}`}>
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-1 ${
-                msg.role === 'user' ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-gradient-to-br from-emerald-500 to-cyan-500 text-slate-950'
+                msg.role === 'user' ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-linear-to-br from-emerald-500 to-cyan-500 text-slate-950'
               }`}>
                 {msg.role === 'user' ? <User size={14} /> : <Bot size={14} />}
               </div>

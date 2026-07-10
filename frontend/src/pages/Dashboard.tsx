@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Activity, Flame, TrendingUp, Zap, Target, BrainCircuit,
   ShieldCheck, Cpu, CheckCircle2, Circle, Fingerprint, Dumbbell, Trophy,
-  Droplets, Apple, ArrowRight, Camera, Play, CalendarCheck, CalendarDays, Moon, Gauge, Heart
+  Droplets, Apple, ArrowRight, Camera, Play, CalendarCheck, CalendarDays, Moon, Gauge, Heart, ThumbsUp, ThumbsDown
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { fetchRecoveryScore, fetchNeuralIntegrity, fetchMissionBriefing, fetchDailyCoach } from '../services/api';
@@ -56,7 +56,7 @@ const ConcentricProgressRing: React.FC<{
 
   return (
     <div className="flex flex-col items-center justify-center p-8 bg-slate-950/60 border border-white/10 rounded-[2.5rem] backdrop-blur-xl relative overflow-hidden group">
-      <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[radial-gradient(#10b981_1px,transparent_0)] bg-[size:16px_16px]"></div>
+      <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[radial-gradient(#10b981_1px,transparent_0)] bg-size-[16px_16px]"></div>
       <div className="relative w-64 h-64">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 256 256">
           {/* Outer Ring (Emerald - Calories Burned) */}
@@ -204,11 +204,39 @@ const Dashboard: React.FC = () => {
   const [typedBriefing, setTypedBriefing] = useState('');
   const [briefingIndex, setBriefingIndex] = useState(0);
   const [femmeData, setFemmeData] = useState<any>(null);
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, boolean>>({});
 
   const user = JSON.parse(localStorage.getItem('smarty_user') || '{}');
   const workoutLogs: WorkoutLog[] = JSON.parse(localStorage.getItem('smarty_workout_logs') || '[]');
   const mealLogs: MealLog[] = JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]');
   const profile = JSON.parse(localStorage.getItem('smarty_profile') || localStorage.getItem('bio_profile') || '{}');
+
+  const handleCoachFeedback = async (domain: string, itemId: string, rating: number) => {
+    try {
+      const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      await fetch(`${API_BASE}/api/feedback/coach`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          domain,
+          item_id: itemId,
+          rating,
+          context_json: {
+            goal: profile.goal || profile.primary_goal,
+            gender: profile.gender,
+            age: profile.age,
+            weight: profile.weight || profile.weight_kg,
+          }
+        })
+      });
+      setFeedbackSent(prev => ({ ...prev, [`${domain}:${itemId}`]: true }));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const hydrationMl = Number(localStorage.getItem('smarty_hydration_ml') || 0);
   const today = new Date().toDateString();
   const todayWorkouts = workoutLogs.filter(w => new Date(w.timestamp).toDateString() === today);
@@ -221,6 +249,7 @@ const Dashboard: React.FC = () => {
   const proteinGoal = Number(profile.proteinGoal || Math.max(90, Math.round((Number(profile.weight || profile.weight_kg) || 75) * 1.6)));
   const hydrationGoal = Number(profile.hydrationGoalMl || 3000);
   const workoutGoalMins = Number(profile.workoutGoalMins || 45);
+
   const profileFields = [
     profile.age,
     profile.gender,
@@ -317,23 +346,13 @@ const Dashboard: React.FC = () => {
     fetchNeuralIntegrity().then(setIntegrity).catch(() => {});
     fetchMissionBriefing().then(setBriefing).catch(() => {});
     setLoadingTasks(true);
-    fetchDailyCoach({
-      profile,
-      today: {
-        calories_eaten: todayCalEaten,
-        calories_burned: todayCalsBurned,
-        protein_g: todayProtein,
-        hydration_ml: hydrationMl,
-        workout_minutes: todayMinutes,
-        workouts_logged: todayWorkouts.length,
-        meals_logged: todayMeals.length,
-        recovery_score: recovery?.score,
-      },
-      recent_workouts: workoutLogs.slice(0, 5),
-      recent_meals: mealLogs.slice(0, 5),
-    }).then(data => {
+    fetchDailyCoach(undefined, async () => null).then(data => {
       setDailyCoach(data);
-      if (Array.isArray(data.tasks)) setTasks(data.tasks);
+      if (Array.isArray(data.daily_tasks)) {
+        setTasks(data.daily_tasks);
+      } else if (Array.isArray(data.tasks)) {
+        setTasks(data.tasks);
+      }
     }).finally(() => setLoadingTasks(false));
     const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
     setLoadingRecs(true);
@@ -409,8 +428,8 @@ const Dashboard: React.FC = () => {
       </div>
 
       <Reveal animation="fade-in-up">
-        <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70">
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/60 to-transparent" />
+        <section className="relative overflow-hidden rounded-4xl border border-white/10 bg-slate-950/70">
+          <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-emerald-400/60 to-transparent" />
           <div className="grid gap-0 lg:grid-cols-12">
             <div className="border-b border-white/10 p-6 md:p-8 lg:col-span-5 lg:border-b-0 lg:border-r">
               <div className="flex items-start justify-between gap-4">
@@ -423,10 +442,35 @@ const Dashboard: React.FC = () => {
                     {new Date().toLocaleDateString(undefined, { weekday: 'long' })}
                   </h3>
                   <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
-                    {dailyCoach?.summary || (todayWorkouts.length || todayMeals.length
+                    {dailyCoach?.coach_summary || dailyCoach?.summary || (todayWorkouts.length || todayMeals.length
                       ? `You have logged ${todayWorkouts.length} workout${todayWorkouts.length === 1 ? '' : 's'} and ${todayMeals.length} meal${todayMeals.length === 1 ? '' : 's'} today.`
                       : 'Start with one useful action and the rest of the day gets easier to steer.')}
                   </p>
+                  
+                  {/* Phase 4 Feedback controls */}
+                  <div className="mt-4 flex items-center space-x-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Was this briefing helpful?</span>
+                    {feedbackSent['daily_plan:today'] ? (
+                      <span className="text-[9px] font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">Feedback Recorded</span>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <button
+                          onClick={() => handleCoachFeedback('daily_plan', 'today', 5)}
+                          className="p-1.5 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition"
+                          title="Helpful"
+                        >
+                          <ThumbsUp size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleCoachFeedback('daily_plan', 'today', 1)}
+                          className="p-1.5 hover:bg-rose-500/10 rounded-lg text-slate-400 hover:text-rose-400 transition"
+                          title="Not Helpful"
+                        >
+                          <ThumbsDown size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="hidden rounded-2xl border border-white/10 bg-white/5 p-4 text-right sm:block">
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Readiness</p>
@@ -457,7 +501,7 @@ const Dashboard: React.FC = () => {
                   <button
                     key={action.label}
                     onClick={() => navigate(action.path)}
-                    className="group flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-center transition hover:border-white/20 hover:bg-white/[0.06]"
+                    className="group flex min-h-20 flex-col items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/3 p-3 text-center transition hover:border-white/20 hover:bg-white/6"
                     title={action.label}
                   >
                     <action.icon size={18} className={`${action.color} transition group-hover:scale-110`} />
@@ -478,46 +522,171 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
 
-              <div className="mt-5 grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Profile</span>
-                    <Gauge size={16} className="text-emerald-400" />
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-900">
-                    <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${profileCompletion}%` }} />
-                  </div>
-                  <p className="mt-2 text-xs font-bold text-slate-300">{profileCompletion}% complete</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="mb-3 flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Protocol</span>
-                    <CheckCircle2 size={16} className="text-purple-400" />
-                  </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-900">
-                    <div className="h-full rounded-full bg-purple-400 transition-all" style={{ width: `${taskPct}%` }} />
-                  </div>
-                  <p className="mt-2 text-xs font-bold text-slate-300">{completedTasks}/{tasks.length || 0} tasks done</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Focus</span>
-                    <Target size={16} className="text-rose-400" />
-                  </div>
-                  <p className="truncate text-sm font-black italic text-white">{focusLabel}</p>
-                  <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-600">Next best area</p>
-                </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-white/10 bg-white/3 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Profile</span>
+                <Gauge size={16} className="text-emerald-400" />
               </div>
-            </section>
-          </Reveal>
+              <div className="h-1.5 overflow-hidden rounded-full bg-slate-900">
+                <div className="h-full rounded-full bg-emerald-400 transition-all" style={{ width: `${profileCompletion}%` }} />
+              </div>
+              <p className="mt-2 text-xs font-bold text-slate-300">{profileCompletion}% complete</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/3 p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Protocol</span>
+                <CheckCircle2 size={16} className="text-purple-400" />
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-slate-900">
+                <div className="h-full rounded-full bg-purple-400 transition-all" style={{ width: `${taskPct}%` }} />
+              </div>
+              <p className="mt-2 text-xs font-bold text-slate-300">{completedTasks}/{tasks.length || 0} tasks done</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/3 p-4">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Focus</span>
+                <Target size={16} className="text-rose-400" />
+              </div>
+              <p className="truncate text-sm font-black italic text-white">{focusLabel}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-slate-600">Next best area</p>
+            </div>
+          </div>
+        </section>
+      </Reveal>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Column */}
         <div className="lg:col-span-8 space-y-8">
+          {/* Unified Coach Recommendations */}
+          <Reveal animation="fade-in-up">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Today's Training */}
+              <div className={`glass-panel p-8 rounded-[2.5rem] border ${dailyCoach?.gender_mode === 'femmecare' ? 'border-pink-500/20' : 'border-emerald-500/20'} bg-slate-950/40 relative overflow-hidden`}>
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className={`p-3 rounded-2xl ${dailyCoach?.gender_mode === 'femmecare' ? 'bg-pink-500/10 text-pink-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                    <Dumbbell size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-wider text-slate-400">Today's Training</h4>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                      {dailyCoach?.workout_recommendation?.type || 'Rest'} session
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-300 italic mb-4">
+                  "{dailyCoach?.workout_recommendation?.reasoning || 'Active recovery / Rest day.'}"
+                </p>
+                {dailyCoach?.workout_recommendation?.exercises?.length > 0 ? (
+                  <div className="space-y-2">
+                    {dailyCoach.workout_recommendation.exercises.map((ex: any, idx: number) => (
+                      <div key={idx} className="p-3 bg-slate-900/80 rounded-xl border border-white/5 flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-black text-white uppercase tracking-tight">{ex.name}</p>
+                          <p className="text-[9px] text-slate-500">{ex.targeted_muscle || ex.muscle} - {ex.difficulty}</p>
+                        </div>
+                        <div className="text-right flex items-center space-x-2">
+                          {ex.restricted ? (
+                            <span className="text-[8px] font-black text-rose-400 uppercase bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20">Gated</span>
+                          ) : (
+                            <span className="text-[9px] text-slate-400 font-bold">{ex.sets || 3}x{ex.reps || '10-12'}</span>
+                          )}
+                          
+                          {/* Feedback for exercise recommendation */}
+                          <div className="flex items-center ml-2 border-l border-white/10 pl-2">
+                            {feedbackSent[`exercise:${ex.id || ex.name}`] ? (
+                              <span className="text-[7px] text-emerald-400 font-black">✓</span>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleCoachFeedback('exercise', ex.id || ex.name, 5)}
+                                  className="p-1 text-slate-500 hover:text-emerald-400 transition"
+                                  title="Like exercise pick"
+                                >
+                                  <ThumbsUp size={10} />
+                                </button>
+                                <button
+                                  onClick={() => handleCoachFeedback('exercise', ex.id || ex.name, 1)}
+                                  className="p-1 text-slate-500 hover:text-rose-400 transition"
+                                  title="Dislike exercise pick"
+                                >
+                                  <ThumbsDown size={10} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 uppercase font-black tracking-widest text-center py-6">Rest block active.</p>
+                )}
+              </div>
+
+              {/* Today's Nutrition */}
+              <div className={`glass-panel p-8 rounded-[2.5rem] border ${dailyCoach?.gender_mode === 'femmecare' ? 'border-pink-500/20' : 'border-emerald-500/20'} bg-slate-950/40 relative overflow-hidden`}>
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className={`p-3 rounded-2xl ${dailyCoach?.gender_mode === 'femmecare' ? 'bg-pink-500/10 text-pink-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                    <Apple size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase tracking-wider text-slate-400">Today's Nutrition</h4>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                      Next: {dailyCoach?.meal_recommendation?.next_meal || 'Healthy Meal'}
+                    </p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {dailyCoach?.meal_recommendation?.foods?.length > 0 ? (
+                    <div>
+                      <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-2 font-mono">Ranked food picks:</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {dailyCoach.meal_recommendation.foods.map((food: any, idx: number) => (
+                          <div key={idx} className="p-2.5 bg-slate-900/80 rounded-xl border border-white/5 text-xs flex flex-col justify-between">
+                            <div>
+                              <div className="flex justify-between items-start">
+                                <p className="font-black text-white truncate uppercase tracking-tight max-w-[80%]">{food.name}</p>
+                                {/* Food recommendation feedback */}
+                                <div className="flex items-center space-x-0.5">
+                                  {feedbackSent[`meal:${food.id || food.name}`] ? (
+                                    <span className="text-[7px] text-emerald-400 font-bold">✓</span>
+                                  ) : (
+                                    <>
+                                      <button
+                                        onClick={() => handleCoachFeedback('meal', food.id || food.name, 5)}
+                                        className="text-[8px] text-slate-500 hover:text-emerald-400 transition"
+                                      >
+                                        👍
+                                      </button>
+                                      <button
+                                        onClick={() => handleCoachFeedback('meal', food.id || food.name, 1)}
+                                        className="text-[8px] text-slate-500 hover:text-rose-400 transition"
+                                      >
+                                        👎
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-[9px] text-slate-500 mt-0.5">{food.calories} kcal | {food.protein || 0}g P</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 uppercase font-black tracking-widest text-center py-6">Loading nutrition pool...</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Reveal>
+
           {/* Neural Checklist */}
           <Reveal animation="fade-in-up">
             <div className="glass-panel p-10 rounded-[3rem] border border-white/5 relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-linear-to-r from-transparent via-emerald-500/20 to-transparent"></div>
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h3 className="text-2xl font-black text-white italic tracking-tighter">Daily Protocol</h3>
@@ -589,173 +758,24 @@ const Dashboard: React.FC = () => {
               subText={`${todayWorkouts.length} workouts logged`}
             />
             <MetricCard
-              label="Hydration"
-              value={hydrationMl}
-              target={hydrationGoal}
-              unit=" ml"
-              colorName="cyan"
-              colorHex="#06b6d4"
-              icon={Droplets}
-              history={hydrationHistory}
-              subText={`Target: ${hydrationGoal} ml`}
-            />
-            <MetricCard
-              label="Sleep"
-              value={sleepHistory[6].value}
-              target={8}
-              unit=" hrs"
-              colorName="purple"
-              colorHex="#8b5cf6"
-              icon={Moon}
-              history={sleepHistory}
-              subText="Target: 8.0 hrs"
-            />
-            <MetricCard
-              label="Protein"
-              value={todayProtein}
-              target={proteinGoal}
-              unit=" g"
-              colorName="blue"
-              colorHex="#3b82f6"
-              icon={Zap}
-              history={proteinHistory}
-              subText={`${todayProtein.toFixed(0)}g / ${proteinGoal}g`}
-            />
-            <MetricCard
-              label="Workout Streak"
-              value={workoutStreak}
-              target={30}
-              unit=" days"
+              label="Readiness Score"
+              value={readinessScore}
+              target={100}
+              unit="%"
               colorName="emerald"
               colorHex="#10b981"
-              icon={Trophy}
-              history={streakHistory}
-              subText={workoutStreak > 0 ? "Keep it up!" : "Start today!"}
+              icon={Activity}
+              history={calBurnedHistory}
+              subText="System calibration status"
             />
           </div>
-
-          {/* Readiness & Integrity */}
-          <Reveal animation="fade-in-up" delay={150}>
-            <div className="glass-panel p-10 rounded-[3rem] border border-white/5 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 text-white/5 group-hover:text-emerald-500/10 transition-colors">
-                <Fingerprint size={120} />
-              </div>
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-400 border border-emerald-500/20">
-                  <ShieldCheck size={28} />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase">Readiness & Integrity</h3>
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Bio-Analytical Core v5.0</p>
-                </div>
-              </div>
-
-              <div className="mb-10 p-6 bg-slate-950 border border-emerald-500/20 rounded-2xl relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent animate-pulse"></div>
-                <div className="flex items-center space-x-2 mb-3">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" style={{ animationDuration: '2s' }}></div>
-                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Incoming Mission Briefing...</span>
-                </div>
-                <p className="font-mono text-emerald-400 text-sm leading-relaxed min-h-[3em]">
-                  {typedBriefing}<span className="animate-pulse">|</span>
-                </p>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Source: Gemini 1.5 Flash</span>
-                  <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest italic">{new Date(briefing?.timestamp || Date.now()).toLocaleTimeString()}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-10">
-                <div className="md:col-span-5 flex flex-col items-center justify-center p-8 bg-slate-950/50 rounded-[2.5rem] border border-white/5 relative group">
-                  <div className="relative w-48 h-48 flex items-center justify-center mb-6">
-                    <div className={`absolute inset-0 rounded-full blur-3xl opacity-20 animate-pulse ${recovery?.status === 'EMERALD' ? 'bg-emerald-500' : recovery?.status === 'AMBER' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
-                    <svg className="absolute inset-0 w-full h-full -rotate-90">
-                      <defs>
-                        <linearGradient id="orbGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor={recovery?.status === 'EMERALD' ? '#10b981' : recovery?.status === 'AMBER' ? '#f59e0b' : '#f43f5e'} />
-                          <stop offset="100%" stopColor="#020617" />
-                        </linearGradient>
-                      </defs>
-                      <circle cx="96" cy="96" r="84" stroke="rgba(255,255,255,0.05)" strokeWidth="12" fill="none" />
-                      <circle cx="96" cy="96" r="84" stroke="url(#orbGradient)" strokeWidth="12" fill="none"
-                        strokeDasharray="527.7" strokeDashoffset={527.7 - (527.7 * (recovery?.score || 85) / 100)}
-                        strokeLinecap="round" className="transition-all duration-1000 ease-out" />
-                    </svg>
-                    <div className="relative z-10 flex flex-col items-center">
-                      <span className="text-6xl font-black text-white italic tracking-tighter leading-none">{(recovery?.score || 85).toFixed(0)}</span>
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest mt-1">Readiness</span>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4 w-full">
-                    {[
-                      { l: 'Strain', v: recovery?.breakdown?.strain_recovery || 80, c: 'orange' },
-                      { l: 'Fuel', v: recovery?.breakdown?.nutritional_status || 90, c: 'cyan' },
-                      { l: 'Stability', v: recovery?.breakdown?.system_stability || 85, c: 'purple' }
-                    ].map(stat => {
-                      const c2 = statColors[stat.c as keyof typeof statColors] || statColors.emerald;
-                      return (
-                        <div key={stat.l} className="text-center">
-                          <p className={`text-xs font-black ${c2.text} mb-0.5`}>{stat.v}%</p>
-                          <p className="text-[7px] font-black text-slate-600 uppercase tracking-widest">{stat.l}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="md:col-span-7 flex flex-col justify-between py-2">
-                  <div className="space-y-6">
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3 text-white/80">
-                          <BrainCircuit size={18} className="text-emerald-400" />
-                          <span className="text-[11px] font-black uppercase tracking-widest">Kinetic Integrity Check:</span>
-                        </div>
-                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${integrity?.precision_index === 'HIGH' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                          {integrity?.precision_index || 'HIGH'} PRECISION
-                        </span>
-                      </div>
-                      <div className="relative p-6 bg-slate-950/50 rounded-2xl border border-white/5 card-hover">
-                        <div className="absolute top-4 right-4 text-emerald-500/10"><ShieldCheck size={40} /></div>
-                        <div className="flex items-center space-x-4 mb-3">
-                          <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Score Index</span>
-                            <span className="text-xl font-black text-white italic">{(integrity?.integrity_score || 98).toFixed(0)}%</span>
-                          </div>
-                          <div className="w-px h-6 bg-white/10 mx-2"></div>
-                          <div className="flex flex-col">
-                            <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest">Focus Area</span>
-                            <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest italic">{integrity?.focus_area || 'None'}</span>
-                          </div>
-                        </div>
-                        <div className="w-full h-1.5 bg-slate-900 rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 fill-bar-anim" style={{ width: `${integrity?.integrity_score || 98}%` }}></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-6 mt-6">
-                      <div className="flex flex-col">
-                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Kinetic Focus</span>
-                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-widest italic">{integrity?.focus_area || 'None'}</span>
-                      </div>
-                      <div className="w-px h-8 bg-white/10"></div>
-                      <div className="flex flex-col">
-                        <span className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1">Injury Risk</span>
-                        <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest italic">{(100 - (integrity?.integrity_score || 100)).toFixed(0)}% Delta</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Reveal>
         </div>
 
         {/* Sidebar Column */}
         <div className="lg:col-span-4 space-y-8">
           {(String(profile.gender || '').toLowerCase() === 'female' || Boolean(profile.femmecareEnabled || profile.femmecare_enabled)) && femmeData && (
             <Reveal animation="slide-in-right" delay={50}>
-              <div className="glass-panel p-6 rounded-[2.5rem] border border-pink-500/20 bg-gradient-to-br from-pink-950/10 via-slate-950 to-pink-950/10 relative overflow-hidden group card-hover">
+              <div className="glass-panel p-6 rounded-[2.5rem] border border-pink-500/20 bg-linear-to-br from-pink-950/10 via-slate-950 to-pink-950/10 relative overflow-hidden group card-hover">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-pink-500/5 rounded-full blur-2xl -mr-10 -mt-10 group-hover:bg-pink-500/10 transition-all duration-500" />
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-3">
@@ -807,7 +827,13 @@ const Dashboard: React.FC = () => {
           )}
 
           <Reveal animation="slide-in-right" delay={100}>
-            <SmartNextMove userId={1} />
+            <SmartNextMove
+              userId={user.id || 1}
+              action={dailyCoach?.next_action}
+              tasksCompleted={completedTasks}
+              tasksTotal={tasks.length}
+              genderMode={dailyCoach?.gender_mode}
+            />
           </Reveal>
           <Reveal animation="slide-in-right" delay={200}>
             <DailyChecklist userId={1} compact />
@@ -840,98 +866,8 @@ const Dashboard: React.FC = () => {
                   ))}
                 </div>
               )}
-              <div className="pt-6 mt-4 border-t border-white/5">
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-3">Weekly Calories Burned</p>
-                <ResponsiveContainer width="100%" height={80}>
-                  <AreaChart data={weekCalData}>
-                    <Area type="monotone" dataKey="v" stroke="#f97316" fill="#f97316" fillOpacity={0.1} strokeWidth={2} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
             </div>
           </Reveal>
-
-          <Reveal animation="slide-in-right" delay={400}>
-            <div className="glass-panel p-8 rounded-[3rem] border border-white/5 relative bg-slate-900/50">
-              <h3 className="text-lg font-black text-white italic tracking-tighter mb-6 flex items-center">
-                <BrainCircuit className="mr-3 text-cyan-400" size={20} /> Neural Insights
-              </h3>
-              {loadingRecs ? (
-                <div className="space-y-4">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="h-20 skeleton-shimmer" />
-                  ))}
-                </div>
-              ) : recommendations.length > 0 ? (
-                <div className="space-y-4 stagger-children">
-                  {recommendations.slice(0, 3).map((rec, i) => (
-                    <div key={i} className="p-5 bg-slate-950/80 rounded-2xl border border-white/10 card-hover">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded border border-cyan-500/30 text-cyan-400">{rec.type}</span>
-                        <span className="text-[8px] font-black text-slate-600 uppercase">Confidence: {(rec.confidence_score * 100).toFixed(0)}%</span>
-                      </div>
-                      <p className="text-xs font-black text-white italic group-hover:text-cyan-300 transition-colors uppercase">{rec.title}</p>
-                      <p className="text-[9px] text-slate-500 mt-1 leading-relaxed">{rec.description}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-6 text-center">
-                  <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest italic">Analyzing biological trends...</p>
-                </div>
-              )}
-            </div>
-          </Reveal>
-
-          {/* GitHub-style Macro Adherence Streak Calendar */}
-          <Reveal animation="slide-in-right" delay={450}>
-            <div className="glass-panel p-6 rounded-[2.5rem] border border-white/5 bg-slate-950/40">
-              <h3 className="text-xs font-black text-white uppercase tracking-widest mb-3 flex items-center">
-                <CalendarDays className="mr-2 text-emerald-400" size={16} /> Macro Adherence Grid
-              </h3>
-              <div className="grid grid-cols-7 gap-1.5 p-2 bg-slate-950/60 rounded-xl border border-white/5">
-                {Array.from({ length: 28 }).map((_, i) => {
-                  const hasLog = i % 4 !== 0; // synthetic log streak pattern
-                  const intensity = i % 5 === 0 ? 'bg-emerald-800' : i % 3 === 0 ? 'bg-emerald-600' : 'bg-emerald-500';
-                  return (
-                    <div 
-                      key={i} 
-                      className={`aspect-square rounded-md ${hasLog ? intensity : 'bg-slate-900 border border-white/5'} transition-all hover:scale-110`}
-                      title={hasLog ? "Target Met" : "No entry logged"}
-                    />
-                  );
-                })}
-              </div>
-              <p className="text-[8px] text-slate-500 uppercase tracking-widest text-center mt-3 font-bold">Past 4 weeks performance</p>
-            </div>
-          </Reveal>
-
-          {/* Muscle Heatmap */}
-          <Reveal animation="slide-in-right" delay={500}>
-            <div className="glass-panel p-6 rounded-[2.5rem] border border-white/5 bg-slate-950/40">
-              <h3 className="text-xs font-black text-white uppercase tracking-widest mb-4 flex items-center">
-                <Activity className="mr-2 text-cyan-400" size={16} /> Target Volume Heatmap
-              </h3>
-              <div className="space-y-3">
-                {[
-                  { muscle: "Glutes/Legs", volume: 85, color: "bg-pink-500" },
-                  { muscle: "Core/Back", volume: 60, color: "bg-cyan-500" },
-                  { muscle: "Shoulders/Arms", volume: 40, color: "bg-orange-500" }
-                ].map((item, idx) => (
-                  <div key={idx} className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
-                      <span>{item.muscle}</span>
-                      <span>{item.volume}% intensity</span>
-                    </div>
-                    <div className="h-2 bg-slate-900 rounded-full overflow-hidden border border-white/5">
-                      <div className={`h-full rounded-full ${item.color}`} style={{ width: `${item.volume}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
-
         </div>
       </div>
     </div>

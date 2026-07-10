@@ -12,9 +12,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import MenstrualCycleLog
 from app.schemas import MenstrualCycleLogCreate
-from app.recommendation_engine import (
-    GoalPredictor, MealRecommender, FoodSwapEngine, PortionOptimizer, RecommendationEngine
-)
+from app.recommendation_engine import RecommendationEngine
 
 
 router = APIRouter(prefix="/api/recommendations", tags=["Smart Recommendations"])

@@ -45,7 +45,6 @@ def recalculate_streak(user_id: str, db: Session) -> int:
         
     # Analyze day gaps
     current_streak = 0
-    start_idx = 0
     
     # Event-sourced loop checking each consecutive day
     idx = 0

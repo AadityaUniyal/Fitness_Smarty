@@ -242,7 +242,7 @@ const FemmeCare: React.FC = () => {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
                 {/* Cycle Overview */}
-                <div className="lg:col-span-1 bg-gradient-to-br from-pink-950/20 to-slate-900/40 border border-pink-500/20 rounded-[2.5rem] p-8 relative overflow-hidden group">
+                <div className="lg:col-span-1 bg-linear-to-br from-pink-950/20 to-slate-900/40 border border-pink-500/20 rounded-[2.5rem] p-8 relative overflow-hidden group">
                     <div className="absolute -top-20 -right-20 w-40 h-40 bg-pink-500/10 blur-[80px] rounded-full group-hover:bg-pink-500/20 transition-all duration-700" />
 
                     <h2 className="text-lg font-black text-white mb-8 flex items-center space-x-3">
@@ -450,7 +450,7 @@ const FemmeCare: React.FC = () => {
 
             {/* Log Modal */}
             {showLogModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={() => setShowLogModal(false)} />
                     <div className="bg-slate-900 border border-pink-500/30 rounded-[2.5rem] p-8 w-full max-w-md relative z-10 shadow-2xl max-h-[90vh] overflow-y-auto">
                         <h2 className="text-2xl font-black text-white italic mb-6">LOG CYCLE START</h2>

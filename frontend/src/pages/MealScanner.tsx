@@ -27,13 +27,10 @@ const macroColors: Record<string, { border: string; bg: string; text: string }> 
   orange: { border: 'border-orange-500/20', bg: 'bg-orange-500/10', text: 'text-orange-400' },
   blue: { border: 'border-blue-500/20', bg: 'bg-blue-500/10', text: 'text-blue-400' },
   amber: { border: 'border-amber-500/20', bg: 'bg-amber-500/10', text: 'text-amber-400' },
-  purple: { border: 'border-purple-500/20', bg: 'bg-purple-500/10', text: 'text-purple-400' },
-  emerald: { border: 'border-emerald-500/20', bg: 'bg-emerald-500/10', text: 'text-emerald-400' },
-  rose: { border: 'border-rose-500/20', bg: 'bg-rose-500/10', text: 'text-rose-400' },
-  cyan: { border: 'border-cyan-500/20', bg: 'bg-cyan-500/10', text: 'text-cyan-400' },
+  purple: { border: 'border-purple-500/20', bg: 'bg-purple-500/10', text: 'text-purple-400' }
 };
 
-// ───── Macro Donut Chart Component ─────
+// ───── Macro Circular Chart ─────
 interface MacroDonutProps {
   protein: number;
   carbs: number;
@@ -42,38 +39,48 @@ interface MacroDonutProps {
 }
 
 const MacroDonut: React.FC<MacroDonutProps> = ({ protein, carbs, fat, totalCalories }) => {
-  const proC = protein * 4;
-  const carbC = carbs * 4;
-  const fatC = fat * 9;
-  const total = proC + carbC + fatC || 1;
-
-  const proPct = Math.round((proC / total) * 100);
-  const carbPct = Math.round((carbC / total) * 100);
+  const totalGrams = (protein || 0) + (carbs || 0) + (fat || 0) || 1;
+  const proPct = Math.round(((protein || 0) / totalGrams) * 100);
+  const carbPct = Math.round(((carbs || 0) / totalGrams) * 100);
   const fatPct = 100 - proPct - carbPct;
 
-  // SVG donut
-  const radius = 56;
-  const cx = 70;
-  const cy = 70;
+  const radius = 50;
+  const strokeWidth = 16;
   const circumference = 2 * Math.PI * radius;
+  const cx = 60;
+  const cy = 60;
 
-  const getArcPath = (startPct: number, pct: number, color: string) => {
-    const start = (startPct / 100) * circumference;
-    const len = (pct / 100) * circumference;
+  const getArcPath = (startPct: number, durationPct: number, color: string) => {
+    if (durationPct <= 0) return null;
+    const startAngle = (startPct / 100) * 360 - 90;
+    const endAngle = ((startPct + durationPct) / 100) * 360 - 90;
+
+    const polarToCartesian = (centerX: number, centerY: number, r: number, angleInDegrees: number) => {
+      const angleInRadians = (angleInDegrees * Math.PI) / 180.0;
+      return {
+        x: centerX + r * Math.cos(angleInRadians),
+        y: centerY + r * Math.sin(angleInRadians)
+      };
+    };
+
+    const start = polarToCartesian(cx, cy, radius, endAngle);
+    const end = polarToCartesian(cx, cy, radius, startAngle);
+    const largeArcFlag = durationPct > 50 ? '1' : '0';
+
     return (
-      <circle
-        cx={cx} cy={cy} r={radius}
-        fill="none" stroke={color} strokeWidth="16"
-        strokeDasharray={`${len} ${circumference - len}`}
-        strokeDashoffset={-start + circumference * 0.25}
-        style={{ transition: 'all 0.6s ease' }}
+      <path
+        d={[`M`, start.x, start.y, `A`, radius, radius, 0, largeArcFlag, 0, end.x, end.y].join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
       />
     );
   };
 
   return (
-    <div className="flex items-center gap-6">
-      <svg width="140" height="140" className="shrink-0 -rotate-90">
+    <div className="flex items-center space-x-6 bg-slate-950/40 p-4 border border-white/5 rounded-2xl">
+      <svg className="w-[120px] h-[120px] -rotate-90">
         <circle cx={cx} cy={cy} r={radius} fill="none" stroke="#1e293b" strokeWidth="16" />
         {getArcPath(0, proPct, '#60a5fa')}
         {getArcPath(proPct, carbPct, '#f59e0b')}
@@ -97,7 +104,7 @@ const MacroDonut: React.FC<MacroDonutProps> = ({ protein, carbs, fat, totalCalor
           <p className="text-xs font-black text-slate-300">Carbs <span className="text-amber-400">{carbPct}%</span></p>
         </div>
         <div className="flex items-center space-x-2">
-          <div className="w-3 h-3 rounded-full bg-purple-400 shrink-0" />
+          <div className="w-3 h-3 rounded-full bg-purple-450 shrink-0" />
           <p className="text-xs font-black text-slate-300">Fats <span className="text-purple-400">{fatPct}%</span></p>
         </div>
       </div>
@@ -130,6 +137,33 @@ const PortionPanel: React.FC<PortionPanelProps> = ({ detectedFoodNames, onLogMea
   const [results, setResults] = useState<PortionItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [logged, setLogged] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState<Record<string, boolean>>({});
+
+  const handleMealFeedback = async (rating: number) => {
+    try {
+      const uId = localStorage.getItem('smarty_user_id') || 'local-user';
+      const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
+      await fetch(`${API_BASE}/api/feedback/coach`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          domain: 'meal',
+          item_id: detectedFoodNames.join(',') || 'meal_scan',
+          rating,
+          context_json: {
+            goal: profile.goal || profile.primary_goal,
+            gender: profile.gender,
+            mealType,
+          }
+        })
+      });
+      setFeedbackSent(prev => ({ ...prev, meal_scan: true }));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const calculatePortions = async () => {
     setLoading(true);
@@ -193,7 +227,7 @@ const PortionPanel: React.FC<PortionPanelProps> = ({ detectedFoodNames, onLogMea
               onChange={e => setPortions(prev => ({ ...prev, [name]: Number(e.target.value) }))}
               className="w-16 bg-transparent text-white font-black text-sm text-right focus:outline-none"
             />
-            <span className="text-slate-500 text-xs font-black">g</span>
+            <span className="text-slate-550 text-xs font-black">g</span>
           </div>
         </div>
       ))}
@@ -201,7 +235,7 @@ const PortionPanel: React.FC<PortionPanelProps> = ({ detectedFoodNames, onLogMea
       <button
         onClick={calculatePortions}
         disabled={loading}
-        className="w-full py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:from-slate-700 disabled:to-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-2xl transition-all"
+        className="w-full py-3 bg-linear-to-r from-emerald-500 to-cyan-500 disabled:from-slate-700 disabled:to-slate-700 text-slate-950 font-black text-xs uppercase tracking-widest rounded-2xl transition-all"
       >
         {loading ? 'Calculating...' : 'Calculate Macros from Database'}
       </button>
@@ -256,9 +290,35 @@ const PortionPanel: React.FC<PortionPanelProps> = ({ detectedFoodNames, onLogMea
               ✓ Log This Meal to Database
             </button>
           ) : (
-            <div className="flex items-center justify-center space-x-2 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
-              <CheckCircle2 size={16} className="text-emerald-400" />
-              <p className="text-xs font-black text-emerald-400 uppercase tracking-widest">Meal Logged!</p>
+            <div className="flex flex-col gap-3 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl animate-in fade-in duration-300">
+              <div className="flex items-center justify-center space-x-2">
+                <CheckCircle2 size={16} className="text-emerald-400" />
+                <p className="text-xs font-black text-emerald-400 uppercase tracking-widest">Meal Logged!</p>
+              </div>
+              
+              <div className="flex items-center justify-between border-t border-emerald-500/20 pt-2.5">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">How was the scanning precision?</span>
+                {feedbackSent['meal_scan'] ? (
+                  <span className="text-[9px] font-black text-emerald-400">Recorded</span>
+                ) : (
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleMealFeedback(5)}
+                      className="p-1 hover:bg-emerald-500/10 rounded-lg text-slate-400 hover:text-emerald-400 transition"
+                      title="Accurate Portion/Item"
+                    >
+                      👍
+                    </button>
+                    <button
+                      onClick={() => handleMealFeedback(1)}
+                      className="p-1 hover:bg-rose-500/10 rounded-lg text-slate-400 hover:text-rose-400 transition"
+                      title="Inaccurate"
+                    >
+                      👎
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -442,9 +502,9 @@ const FoodScannerPage: React.FC = () => {
   };
 
   const reset = () => { setImage(null); setAnalysis(null); setDetections([]); setError(''); setShowPortionPanel(false); stopCamera(); };
-const goalColor = (analysis?.goalAlignment === 'good' ? 'emerald' : analysis?.goalAlignment === 'over' ? 'rose' : 'amber') as keyof typeof macroColors;
-const gc = macroColors[goalColor] || macroColors.amber;
-const goalIcon = analysis?.goalAlignment === 'good' ? CheckCircle2 : AlertCircle;
+  const goalColor = (analysis?.goalAlignment === 'good' ? 'emerald' : analysis?.goalAlignment === 'over' ? 'rose' : 'amber') as keyof typeof macroColors;
+  const gc = macroColors[goalColor] || macroColors.amber;
+  const goalIcon = analysis?.goalAlignment === 'good' ? CheckCircle2 : AlertCircle;
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -585,7 +645,7 @@ const goalIcon = analysis?.goalAlignment === 'good' ? CheckCircle2 : AlertCircle
 
           {image && !analysis && (
             <button onClick={analyzeImage} disabled={loading}
-              className="w-full flex items-center justify-center space-x-3 py-4 bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:from-slate-700 disabled:to-slate-700 text-slate-950 font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-[0_8px_25px_rgba(16,185,129,0.3)] disabled:shadow-none">
+              className="w-full flex items-center justify-center space-x-3 py-4 bg-linear-to-r from-emerald-500 to-cyan-500 disabled:from-slate-700 disabled:to-slate-700 text-slate-950 font-black text-sm uppercase tracking-widest rounded-2xl transition-all shadow-[0_8px_25px_rgba(16,185,129,0.3)] disabled:shadow-none">
               {loading ? (
                 <>
                   <ScanLine size={18} className="animate-pulse" />

@@ -176,12 +176,20 @@ const TrainingDashboard: React.FC = () => {
           </div>
           <div className="glass-panel p-5 rounded-2xl border border-white/5">
             <Zap size={16} className="text-cyan-400 mb-2" />
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Pipeline</p>
+            <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Feedback Samples</p>
             <p className="text-2xl font-black text-cyan-400 mt-1">
-              {status?.trained_models?.length ? `${Math.round(status.trained_models.reduce((s, m) => s + m.size_kb, 0))} KB` : 'Empty'}
+              {(status as any)?.feedback_samples_count ?? 0}
             </p>
           </div>
         </div>
+        {((status as any)?.feedback_samples_count || 0) >= 5 && (
+          <div className="mt-4 p-5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Optimization Window Open</p>
+              <p className="text-xs text-slate-500 mt-1">Feedback threshold reached ({(status as any)?.feedback_samples_count} logs). Trigger Recommendation NN retraining below.</p>
+            </div>
+          </div>
+        )}
       </Reveal>
 
       {/* Model cards */}
@@ -265,7 +273,7 @@ const TrainingDashboard: React.FC = () => {
             </div>
             <div className="divide-y divide-white/5">
               {status.datasets.datasets.map((name: string) => (
-                <div key={name} className="flex items-center justify-between p-5 hover:bg-white/[0.02] transition-colors">
+                <div key={name} className="flex items-center justify-between p-5 hover:bg-white/2 transition-colors">
                   <div className="flex items-center space-x-4">
                     <HardDrive size={16} className="text-slate-600" />
                     <p className="text-sm font-black text-white">{name}</p>

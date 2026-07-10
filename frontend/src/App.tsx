@@ -134,7 +134,7 @@ const DashboardShell: React.FC = () => {
   }, [isFemaleExperience]);
 
   const navItems = [
-    { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, exact: true },
+    { path: '/dashboard', label: 'My Coach', icon: LayoutDashboard, exact: true },
     { path: '/dashboard/food-scanner', label: 'Food Scanner', icon: Camera },
     { path: '/dashboard/workout', label: 'Workouts', icon: Dumbbell },
     { path: '/dashboard/exercises', label: 'Exercise Library', icon: BookOpen },
@@ -188,7 +188,7 @@ const DashboardShell: React.FC = () => {
     <div className={`flex h-screen bg-[#020617] overflow-hidden text-slate-200 ${accent.selection}`}>
       {/* Sidebar */}
       <aside className="w-72 border-r border-white/5 flex-col hidden lg:flex bg-slate-950/20 backdrop-blur-2xl relative shrink-0">
-        <div className={`absolute top-0 right-0 w-[1px] h-full bg-gradient-to-b from-transparent ${accent.lineVia} to-transparent`} />
+        <div className={`absolute top-0 right-0 w-px h-full bg-linear-to-b from-transparent ${accent.lineVia} to-transparent`} />
 
         <div className="p-8">
           <div className="flex items-center space-x-4 group cursor-pointer" onClick={() => navigate('/dashboard')}>

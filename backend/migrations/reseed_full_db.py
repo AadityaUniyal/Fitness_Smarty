@@ -33,6 +33,7 @@ def add_fitness_goal_column():
             else:
                 print("ℹ️  fitness_goal column already exists")
         except Exception as e:
+            print(f"SQLite check/alter failed, attempting PostgreSQL fallback: {e}")
             # PostgreSQL fallback
             try:
                 conn.execute(text("""

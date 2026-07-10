@@ -46,9 +46,6 @@ class DQNMealSequencer:
         # Mock optimal sequence
         meal_plan = []
         
-        target_calories = user_goals.get('daily_calories', 2000)
-        protein_target = user_goals.get('protein_target', 150)
-        
         # Mock meal database
         meals = [
             {'id': 1, 'name': 'High Protein Breakfast', 'calories': 450, 'protein_g': 40, 'time': 'breakfast'},
@@ -59,7 +56,6 @@ class DQNMealSequencer:
         
         for day in range(time_horizon_days):
             date = (datetime.now() + timedelta(days=day)).strftime('%Y-%m-%d')
-            daily_meals = []
             
             # Select meals to hit targets
             selected = [meals[0], meals[1], meals[2]]  # Breakfast, lunch, dinner

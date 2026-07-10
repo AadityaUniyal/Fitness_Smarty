@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import heroBg from '../assets/hero_background.png';
-import brandLogo from '../assets/brand_logo.png';
+
 
 interface LoginForm { name: string; email: string; password: string; }
 
@@ -154,7 +154,7 @@ const LoginPage: React.FC = () => {
                 <div className="mx-auto flex max-w-7xl items-center justify-between">
 <div className="flex items-center gap-3">
   <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${isFemaleDefault ? 'bg-pink-500' : 'bg-emerald-500'} text-slate-950 shadow-lg`}>
-    <img src={brandLogo} alt="Smarty Logo" className="h-7 w-auto" />
+    <Zap className="h-7 w-auto fill-slate-950" />
   </div>
   <div>
     <h1 className="text-lg font-black italic tracking-tighter uppercase text-white">
