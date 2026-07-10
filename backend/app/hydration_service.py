@@ -10,7 +10,7 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
-from .models import User, WorkoutLog
+from .models import EnhancedUser as User, WorkoutLog
 from .database import Base
 from sqlalchemy import Column, Integer, Float, Date, DateTime, ForeignKey
 
