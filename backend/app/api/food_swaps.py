@@ -214,7 +214,7 @@ async def get_smart_suggestions_after_meal(
     Example: After logging a 800-calorie meal,
     suggests lighter options for next meal.
     """
-    from ..models import User, UserGoals
+    from ..models import EnhancedUser as User, UserGoal as UserGoals
     from datetime import datetime
     
     user = db.query(User).filter(User.id == user_id).first()

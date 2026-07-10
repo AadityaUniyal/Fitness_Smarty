@@ -16,9 +16,14 @@ from sqlalchemy import func, and_
 from collections import defaultdict
 
 from .models import (
-    User, WorkoutLog, Exercise, UserGoals, 
-    ExerciseCategory, DifficultyLevel
+    EnhancedUser as User, WorkoutLog, ExerciseItem as Exercise, UserGoal as UserGoals, 
+    ExerciseCategory
 )
+
+class DifficultyLevel:
+    BEGINNER = "Beginner"
+    INTERMEDIATE = "Intermediate"
+    ADVANCED = "Advanced"
 from .gender_specific_service import GenderSpecificService
 
 

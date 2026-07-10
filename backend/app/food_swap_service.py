@@ -14,7 +14,12 @@ from typing import Dict, List, Optional, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 
-from .models import User, Food, UserGoals, GoalType
+from .models import EnhancedUser as User, FoodItem as Food, UserGoal as UserGoals
+
+class GoalType:
+    FAT_LOSS = "fat_loss"
+    MUSCLE_GAIN = "muscle_gain"
+    MAINTENANCE = "maintenance"
 
 
 class FoodSwapService:
