@@ -2,9 +2,17 @@
 Training pipeline for LSTM Weight Predictor.
 Generates synthetic weight history and trains the PyTorch LSTM model.
 """
-import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
+try:
+    import torch
+    import torch.nn as nn
+    from torch.utils.data import Dataset, DataLoader
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    class Dataset:
+        pass
+    class DataLoader:
+        pass
 import numpy as np
 import random
 import os

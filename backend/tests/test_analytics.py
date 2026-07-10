@@ -2,6 +2,8 @@
 Test Script for Advanced Analytics
 """
 
+import pytest
+pytest.importorskip("numpy")
 from app.nutrition_analytics import NutritionAnalytics, MealTracker, NutrientGapAnalyzer
 from datetime import datetime, timedelta
 

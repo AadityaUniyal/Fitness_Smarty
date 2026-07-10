@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip("numpy")
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker

@@ -16,6 +16,9 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
     print("[!] PyTorch not available")
+    class nn:
+        class Module:
+            pass
 
 
 class LSTMModel(nn.Module):

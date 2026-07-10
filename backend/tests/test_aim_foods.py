@@ -1,3 +1,5 @@
+import pytest
+pytest.importorskip("numpy")
 from app.database import SessionLocal
 from app.recommendation_engine import RecommendationEngine
 

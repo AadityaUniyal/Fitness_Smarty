@@ -1,4 +1,6 @@
 import pytest
+pytest.importorskip("numpy")
+pytest.importorskip("torch")
 import os
 import json
 from app.ml_models.train_lstm import train, generate_synthetic_user_data, create_sequences

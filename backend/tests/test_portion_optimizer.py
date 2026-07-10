@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip("numpy")
 from app.recommendation_engine import PortionOptimizer
 
 
