@@ -89,12 +89,27 @@ def test_db_training_trigger():
         db.commit()
         db.close()
 
-        with TestClient(app) as client:
-            response = client.post(
-                "/api/training/recommendation/train?use_db=true&epochs=1",
-                headers={"Authorization": f"Bearer {token}"},
-            )
+        def override_get_training_db():
+            db = TestingSessionLocal()
+            try:
+                yield db
+            finally:
+                db.close()
+
+        from unittest.mock import patch
+
+        with patch("app.training.train_neural_model.get_training_db", override_get_training_db):
+            with TestClient(app) as client:
+                response = client.post(
+                    "/api/training/recommendation/train?use_db=true&epochs=1",
+                    headers={"Authorization": f"Bearer {token}"},
+                )
 
         assert response.status_code == 202
     finally:
         app.dependency_overrides.pop(get_db, None)
+        if db_path.exists():
+            try:
+                db_path.unlink()
+            except Exception:
+                pass
