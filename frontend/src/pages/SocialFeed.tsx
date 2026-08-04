@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Share2, Plus, Image, Dumbbell, Trophy, Zap, Send, MoreHorizontal, User, ChevronDown, Flame } from 'lucide-react';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 const STORAGE_POSTS = 'smarty_social_posts';
 const STORAGE_FOLLOWING = 'smarty_social_following';
@@ -28,6 +29,7 @@ function generateId() { return Date.now().toString(36) + Math.random().toString(
 function timeAgo(ts: string) { const s = Math.floor((Date.now() - new Date(ts).getTime()) / 1000); if (s < 60) return 'just now'; const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`; const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`; const d = Math.floor(h / 24); return `${d}d ago`; }
 
 const SocialFeed: React.FC = () => {
+  const { profile } = useUserProfile();
   const [posts, setPosts] = useState<Post[]>(() => {
     try { const saved = localStorage.getItem(STORAGE_POSTS); if (saved) { const parsed = JSON.parse(saved); return parsed.length > 0 ? parsed : DEMO_POSTS; } } catch { } return DEMO_POSTS;
   });
@@ -43,7 +45,6 @@ const SocialFeed: React.FC = () => {
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [showFriends, setShowFriends] = useState(false);
 
-  const profile = (() => { try { return JSON.parse(localStorage.getItem('smarty_profile') || '{}'); } catch { return {}; } })();
   const userName = profile.name || 'You';
   const userInitials = userName.split(' ').map((s: string) => s[0]).join('').slice(0, 2).toUpperCase() || 'YO';
 

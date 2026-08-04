@@ -191,6 +191,8 @@ class JWTHandler:
         data: Dict[str, Any], expires_delta: Optional[timedelta] = None
     ) -> str:
         to_encode = data.copy()
+        if "sub" in to_encode and to_encode["sub"] is not None:
+            to_encode["sub"] = str(to_encode["sub"])
         if expires_delta:
             expire = datetime.now(timezone.utc) + expires_delta
         else:
@@ -204,6 +206,8 @@ class JWTHandler:
     @staticmethod
     def create_refresh_token(data: Dict[str, Any]) -> str:
         to_encode = data.copy()
+        if "sub" in to_encode and to_encode["sub"] is not None:
+            to_encode["sub"] = str(to_encode["sub"])
         expire = datetime.now(timezone.utc) + timedelta(
             days=REFRESH_TOKEN_EXPIRE_DAYS
         )
@@ -456,11 +460,21 @@ async def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     token = credentials.credentials
     token_data = JWTHandler.decode_token(token)
+    try:
+        user_id = int(token_data.user_id) if token_data.user_id is not None else None
+    except (TypeError, ValueError):
+        user_id = token_data.user_id
 
     user = db.query(models.EnhancedUser).filter(
-        models.EnhancedUser.id == token_data.user_id
+        models.EnhancedUser.id == user_id
     ).first()
 
     if user is None:
@@ -488,9 +502,15 @@ async def get_current_user_id(
     Raises:
         HTTPException: If token is invalid
     """
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     token = credentials.credentials
     token_data = JWTHandler.decode_token(token)
-    return token_data.user_id
+    return str(token_data.user_id)
 
 
 def require_auth(

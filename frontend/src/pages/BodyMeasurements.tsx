@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Ruler, Plus, TrendingUp, Trash2, Check, Activity } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { PageFrame } from '../components/PageFrame';
 
 const STORAGE_KEY = 'smarty_body_measurements';
 
@@ -32,15 +34,11 @@ const loadData = (): MeasurementEntry[] => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) return JSON.parse(saved);
   } catch {}
-  const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
-  if (profile.weight) {
-    const today = new Date().toISOString().split('T')[0];
-    return [{ date: today, weight: profile.weight }];
-  }
   return [];
 };
 
 const BodyMeasurements: React.FC = () => {
+  const { profile } = useUserProfile();
   const [entries, setEntries] = useState<MeasurementEntry[]>(loadData);
   const [showForm, setShowForm] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState('weight');
@@ -93,22 +91,19 @@ const BodyMeasurements: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-6">
-          <div className="w-16 h-16 bg-cyan-500/10 border border-cyan-500/20 rounded-3xl flex items-center justify-center text-cyan-400">
-            <Ruler size={32} />
-          </div>
-          <div>
-            <h2 className="text-4xl font-black italic tracking-tighter text-white uppercase">Body Measurements</h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Track your physique changes over time</p>
-          </div>
-        </div>
-        <button onClick={() => setShowForm(!showForm)}
-          className="flex items-center space-x-2 px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-2xl font-black text-[10px] uppercase tracking-widest transition">
-          <Plus size={16} />
-          <span>Log Measurement</span>
-        </button>
-      </div>
+      <PageFrame
+        eyebrow="Tracking"
+        title="Body Measurements"
+        subtitle="Track your physique changes over time with a simple, visual history."
+        tone="cyan"
+        rightSlot={
+          <button onClick={() => setShowForm(!showForm)}
+            className="flex items-center space-x-2 px-6 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-2xl font-black text-[10px] uppercase tracking-widest transition">
+            <Plus size={16} />
+            <span>Log Measurement</span>
+          </button>
+        }
+      />
 
       {showForm && (
         <div className="glass-panel p-8 rounded-[2.5rem] border border-white/5 space-y-4">

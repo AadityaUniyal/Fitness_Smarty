@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Play, Pause, StopCircle, MapPin, Route, Timer, Zap, TrendingUp, Footprints, Flame, ChevronDown, ChevronUp, Trash2, Check } from 'lucide-react';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 const STORAGE_KEY = 'smarty_activity_logs';
 
@@ -44,6 +45,7 @@ function estimateCalories(durationMin: number, speedKmh: number, weightKg: numbe
 }
 
 const ActivityTracker: React.FC = () => {
+  const { profile } = useUserProfile();
   const [activities, setActivities] = useState<ActivitySession[]>(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
   });
@@ -207,7 +209,6 @@ const ActivityTracker: React.FC = () => {
     setPaused(false);
     const durationMin = elapsed / 60;
     const avgSpeed = durationMin > 0 ? (distance / (durationMin / 60)) : 0;
-    const profile = (() => { try { return JSON.parse(localStorage.getItem('smarty_profile') || '{}'); } catch { return {}; } })();
     const weight = profile.weight_kg || 75;
     const session: ActivitySession = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -259,7 +260,6 @@ const ActivityTracker: React.FC = () => {
 
   const pace = elapsed > 0 && distance > 0 ? formatPace(distance / (elapsed / 3600)) : '--:--';
   const speedKmh = elapsed > 0 ? distance / (elapsed / 3600) : 0;
-  const profile = (() => { try { return JSON.parse(localStorage.getItem('smarty_profile') || '{}'); } catch { return {}; } })();
   const weightKg = profile.weight_kg || 75;
   const estCalories = tracking ? estimateCalories(elapsed / 60, speedKmh || currentSpeed, weightKg) : 0;
 

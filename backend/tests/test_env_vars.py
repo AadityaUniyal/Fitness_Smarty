@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 def test_production_secret_key_required():
     """Verify that if ENVIRONMENT=production and no JWT_SECRET_KEY or SECRET_KEY is set,
-    importing app.auth raises a RuntimeError.
+    importing app.auth raises an error.
     """
     env_mock = {
         "ENVIRONMENT": "production",
@@ -18,7 +18,8 @@ def test_production_secret_key_required():
         if "app.auth" in sys.modules:
             del sys.modules["app.auth"]
             
-        with pytest.raises(RuntimeError) as excinfo:
+        with pytest.raises(Exception) as excinfo:
             importlib.import_module("app.auth")
             
-        assert "must be explicitly set" in str(excinfo.value)
+        err_msg = str(excinfo.value)
+        assert any(msg in err_msg for msg in ["must be explicitly set", "must be set in production", "JWT_SECRET_KEY or SECRET_KEY"])

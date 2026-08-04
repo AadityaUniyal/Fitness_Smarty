@@ -4,6 +4,9 @@ import { analyzeMealImageEnhanced, EnhancedMealAnalysis } from '../services/gemi
 import { Reveal } from '../components/Reveal';
 import VisionService from '../services/visionService';
 import AIErrorBoundary from '../components/AIErrorBoundary';
+import { logMealProgress } from '../services/apiService';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 const dataURLtoFile = (dataurl: string, filename: string) => {
   const arr = dataurl.split(',');
@@ -128,9 +131,11 @@ interface PortionPanelProps {
   onLogMeal: (items: PortionItem[], mealType: string) => void;
   mealType: string;
   userGoal?: string;
+  profile: any;
+  userId: string;
 }
 
-const PortionPanel: React.FC<PortionPanelProps> = ({ detectedFoodNames, onLogMeal, mealType, userGoal }) => {
+const PortionPanel: React.FC<PortionPanelProps> = ({ detectedFoodNames, onLogMeal, mealType, userGoal, profile, userId }) => {
   const [portions, setPortions] = useState<Record<string, number>>(
     Object.fromEntries(detectedFoodNames.map(n => [n, 100]))
   );
@@ -141,8 +146,6 @@ const PortionPanel: React.FC<PortionPanelProps> = ({ detectedFoodNames, onLogMea
 
   const handleMealFeedback = async (rating: number) => {
     try {
-      const uId = localStorage.getItem('smarty_user_id') || 'local-user';
-      const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
       await fetch(`${API_BASE}/api/feedback/coach`, {
         method: 'POST',
         headers: {
@@ -344,7 +347,8 @@ const FoodScannerPage: React.FC = () => {
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
+  const { profile } = useUserProfile();
+  const userId = useCurrentUserId();
   const userGoal = profile.goal ? GOAL_LABELS[profile.goal] || profile.goal : undefined;
   const dailyCalGoal = profile.dailyCalorieGoal || 2200;
 
@@ -427,10 +431,7 @@ const FoodScannerPage: React.FC = () => {
         const base64 = image.split(',')[1];
         const result = await analyzeMealImageEnhanced(base64, userGoal ? `${userGoal} goal` : undefined, caloriesRemaining);
         setAnalysis(result);
-        // Log to localStorage
-        const log = { ...result, mealType, timestamp: new Date().toISOString() };
-        const prev = JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]');
-        localStorage.setItem('smarty_meal_logs', JSON.stringify([log, ...prev].slice(0, 50)));
+        await logMealProgress(userId);
       } else {
         const file = dataURLtoFile(image, 'meal.jpg');
         const detectionResult = await VisionService.detectWithYOLO(file, 0.4, false);
@@ -464,9 +465,7 @@ const FoodScannerPage: React.FC = () => {
         };
         
         setAnalysis(result);
-        const log = { ...result, mealType, timestamp: new Date().toISOString() };
-        const prev = JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]');
-        localStorage.setItem('smarty_meal_logs', JSON.stringify([log, ...prev].slice(0, 50)));
+        await logMealProgress(userId);
       }
     } catch (e: any) {
       if (e.message?.includes('GEMINI_API_KEY') || e.message?.includes('not configured')) {
@@ -480,7 +479,6 @@ const FoodScannerPage: React.FC = () => {
   };
 
   const handleLogManualPortions = async (items: any[], mt: string) => {
-    const userId = localStorage.getItem('smarty_user_id') || 'local-user';
     try {
       await fetch(`${API_BASE}/api/nutrition/cam-detect-log`, {
         method: 'POST',
@@ -494,11 +492,7 @@ const FoodScannerPage: React.FC = () => {
     } catch {
       // Save to localStorage as fallback
     }
-    // Also append to local log
-    const totalCalories = items.reduce((s, i) => s + i.calories, 0);
-    const log = { mealType: mt, totalCalories: Math.round(totalCalories), timestamp: new Date().toISOString(), items };
-    const prev = JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]');
-    localStorage.setItem('smarty_meal_logs', JSON.stringify([log, ...prev].slice(0, 50)));
+    await logMealProgress(userId);
   };
 
   const reset = () => { setImage(null); setAnalysis(null); setDetections([]); setError(''); setShowPortionPanel(false); stopCamera(); };
@@ -684,6 +678,8 @@ const FoodScannerPage: React.FC = () => {
                   onLogMeal={handleLogManualPortions}
                   mealType={mealType}
                   userGoal={profile.goal}
+                  profile={profile}
+                  userId={userId}
                 />
               )}
             </div>

@@ -1,320 +1,275 @@
-# 🏋️ SMARTY AI – Platform Reference & Architecture Guide
+# SMARTY AI — Project Documentation
 
-Welcome to the comprehensive technical documentation for the **SMARTY AI Neural Fitness Intelligence Platform**. This document details the system design, database schemas, backend services, frontend page flows, API communications, and integrated Machine Learning (ML) pipelines.
-
----
-
-## 📌 Table of Contents
-1. [Platform Overview & Design Philosophy](#1-platform-overview--design-philosophy)
-2. [System Architecture](#2-system-architecture)
-3. [Database & Data Persistence Schema](#3-database--data-persistence-schema)
-4. [Backend Service Layer & Logic Engines](#4-backend-service-layer--logic-engines)
-5. [API Endpoint Directory](#5-api-endpoint-directory)
-6. [Frontend Client Architecture](#6-frontend-client-architecture)
-7. [AI, Vision, & Pose Estimation Pipelines](#7-ai-vision--pose-estimation-pipelines)
-8. [Setup & Running Locally](#8-setup--running-locally)
+> Internal technical reference for development and maintenance.
+> Last updated: August 2026
 
 ---
 
-## 1. Platform Overview & Design Philosophy
+## Current Product Focus
 
-SMARTY AI is a production-grade, service-oriented fitness and nutrition platform. It unifies user biometrics, meals, hydration, workouts, and sleep to generate a personalized health regimen. 
-
-### Key Characteristics:
-* **Service-Oriented Architecture (SOA)**: Highly modular services coordinate logic asynchronously.
-* **Hybrid Intelligence**: Combines local expert systems (e.g., Mifflin-St Jeor formula, progressive overload scales) with Large Language Models (LLM) orchestration (Google Gemini) and computer vision models (YOLOv8).
-* **Dual Database Adaptability**: Features self-healing fallback mechanisms that support local development (SQLite) and high-performance serverless deployments (Neon PostgreSQL).
-* **High-Fidelity Aesthetics**: A responsive frontend design featuring dynamic charts, animated progress metrics, and rich transitions.
+- AI-powered daily workout and meal planning with explainable coaching
+- Real-time daily progress tracking (calories, macros, hydration, workouts)
+- Computer vision food scanning (YOLOv8 + Gemini hybrid pipeline)
+- FemmeCare-aware cycle-based workout and nutrition adjustments
+- Gamification engine with XP, badges, achievements, and streaks
+- Social feed, wearable integrations, and billing/subscription system
+- PWA-ready frontend with dark/light theme and i18n (English + Hindi)
 
 ---
 
-## 2. System Architecture
+## Repository Layout
 
-The following diagram illustrates the workflow from client requests down to the persistence and AI layers:
-
-```mermaid
-graph TB
-    subgraph "Frontend Layer (React 18 / Vite / TS)"
-        UI[Dashboard UI]
-        Chat[Gemini Chat & Voice Coach]
-        Scanner[YOLOv8 + Gemini Meal Scanner]
-        Coach[MediaPipe Pose Form Coach]
-        Sync[Zustand & localStorage Sync]
-    end
-
-    subgraph "API Gateway & Middleware"
-        Cors[CORS Enforcer]
-        Limiter[SlowAPI Rate Limiter]
-        Auth[Clerk JWT Validator / OAuth]
-    end
-
-    subgraph "FastAPI Services (Backend)"
-        Orch[Unified Coach Service]
-        Rec[Workout Recommendation Service]
-        Nutri[Calorie & Food Swap Service]
-        Femme[FemmeCare / Cycle Syncing Service]
-        Game[Gamification & Streak Engine]
-        Hyd[Hydration Monitor Service]
-    end
-
-    subgraph "Data & Model Repositories"
-        Postgres[(Neon PostgreSQL Database)]
-        Sqlite[(SQLite Local Fallback)]
-        YOLO[YOLOv8 Weight Hub yolov8n.pt]
-        Gemini[Google Gemini API Pro/Flash]
-    end
-
-    %% Routing Flow
-    UI --> Cors
-    Chat --> Cors
-    Scanner --> Cors
-    Coach --> Cors
-    
-    Cors --> Limiter --> Auth
-    
-    Auth --> Orch
-    Auth --> Rec
-    Auth --> Nutri
-    Auth --> Femme
-    Auth --> Game
-    Auth --> Hyd
-    
-    Orch --> Gemini
-    Scanner --> YOLO
-    
-    Orch --> Postgres
-    Rec --> Postgres
-    Nutri --> Postgres
-    Femme --> Postgres
-    Game --> Postgres
-    Hyd --> Postgres
-    
-    Postgres -.-> Sqlite
+```
+Smarty-reco/
+├── backend/          # FastAPI app, 87 modules in app/, 39 API routers
+│   ├── main.py       # Entry point, router registration, lifespan events
+│   ├── app/          # Core application package
+│   │   ├── api/      # 39 API router modules (auth, meals, coach, etc.)
+│   │   ├── models.py # 50+ SQLAlchemy ORM models
+│   │   ├── database.py # Engine, sessions, seed functions
+│   │   └── ...       # Services, ML, utilities
+│   ├── tests/        # 41 pytest test files
+│   └── migrations/   # Alembic database migrations
+├── frontend/         # React 18 + TypeScript + Vite + Tailwind v4
+│   ├── src/
+│   │   ├── pages/    # 30+ page components
+│   │   ├── components/ # 23 reusable components
+│   │   ├── services/ # 10 service modules (API, AI, vision, export)
+│   │   ├── contexts/ # AuthContext
+│   │   ├── hooks/    # useAPI, useToast, useUserProfile, useCurrentUserId
+│   │   └── types/    # TypeScript interfaces
+│   └── public/       # PWA manifest, service worker, legal pages
+├── docker/           # docker-compose.yml, Dockerfiles, nginx.conf
+├── .github/workflows/ # ci.yml, pytest.yml, python-tests.yml
+├── vercel.json       # Vercel deployment config with security headers
+└── .env.example      # Environment variable template
 ```
 
 ---
 
-## 3. Database & Data Persistence Schema
+## Backend Architecture
 
-The application uses SQLAlchemy to model the relational database schema. Tables automatically adapt to PostgreSQL dialects or local SQLite instances.
+### Request Flow
 
-### Core Tables
+1. Requests hit `main.py` → CORS middleware → rate limiter → JWT auth
+2. Routed to one of **39 API routers** under `app/api/`
+3. Routers call **service modules** for business logic
+4. Services interact with **SQLAlchemy models** for data persistence
+5. AI-powered endpoints call **Gemini API** or **YOLOv8** for inference
+6. Responses are validated through **Pydantic schemas**
 
-#### 1. `users` (`EnhancedUser`)
-Stores user authentication details and core physical configurations.
-* **`id`** (Integer, Primary Key)
-* **`clerk_user_id`** (String, Unique, Indexed)
-* **`username` / `email`** (String, Unique, Indexed)
-* **`hashed_password`** (String, Nullable)
-* **`age` / `weight_kg` / `height_cm` / `gender`** (Metrics, Nullable)
-* **`activity_level`** (String: `sedentary`, `moderate`, `active`)
-* **`primary_goal`** (String: `weight_loss`, `muscle_gain`, `maintenance`)
-* **`femmecare_enabled` / `menopause_mode` / `pregnancy_mode`** (Boolean flags)
-* **`version`** (Integer, Optimistic Locking Version)
-* **`created_at` / `updated_at`** (DateTime timestamps)
+### Key Service Modules
 
-#### 2. `food_items` & `food_categories`
-References nutrition databases for calorie tracking.
-* **`id`** (Integer, Primary Key)
-* **`category_id`** (Integer, ForeignKey to `food_categories.id`)
-* **`name`** (String, Indexed)
-* **`calories` / `protein` / `carbs` / `fats`** (Floats per 100g)
-* **`recommended_for_goal`** (String matching user fitness goals)
-* **`target_muscle_group`** (String for targeted meal recommendations)
+| Module | Purpose |
+|--------|---------|
+| `unified_coach_service.py` | Daily coach, explainable coach, coach history |
+| `recommendation_engine.py` | Multi-armed bandit recommendation system |
+| `food_detection_model.py` | YOLOv8 food detection pipeline |
+| `gemini_meal_scanner.py` | Gemini vision-based meal analysis |
+| `meal_analysis_service.py` | Comprehensive meal nutrition analysis |
+| `gamification_service.py` | XP, badges, achievements, streaks |
+| `gender_specific_service.py` | FemmeCare cycle-aware planning |
+| `hydration_service.py` | Water intake monitoring and goals |
+| `calorie_tracker_service.py` | Calorie & macro calculation engine |
+| `workout_recommendation_service.py` | Personalized workout generation |
+| `nutrition_calculator.py` | TDEE, BMR, macro split calculations |
+| `progressive_overload.py` | Training progression logic |
+| `image_processor.py` | Image preprocessing pipeline |
+| `email_service.py` | SMTP email notifications |
+| `error_handler.py` | Centralized error handling with logging |
+| `logging_config.py` | Structured JSON logging |
+| `limiter.py` | Token-bucket rate limiter (Redis + local fallback) |
+| `config.py` | Pydantic Settings with production fail-fast guards |
+| `neon_config.py` | Neon PostgreSQL configuration |
 
-#### 3. `meal_logs`
-Logs nutrition consumption and includes AI vision metadata.
-* **`id`** (Integer, Primary Key)
-* **`user_id`** (Integer, ForeignKey to `users.id`)
-* **`meal_name`** (String: `Breakfast`, `Lunch`, etc.)
-* **`total_calories` / `total_protein` / `total_carbs` / `total_fats`** (Floats)
-* **`image_path`** (String path to stored food pictures)
-* **`detected_foods`** (JSON listing predicted ingredients and estimated weights)
-* **`confidence`** (Float, model confidence rating)
+### Database Models (50+)
 
-#### 4. `workout_logs`
-Tracks completed exercise routines and calculated metabolic burns.
-* **`id`** (Integer, Primary Key)
-* **`user_id`** (Integer, ForeignKey to `users.id`)
-* **`workout_name`** (String)
-* **`duration_minutes`** (Integer)
-* **`calories_burned`** (Float)
-* **`exercises_data`** (JSON detailing sets, reps, weights, and categories)
-* **`created_at`** (DateTime)
+**Core:** `EnhancedUser`, `UserProfile`, `UserGoal`
+**Fitness:** `ExerciseCategory`, `ExerciseItem`, `WorkoutLog`, `WorkoutSchedule`, `FemaleExerciseItem`
+**Nutrition:** `FoodCategory`, `FoodItem`, `MealLog`, `FoodDetection`, `FoodTrainingSample`, `MealPlan`, `MealPlanEntry`
+**Progress:** `DailyProgress`, `DailyTask`, `SmartNextMove`, `ProgressSnapshot`, `BiometricReading`, `BiometricRecord`
+**FemmeCare:** `MenstrualCycleLog`, `FemaleCycleEntry`
+**Social:** `SocialPost`, `SocialComment`, `SocialLike`, `SocialFollow`, `SocialActivity`
+**Gamification:** `Achievement`, `UserAchievement`, `Badge`, `UserBadge`, `UserPoints`, `UserStreak`, `StreakState`, `UserBanditState`
+**Activity:** `ActivitySession`, `ActivityRoutePoint`, `ActivityEvent`
+**Integrations:** `WearableConnection`, `WearableMetric`, `FormCoachSession`, `FormFeedbackLog`
+**Billing:** `SubscriptionPlan`, `UserSubscription`, `PaymentTransaction`, `Invoice`
+**Notifications:** `Reminder`, `NotificationLog`
+**Feedback:** `UserFeedback`
 
-#### 5. `user_streaks`
-Maintains consecutive compliance streaks.
-* **`id`** (Integer, Primary Key)
-* **`user_id`** (Integer, ForeignKey to `users.id`)
-* **`streak_type`** (String: `workout`, `nutrition`, `hydration`, `login`)
-* **`current_streak` / `longest_streak`** (Integers)
-* **`last_activity_date`** (DateTime)
+### API Route Groups (39 routers)
 
-#### 6. `user_points`
-Calculates leaderboard XP and level levels.
-* **`user_id`** (Integer, ForeignKey to `users.id`, Unique)
-* **`total_points`** (Integer)
-* **`level`** (Integer)
-* **`experience_points`** (Integer)
-* **`workout_points` / `nutrition_points` / `streak_points`** (XP subcategories)
+| Prefix | Module | Description |
+|--------|--------|-------------|
+| `/api/auth` | `auth.py` | Register, login, JWT refresh, password reset |
+| `/api/auth/oauth` | `oauth.py` | Google OAuth 2.0 flow |
+| `/api/users` | `users.py` | User profile and goal management |
+| `/api/admin` | `admin.py` | Admin dashboard and user management |
+| `/api/ai` | `ai_coach.py` | Gemini AI chat, workout plans, meal analysis |
+| `/api/coach` | `coach.py` | Unified daily coaching with explanations |
+| `/api/meals` | `meals.py` | Meal logging and scan results |
+| `/api/exercises` | `exercises.py` | Exercise library CRUD |
+| `/api/calorie-tracking` | `calorie_tracking.py` | Macro & calorie tracking |
+| `/api/daily-progress` | `daily_progress.py` | Live daily progress |
+| `/api/hydration` | `hydration.py` | Water intake tracking |
+| `/api/meal-plans` | `meal_planner.py` | Weekly meal plan generation |
+| `/api/meal-planning` | `enhanced_meal_planning.py` | AI-enhanced meal planning |
+| `/api/smart-meals` | `smart_meals.py` | AI meal recommendations |
+| `/api/food` | `food.py` | Food database search |
+| `/api/food-swaps` | `food_swaps.py` | Healthier food alternatives |
+| `/api/recommendations` | `recommendations.py` | Smart recommendations |
+| `/api/workout-recommendations` | `workout_recommendations.py` | Workout suggestions |
+| `/api/progress` | `progress_tracking.py` | Progress charts and trends |
+| `/api/goals` | `goal_validation.py` | Goal CRUD and validation |
+| `/api/gamification` | `gamification.py` | XP, badges, achievements |
+| `/api/activities` | `activities.py` | Activity session tracking |
+| `/api/social` | `social.py` | Social feed (posts, comments, likes) |
+| `/api/form-coach` | `form_coach.py` | Exercise form analysis |
+| `/api/wearables` | `wearables.py` | Wearable device integration |
+| `/api/reminders` | `reminders.py` | Reminder scheduling |
+| `/api/notifications` | `smart_notifications.py` | Push notifications |
+| `/api/billing` | `billing.py` | Stripe subscriptions |
+| `/api/feedback` | `feedback.py` | User feedback |
+| `/api/tasks` | `tasks.py` | Daily checklist tasks |
+| `/api/nextmove` | `nextmove.py` | Smart next actions |
+| `/api/analytics` | `analytics.py` + `advanced_analytics.py` | Analytics |
+| `/api/female` | `female.py` | FemmeCare endpoints |
+| `/api/gender-health` | `gender_health.py` | Cycle-aware health |
+| `/api/extensions` | `extensions.py` | Backend extensions |
+| `/api/neural` | `neural.py` | Neural infrastructure |
+| `/health` | `main.py` | Health check probe |
+| `/ready` | `main.py` | Readiness probe (DB + services) |
 
----
+### Legacy Routers (dynamically loaded)
 
-## 4. Backend Service Layer & Logic Engines
-
-Dedicated services implement fitness, metabolic, and game rules under `backend/app/`:
-
-### 🧠 Unified Coach Orchestrator (`unified_coach_service.py`)
-Acts as the central router of the application. When a user requests a daily briefing:
-1. Gathers database history (completed workouts, macros, hydration level, menstrual phase).
-2. Performs safety checks (e.g., checks joint status, pregnancy warnings, or cardiac fatigue).
-3. Packages the variables into an LLM system prompt.
-4. Requests Google Gemini to generate a cohesive "Daily Briefing" that reads like a human coach.
-
-### 🏋️ Workout Recommendation Engine (`workout_recommendation_service.py` & `workout_recommendations.py`)
-Uses fitness profile rules to plan customized training schedules:
-* **Fat Loss**: Prioritizes circuit routines and high metabolic cardio.
-* **Muscle Gain**: Implements a progressive overload tracker, specifying target weights, set counts, and recovery rest timers.
-* **Deload Gating**: Deloads or schedules rest if sleep metrics indicate a recovery deficit.
-
-### 🍽️ Nutrition & Portion Optimizer (`food_swap_service.py` & `calorie_tracker_service.py`)
-* **Food Swap Engine**: Calculates cosine similarities across food macronutrient vectors to identify healthy, target-appropriate swaps (e.g., suggesting Greek Yogurt over Sour Cream).
-* **Portion Optimizer**: Automatically adjusts food item grams in meal plans to match daily calorie limits.
-
-### 🩺 Female Cycle Syncer (`gender_specific_service.py` & `female.py`)
-Tailors health suggestions to biological changes:
-* **Follicular/Ovulatory Phase**: Recommends strength splits and progressive overload targets.
-* **Luteal/Menstrual Phase**: Restricts heavy training, recommending yoga, stretching, and iron-dense food recommendations.
-* **Pregnancy Mode**: Restricts movements to safe angles, enforcing strict health guidelines.
-
-### 🎮 Gamification Engine (`gamification_service.py`)
-Runs checks on database commit events:
-* Award points (e.g., +50 XP for a workout, +10 XP for hydration).
-* Increments levels at `XP = level * 1000`.
-* Checks conditional criteria to unlock one of the 14 badges (e.g., unlocking "Consistency King" on a 7-day streak).
-
----
-
-## 5. API Endpoint Directory
-
-Below are key API endpoints exposed by the FastAPI backend:
-
-### Authentication & Profiles
-* `POST /api/auth/register` - Creates standard user account credentials.
-* `POST /api/auth/login` - Validates credentials and returns JWT tokens.
-* `GET /api/users/{user_id}/profile` - Retrieves user physical goals, constraints, and preferences.
-* `PUT /api/users/{user_id}/profile` - Updates body statistics (weight, height, age).
-
-### Nutrition & Scanner
-* `POST /api/nutrition/cam-detect-log` - Stores a photo detection log with macro totals.
-* `POST /api/nutrition/calculate-portion` - Calculates macro splits for custom weight measurements.
-* `GET /api/food/goal/{goal}` - Returns database foods tagged for specific fitness goals.
-* `POST /api/meal-planning/generate` - Constructs weekly meal recipes and optimized shopping lists.
-
-### Workouts & Biomechanics
-* `POST /api/workouts/log` - Logs exercise performance metrics and triggers XP rewards.
-* `GET /api/exercises/for-goal/{goal}` - Fetches fitness goal-aligned movement patterns.
-* `POST /api/feedback/` - Saves Pose Estimation errors (e.g., knee cave warnings during squats) to train local predictive models.
-
-### Intelligence & Diagnostics
-* `GET /api/coach/daily` - Aggregates stats to generate the Gemini Daily Coach report.
-* `GET /api/neural/recovery` - Calculates the Mission Readiness Score (MRS).
-* `GET /api/female/cycle-phase/{user_id}` - Provides phase-specific hormonal insights.
+These are loaded via `importlib` in `main.py` and won't crash the app if missing:
+- `app.meal_scanning_api`
+- `app.recommendation_api` / `app.recommendation_api_v2`
+- `app.vision_api`
+- `app.nlp_api`
+- `app.forecast_api`
+- `app.rl_api`
+- `app.explainability_api`
+- `app.mobile_api`
+- `app.infrastructure_api`
 
 ---
 
-## 6. Frontend Client Architecture
+## Frontend Architecture
 
-The frontend is built on **React 18** with **Vite** and **TypeScript**, styled using a premium Glassmorphism design system.
+### Tech Stack
+- **React 18** with functional components and hooks
+- **TypeScript** for type safety
+- **Vite** for fast dev server and optimized production builds
+- **Tailwind CSS v4** for utility-first styling
+- **React Router v7** for SPA routing
+- **Recharts** for data visualization
+- **Lucide React** for icons
+- **TensorFlow.js** (loaded via CDN) for client-side pose estimation
 
-### Key Directory Layout
-* **`/src/pages/`**: Includes view containers like `Dashboard.tsx`, `MealScanner.tsx`, `FemmeCare.tsx`, `FormCorrector.tsx`, and `WorkoutAssistant.tsx`.
-* **`/src/components/`**: Reusable components, including `RestTimer.tsx`, `HydrationHub.tsx`, `AnimatedNumber.tsx`, and `SmartyChat.tsx`.
-* **`/src/services/`**: Communication layers:
-  * `apiService.ts`: Core Axios/Fetch wrapper managing bearer authentication, token refresh flows, and HTTP errors.
-  * `geminiService.ts`: Integrates local chat interactions with LLM models.
-  * `syncQueue.ts`: Manages offline log queues to synchronize when internet connection is restored.
-* **`/src/contexts/`**: Holds user state, authentication tokens, global error handlers, and themes.
+### Page Components (30+)
 
-### Client-Side State & Storage
-Local configuration and authentication tokens are cached securely in the browser's `localStorage` and managed across component states.
+| Page | Route | Description |
+|------|-------|-------------|
+| `LoginPage` | `/` | Auth with Google OAuth + guest mode |
+| `OnboardingPage` | `/onboarding` | Profile setup wizard |
+| `Dashboard` | `/dashboard` | Main home with live progress cards |
+| `MealScanner` | `/dashboard/food-scanner` | Camera food scanning + AI analysis |
+| `WorkoutAssistant` | `/dashboard/workout` | AI workout builder + timer |
+| `ExerciseBrowser` | `/dashboard/exercises` | Exercise library with search/filter |
+| `NutritionHub` | `/dashboard/nutrition` | Nutrition tracking + analytics |
+| `MealPlanner` | `/dashboard/meal-planner` | Weekly AI meal plans |
+| `LiveCoach` | `/dashboard/coach` | Voice + text AI coaching |
+| `FemmeCare` | `/dashboard/femmecare` | Menstrual cycle wellness |
+| `FemaleDashboard` | `/dashboard/female` | Female-specific health hub |
+| `Achievements` | `/dashboard/achievements` | Gamification badges |
+| `ProgressTracking` | `/dashboard/progress` | Charts and trends |
+| `BodyMeasurements` | `/dashboard/body` | Body composition |
+| `SleepTracker` | `/dashboard/sleep` | Sleep quality tracking |
+| `MoodTracker` | `/dashboard/mood` | Mood & energy logging |
+| `ActivityTracker` | `/dashboard/activity` | Steps, distance, calories |
+| `HydrationHub` | `/dashboard/hydration` | Water intake tracker |
+| `SocialFeed` | `/dashboard/social` | Community feed |
+| `FormCorrector` | `/dashboard/form-coach` | AI form analysis |
+| `QuickWorkout` | `/dashboard/quick` | Express workouts |
+| `WorkoutHistory` | `/dashboard/history` | Training log |
+| `TrainingDashboard` | `/dashboard/training` | Training overview |
+| `WeeklyReview` | `/dashboard/weekly` | Weekly progress review |
+| `ProgressPhotos` | `/dashboard/photos` | Body transformation photos |
+| `Reminders` | `/dashboard/reminders` | Notification management |
+| `ExportPage` | `/dashboard/export` | Data export (PDF/CSV/JSON) |
+| `WearableIntegrations` | `/dashboard/wearables` | Device connections |
+| `BioLink` | `/dashboard/bio` | User profile |
+| `AiInterpreter` | `/dashboard/interpreter` | AI text interpreter |
+| `AdminWorkspace` | `/admin` | Admin panel (admin-only) |
+| `ContactPage` | `/contact` | Contact information |
+| `FeedbackPage` | `/dashboard/feedback` | Feedback submission |
+
+### Service Layer
+
+| Service | Description |
+|---------|-------------|
+| `apiService.ts` | REST client with JWT auto-refresh on 401 |
+| `geminiService.ts` | Gemini AI integration (chat, meal analysis, plans) |
+| `visionService.ts` | YOLOv8 + hybrid food detection client |
+| `exportService.ts` | Data export to PDF, CSV, JSON |
+| `storageService.ts` | LocalStorage management |
+| `syncQueue.ts` | Offline sync queue for network resilience |
+| `notificationService.ts` | Browser notification management |
+| `deepTechService.ts` | Deep tech feature integration |
+| `n8nService.ts` | n8n workflow automation hooks |
+
+### UX Features
+- **Dark/Light theme** toggle with persistent preference
+- **FemmeCare theme** — pink accent when enabled
+- **Animated background orbs** and glassmorphism panels
+- **PWA** — installable with service worker for offline
+- **i18n** — English + Hindi (extensible)
+- **Responsive** — mobile-first with sidebar collapse
 
 ---
 
-## 7. AI, Vision, & Pose Estimation Pipelines
+## CI/CD Pipeline
 
-SMARTY AI implements specialized computer vision and pose tracking workflows:
+### GitHub Actions (`ci.yml`)
 
-### A. YOLOv8 & Gemini Vision Meal Scanning Pipeline
 ```
-                    ┌─────────────────────────┐
-                    │  User Uploads Food Pic  │
-                    └────────────┬────────────┘
-                                 │
-                                 ▼
-                     [Image Preprocessor API]
-                                 │
-                  ┌──────────────┴──────────────┐
-                  ▼                             ▼
-        [YOLOv8 Local Model]           [Gemini Vision API]
-        • Fast bounding box            • Textual ingredient identification
-        • Cultural recipe parsing      • Estimated serving sizes
-                  │                             │
-                  └──────────────┬──────────────┘
-                                 ▼
-                    [Hybrid Fusion Processor]
-                    • Reconciles boundaries with categories
-                    • Queries DB food calories per 100g
-                    • Calculates macro profile for portions
-```
-
-### B. MediaPipe Pose Estimation
-Used in `FormCorrector.tsx` and `LiveCoach.tsx`:
-1. Reads the user's camera feed using webcams.
-2. Calculates coordinate arrays for key joints (Shoulders, Hips, Knees, Ankles) in real time.
-3. Computes relative angles (e.g., knee flexion angle during squats).
-4. Highlights posture errors (e.g., knee cave, lower back rounding) using audio cues and screen alerts, then logs these metrics to the backend.
-
----
-
-## 8. Setup & Running Locally
-
-To get the entire platform up and running in a local environment:
-
-### Prerequisites:
-* Python 3.10+
-* Node.js 18+
-
-### Setup Commands
-
-#### 1. Start the Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-
-# Install requirements
-pip install -r requirements-base.txt
-# (Optional) Install ML-specific libraries: pip install -r requirements-ml.txt
-
-# Set environment keys
-copy .env.example .env
-
-# Initialize and seed database
-python init_database.py
-python init_gamification.py
-
-# Run server
-uvicorn main:app --reload --port 8000
+Push/PR to main → Backend Tests → Frontend Build → Docker Build
+                      ↓                  ↓              ↓
+                Python 3.10/3.11   TypeScript Check   Image Build
+                pytest + coverage   Vitest + Build     Backend + Frontend
+                Ruff linting       Output verify
 ```
 
-#### 2. Start the Frontend
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Open `http://localhost:5173` to interact with the dashboard.
+### Deployment Targets
+- **Frontend:** Vercel (configured via `vercel.json`)
+- **Backend:** Render, Railway, or any Docker host
+- **Full Stack:** Docker Compose with health checks
 
 ---
-*Document maintained by the Smarty AI Engineering Team.*
+
+## Security Measures
+
+| Layer | Implementation |
+|-------|----------------|
+| **Authentication** | JWT with access + refresh token rotation |
+| **Password Storage** | bcrypt with cost factor 12 |
+| **Rate Limiting** | Token-bucket: AI 10/min, Write 30/min, Read 120/min |
+| **CORS** | Strict origin enforcement (no wildcards in production) |
+| **Production Guards** | App fails fast on missing secrets via `config.py` |
+| **FemmeCare Privacy** | Sensitive health data encrypted at rest |
+| **Input Validation** | Pydantic schemas on all endpoints |
+| **SQL Injection** | SQLAlchemy ORM with parameterized queries |
+| **Optimistic Locking** | Version column on EnhancedUser model |
+| **Headers** | X-Content-Type-Options, X-Frame-Options, Referrer-Policy |
+| **Docs Gating** | Swagger UI disabled in production |
+
+---
+
+## Maintenance Guidance
+
+- Update this document whenever a new API router, database model, or page component is added.
+- Keep the README (`README.md`) user-facing and visually rich; keep this file technical and structural.
+- Remove references to deleted or abandoned features promptly.
+- All new features should have at least one test in `backend/tests/` or `frontend/src/**/*.test.tsx`.
+- Run `python -m pytest -q` and `npm test` before merging to main.

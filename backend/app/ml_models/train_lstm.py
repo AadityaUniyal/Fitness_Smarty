@@ -20,7 +20,11 @@ import json
 from datetime import datetime, timedelta
 
 # Import models
-from .lstm_predictor import LSTMModel, LSTMWeightPredictor
+try:
+    from .lstm_predictor import LSTMModel, LSTMWeightPredictor
+except (ImportError, ValueError):
+    from app.ml_models.lstm_predictor import LSTMModel, LSTMWeightPredictor
+
 
 class SyntheticDataset(Dataset):
     def __init__(self, sequences, targets):
@@ -114,11 +118,10 @@ def create_sequences(user_data, seq_length=30):
     return np.array(sequences), np.array(targets), means, stds
 
 
-def train():
+def train(seq_len: int = 14):
     print("[*] Generating synthetic training logs...")
     raw_data = generate_synthetic_user_data(num_users=60, days=90)
     
-    seq_len = 30
     sequences, targets, means, stds = create_sequences(raw_data, seq_length=seq_len)
     
     # Split
@@ -138,7 +141,9 @@ def train():
     
     print("[*] Training PyTorch LSTM weight predictor...")
     model.train()
-    for epoch in range(10):
+    epochs = 10
+    final_loss = 0.0
+    for epoch in range(epochs):
         total_loss = 0.0
         for x_batch, y_batch in train_loader:
             optimizer.zero_grad()
@@ -147,10 +152,12 @@ def train():
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
+        final_loss = total_loss / len(train_loader)
             
     # Evaluation
     model.eval()
     test_mae = 0.0
+    test_mse = 0.0
     with torch.no_grad():
         for i in range(len(test_seqs)):
             x_val = torch.FloatTensor(test_seqs[i]).unsqueeze(0)
@@ -158,10 +165,13 @@ def train():
             # Unscale prediction and target back to kg
             pred_kg = float(pred[0, 0]) * stds[0] + means[0]
             targ_kg = float(test_targ[i][0]) * stds[0] + means[0]
-            test_mae += abs(pred_kg - targ_kg)
+            err = abs(pred_kg - targ_kg)
+            test_mae += err
+            test_mse += err ** 2
             
-    mae = test_mae / len(test_seqs)
-    print(f"[OK] Training complete. Held-out Split MAE: {mae:.4f} kg")
+    mae = test_mae / max(1, len(test_seqs))
+    rmse = (test_mse / max(1, len(test_seqs))) ** 0.5
+    print(f"[OK] Training complete. Held-out Split MAE: {mae:.4f} kg | RMSE: {rmse:.4f} kg")
     
     # Save Model Weights and scaler configs
     dir_path = os.path.dirname(os.path.abspath(__file__))
@@ -174,14 +184,40 @@ def train():
         "means": list(means),
         "stds": list(stds),
         "seq_length": seq_len,
-        "mae": round(mae, 4)
+        "mae": round(mae, 4),
+        "rmse": round(rmse, 4)
     }
     with open(config_path, "w") as f:
-        json.dump(config, f)
+        json.dump(config, f, indent=2)
         
+    metrics = {
+        "mae": round(mae, 4),
+        "rmse": round(rmse, 4),
+        "train_loss": round(final_loss, 6),
+        "val_loss": round((rmse ** 2) / (stds[0] ** 2), 6),
+        "epochs": epochs,
+        "seq_length": seq_len,
+        "num_samples": len(sequences),
+        "status": "success",
+        "updated_at": datetime.now().isoformat()
+    }
+    
+    # Save metrics JSON to backend/ml/lstm_metrics.json and app/ml_models/lstm_metrics.json
+    metrics_path_app = os.path.join(dir_path, "lstm_metrics.json")
+    backend_dir = os.path.dirname(os.path.dirname(dir_path))
+    metrics_path_ml = os.path.join(backend_dir, "ml", "lstm_metrics.json")
+    os.makedirs(os.path.dirname(metrics_path_ml), exist_ok=True)
+    
+    with open(metrics_path_app, "w") as f:
+        json.dump(metrics, f, indent=2)
+    with open(metrics_path_ml, "w") as f:
+        json.dump(metrics, f, indent=2)
+
     print(f"[OK] Saved model weights to: {weights_path}")
     print(f"[OK] Saved scaler config to: {config_path}")
+    print(f"[OK] Saved metrics to: {metrics_path_ml} and {metrics_path_app}")
 
 
 if __name__ == "__main__":
     train()
+

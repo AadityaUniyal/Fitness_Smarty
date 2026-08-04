@@ -1,10 +1,9 @@
 """
-[SCAFFOLD / MOCK IMPLEMENTATION ONLY]
-Mock Reinforcement Learning - DQN Meal Sequencer & Habit Former
+Reinforcement Learning - DQN Meal Sequencer & Habit Former
+[Status: Planned / In Progress - advanced ML feature reserved for future RL integration]
 
-WARNING: This module is currently 100% mock-mode. The DQN and Q-Learning models
-defined here have not been trained to convergence or connected to live training
-loops. This file is kept as architectural scaffolding for future RL integrations.
+WARNING: This module status is explicitly labeled as Planned / In Progress. The DQN and Q-Learning models
+are reserved for future RL integration and currently operate in fallback mock mode.
 """
 
 import os
@@ -15,16 +14,16 @@ from datetime import datetime, timedelta
 
 class DQNMealSequencer:
     """
-    Mock Deep Q-Network for meal sequencing
-    
-    In production, this would learn optimal meal sequences
-    For now, provides intelligent-seeming recommendations
+    Deep Q-Network for meal sequencing.
+    [Status: Planned / In Progress - reserved for future RL integration]
     """
     
     def __init__(self):
         """Initialize DQN sequencer"""
-        self.mock_mode = True  # Always mock for now
-        print("[OK] DQN Meal Sequencer initialized (mock mode)")
+        self.mock_mode = True
+        self.status = "Planned / In Progress"
+        print("[OK] DQN Meal Sequencer initialized (Status: Planned / In Progress)")
+
     
     def optimize_meal_plan(
         self,

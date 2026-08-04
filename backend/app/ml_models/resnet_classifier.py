@@ -1,11 +1,10 @@
 """
-ResNet18 Fine-Tuned Food Classifier
+ResNet Fine-Tuned Food Classifier (ResNet18 / ResNet50)
+[Status: Planned / In Progress - visual/advanced ML features reserved for future vision integration]
 
-Food classification using ResNet18 fine-tuned on the Food-101 dataset.
-When trained weights are available (weights/resnet18_food101.pth), provides
-real predictions.  Otherwise falls back to mock mode with a clear log message.
-
-Training script: backend/scripts/train_food101.py
+Food classification using ResNet fine-tuned on food datasets.
+When trained weights are available (weights/resnet18_food101.pth), provides real predictions.
+Otherwise falls back to mock/heuristic mode.
 """
 
 import os
@@ -27,15 +26,10 @@ except ImportError:
 
 class ResNetFoodClassifier:
     """
-    ResNet18-based food classifier, fine-tuned on Food-101.
-
-    When weights/resnet18_food101.pth exists:
-        → Real inference with top-K predictions
-    When weights are missing:
-        → Mock mode (random predictions from FOOD_CLASSES)
+    ResNet-based food classifier (ResNet18 / ResNet50).
+    [Status: Planned / In Progress - visual/advanced ML features reserved for future vision integration]
     """
 
-    # Food-101 classes (101 categories, alphabetically sorted to match torchvision)
     FOOD_CLASSES = sorted([
         'apple_pie', 'baby_back_ribs', 'baklava', 'beef_carpaccio', 'beef_tartare',
         'beet_salad', 'beignets', 'bibimbap', 'bread_pudding', 'breakfast_burrito',
@@ -62,11 +56,8 @@ class ResNetFoodClassifier:
 
     def __init__(self, model_path: Optional[str] = None):
         """
-        Initialize ResNet18 food classifier.
-
-        Args:
-            model_path: Path to fine-tuned weights (.pth file).
-                        Defaults to weights/resnet18_food101.pth
+        Initialize ResNet food classifier.
+        [Status: Planned / In Progress]
         """
         self.model_path = model_path or os.getenv(
             'RESNET_MODEL_PATH', 'weights/resnet18_food101.pth'
@@ -81,149 +72,125 @@ class ResNetFoodClassifier:
             try:
                 self._load_model()
             except Exception as e:
-                print(f"[!] Could not load ResNet18: {e}")
+                print(f"[!] Error loading ResNet weights: {e}. Falling back to mock mode.")
                 self.mock_mode = True
         else:
-            print("[!] PyTorch not installed. Using mock mode.")
             self.mock_mode = True
 
     def _load_model(self):
-        """Build ResNet18 architecture and load weights if available."""
-        # Build the model with the same architecture as the training script
-        # Use a local-only initialization so importing the app never depends
-        # on network access or a model hub download.
-        self.model = models.resnet18(weights=None)
-
-        # Replace FC head to match 101 food classes (same structure as training)
-        num_features = self.model.fc.in_features  # 512 for ResNet18
-        self.model.fc = nn.Sequential(
-            nn.Dropout(0.3),
-            nn.Linear(num_features, len(self.FOOD_CLASSES)),
-        )
-
-        # Load fine-tuned weights if available
-        if os.path.exists(self.model_path):
-            state_dict = torch.load(self.model_path, map_location=self.device)
-            self.model.load_state_dict(state_dict)
-            print(f"[OK] Loaded fine-tuned ResNet18 from {self.model_path}")
-        else:
-            print(f"[!] No fine-tuned weights found at {self.model_path}.")
-            print("    Run 'python backend/scripts/train_food101.py' to train on Food-101.")
-            print("    Falling back to mock mode.")
+        """Load fine-tuned ResNet model weights."""
+        if not os.path.exists(self.model_path):
+            print(f"[!] ResNet weights not found at {self.model_path}. Running in mock mode.")
             self.mock_mode = True
             return
 
-        self.model = self.model.to(self.device)
+        print(f"[AI] Loading fine-tuned ResNet from {self.model_path}...")
+
+        weights = ResNet18_Weights.DEFAULT
+        self.model = models.resnet18(weights=None)
+        num_ftrs = self.model.fc.in_features
+        self.model.fc = nn.Linear(num_ftrs, len(self.FOOD_CLASSES))
+
+        state_dict = torch.load(self.model_path, map_location=self.device)
+        self.model.load_state_dict(state_dict)
+        self.model.to(self.device)
         self.model.eval()
 
-        # Standard ImageNet preprocessing (same as training validation transform)
-        self.transform = transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
-            transforms.ToTensor(),
-            transforms.Normalize(
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]
-            )
-        ])
+        self.transform = weights.transforms()
+        self.mock_mode = False
+        print(f"[OK] ResNet loaded successfully on {self.device}")
 
-        print(f"[OK] ResNet18 food classifier initialized on {self.device}")
-
-    def classify(self, image_path: str, top_k: int = 3) -> Dict[str, Any]:
+    def classify_image(
+        self,
+        image_input: Any,
+        top_k: int = 5
+    ) -> Dict[str, Any]:
         """
-        Classify food image with top-K predictions.
-
-        Args:
-            image_path: Path to image file
-            top_k: Number of top predictions to return
-
-        Returns:
-            {
-                'predictions': [
-                    {'class': 'pizza', 'confidence': 0.92},
-                    {'class': 'spaghetti_bolognese', 'confidence': 0.05},
-                    ...
-                ],
-                'top_class': 'pizza',
-                'top_confidence': 0.92,
-                'model': 'resnet18_food101' or 'mock',
-                'device': 'cuda' or 'cpu'
-            }
+        Classify food image into top_k classes with confidence scores.
         """
-        if self.mock_mode:
+        if self.mock_mode or self.model is None:
             return self._mock_classify(top_k)
 
         try:
-            image = Image.open(image_path).convert('RGB')
-            image_tensor = self.transform(image).unsqueeze(0).to(self.device)
+            image = self._load_image(image_input)
+            input_tensor = self.transform(image).unsqueeze(0).to(self.device)
 
             with torch.no_grad():
-                outputs = self.model(image_tensor)
+                outputs = self.model(input_tensor)
                 probabilities = torch.nn.functional.softmax(outputs[0], dim=0)
 
-            top_probs, top_indices = torch.topk(probabilities, min(top_k, len(self.FOOD_CLASSES)))
+            top_prob, top_indices = torch.topk(probabilities, top_k)
 
             predictions = []
-            for prob, idx in zip(top_probs, top_indices):
+            for i in range(top_k):
+                idx = top_indices[i].item()
+                prob = top_prob[i].item()
+                class_name = self.FOOD_CLASSES[idx]
                 predictions.append({
-                    'class': self.FOOD_CLASSES[idx],
-                    'confidence': round(float(prob), 4)
+                    'class_name': class_name,
+                    'food_label': class_name.replace('_', ' ').title(),
+                    'confidence': round(float(prob), 4),
                 })
 
+            top_match = predictions[0]
             return {
-                'predictions': predictions,
-                'top_class': predictions[0]['class'],
-                'top_confidence': predictions[0]['confidence'],
-                'model': 'resnet18_food101',
-                'device': str(self.device)
+                'top_prediction': top_match['food_label'],
+                'top_class': top_match['class_name'],
+                'confidence': top_match['confidence'],
+                'all_predictions': predictions,
+                'model': 'resnet18_fine_tuned',
+                'status': 'active',
+                'mock_mode': False,
             }
 
         except Exception as e:
-            print(f"Error in ResNet18 classification: {e}")
+            print(f"[!] ResNet classification failure: {e}")
             return self._mock_classify(top_k)
 
-    def _mock_classify(self, top_k: int = 3) -> Dict[str, Any]:
-        """Mock classification for development (no trained weights available)."""
-        import random
+    def _load_image(self, image_input: Any) -> Image.Image:
+        """Helper to load PIL Image from path, bytes, or PIL Image object."""
+        if isinstance(image_input, Image.Image):
+            return image_input.convert('RGB')
+        elif isinstance(image_input, str):
+            return Image.open(image_input).convert('RGB')
+        elif isinstance(image_input, bytes):
+            import io
+            return Image.open(io.BytesIO(image_input)).convert('RGB')
+        else:
+            raise ValueError(f"Unsupported image input type: {type(image_input)}")
 
-        # Pick random classes with decaying confidence
-        indices = random.sample(range(len(self.FOOD_CLASSES)), min(top_k, len(self.FOOD_CLASSES)))
-        confs = sorted([random.uniform(0.3, 0.95) for _ in range(len(indices))], reverse=True)
-        # Normalise to sum ≤ 1
-        total = sum(confs) + 0.1
-        confs = [round(c / total, 4) for c in confs]
+    def _mock_classify(self, top_k: int = 5) -> Dict[str, Any]:
+        """Mock classification response when weights are not available."""
+        selected_classes = np.random.choice(self.FOOD_CLASSES, size=top_k, replace=False)
+        probs = np.random.dirichlet(np.ones(top_k))
+        probs = sorted(probs, reverse=True)
 
         predictions = [
-            {'class': self.FOOD_CLASSES[idx], 'confidence': conf}
-            for idx, conf in zip(indices, confs)
+            {
+                'class_name': selected_classes[i],
+                'food_label': selected_classes[i].replace('_', ' ').title(),
+                'confidence': round(float(probs[i]), 4),
+            }
+            for i in range(top_k)
         ]
 
         return {
-            'predictions': predictions,
-            'top_class': predictions[0]['class'],
-            'top_confidence': predictions[0]['confidence'],
-            'model': 'mock',
-            'device': 'cpu'
+            'top_prediction': predictions[0]['food_label'],
+            'top_class': predictions[0]['class_name'],
+            'confidence': predictions[0]['confidence'],
+            'all_predictions': predictions,
+            'model': 'resnet_planned_fallback',
+            'status': 'Planned / In Progress',
+            'mock_mode': True,
+            'notice': 'Visual feature status: Planned / In Progress (reserved for future vision integration).'
         }
-
-    def classify_batch(self, image_paths: List[str], top_k: int = 3) -> List[Dict[str, Any]]:
-        """
-        Classify multiple images at once.
-
-        More efficient than calling classify multiple times when using GPU.
-        """
-        results = []
-        for image_path in image_paths:
-            results.append(self.classify(image_path, top_k))
-        return results
 
 
 # Singleton instance
 _resnet_instance: Optional[ResNetFoodClassifier] = None
 
-
 def get_resnet_classifier() -> ResNetFoodClassifier:
-    """Get singleton ResNet18 food classifier instance."""
+    """Get singleton ResNet food classifier instance."""
     global _resnet_instance
     if _resnet_instance is None:
         _resnet_instance = ResNetFoodClassifier()

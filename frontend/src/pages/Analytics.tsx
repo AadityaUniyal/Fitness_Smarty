@@ -5,11 +5,14 @@ import {
   LineChart, Line
 } from 'recharts';
 import { TrendingUp, Activity, Target, Zap, Info, BrainCircuit, Calendar } from 'lucide-react';
-import { fetchAnalytics } from '../services/api';
+import { fetchAnalytics } from '../services/apiService';
 import { BiometricPoint } from '../types';
 import DeepTechService from '../services/deepTechService';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { PageFrame } from '../components/PageFrame';
 
 const Analytics: React.FC = () => {
+  const { profile } = useUserProfile();
   const [data, setData] = useState<BiometricPoint[]>([]);
   const [activeMetric, setActiveMetric] = useState<'steps' | 'weight' | 'heart_rate'>('steps');
   const [activeRange, setActiveRange] = useState<number>(7);
@@ -36,7 +39,6 @@ const Analytics: React.FC = () => {
           const forecast = await DeepTechService.forecastWeight(history, 7);
           setForecastData(forecast.predictions);
           
-          const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
           const targetW = profile.targetWeight ? Number(profile.targetWeight) : 70;
           const projRes = await fetch(`${API_BASE}/api/forecast/goal-projection?user_id=1&goal_weight=${targetW}`);
           if (projRes.ok) {
@@ -79,48 +81,46 @@ const Analytics: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div>
-          <h2 className="text-4xl font-black italic tracking-tighter text-white">NEURAL PROGRESS</h2>
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500/80">Biometric Sync History • Node user-1</p>
-        </div>
-        
-        <div className="flex flex-wrap gap-4 items-center">
-          {/* Metric Selector */}
-          <div className="flex bg-slate-900/80 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl">
-            {(['steps', 'weight', 'heart_rate'] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setActiveMetric(m)}
-                className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${
-                  activeMetric === m 
-                    ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)]' 
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                {m.replace('_', ' ')}
-              </button>
-            ))}
+      <PageFrame
+        eyebrow="Performance"
+        title="Neural Progress"
+        subtitle="Biometric sync history, adaptive forecasts, and a clearer view of how the body is trending."
+        tone="emerald"
+        rightSlot={
+          <div className="flex flex-wrap gap-4 items-center">
+            <div className="flex bg-slate-900/80 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl">
+              {(['steps', 'weight', 'heart_rate'] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setActiveMetric(m)}
+                  className={`px-5 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${
+                    activeMetric === m
+                      ? 'bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {m.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+            <div className="flex bg-slate-900/80 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl">
+              {ranges.map((r) => (
+                <button
+                  key={r.label}
+                  onClick={() => setActiveRange(r.value)}
+                  className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${
+                    activeRange === r.value
+                      ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
           </div>
-
-          {/* Range Selector */}
-          <div className="flex bg-slate-900/80 p-1.5 rounded-2xl border border-white/5 backdrop-blur-xl">
-            {ranges.map((r) => (
-              <button
-                key={r.label}
-                onClick={() => setActiveRange(r.value)}
-                className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${
-                  activeRange === r.value 
-                    ? 'bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.4)]' 
-                    : 'text-slate-500 hover:text-slate-300'
-                }`}
-              >
-                {r.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main Chart HUD */}

@@ -96,14 +96,14 @@ class WorkoutRecommendationService:
         recent_workouts = self.db.query(WorkoutLog).filter(
             and_(
                 WorkoutLog.user_id == user_id,
-                WorkoutLog.date >= seven_days_ago
+                WorkoutLog.created_at >= seven_days_ago
             )
         ).all()
         
         # Get last workout date
         last_workout = self.db.query(WorkoutLog).filter(
             WorkoutLog.user_id == user_id
-        ).order_by(WorkoutLog.date.desc()).first()
+        ).order_by(WorkoutLog.created_at.desc()).first()
         
         if not last_workout:
             return {
@@ -153,7 +153,7 @@ class WorkoutRecommendationService:
         workouts = self.db.query(WorkoutLog).filter(
             and_(
                 WorkoutLog.user_id == user_id,
-                WorkoutLog.date >= cutoff_date
+                WorkoutLog.created_at >= cutoff_date
             )
         ).all()
         
@@ -233,7 +233,7 @@ class WorkoutRecommendationService:
                 WorkoutLog.user_id == user_id,
                 WorkoutLog.exercise_name.ilike(f"%{exercise_name}%")
             )
-        ).order_by(WorkoutLog.date.desc()).limit(5).all()
+        ).order_by(WorkoutLog.created_at.desc()).limit(5).all()
         
         if not recent_logs:
             return {
@@ -284,9 +284,9 @@ class WorkoutRecommendationService:
         return self.db.query(WorkoutLog).filter(
             and_(
                 WorkoutLog.user_id == user_id,
-                WorkoutLog.date >= cutoff_date
+                WorkoutLog.created_at >= cutoff_date
             )
-        ).order_by(WorkoutLog.date.desc()).all()
+        ).order_by(WorkoutLog.created_at.desc()).all()
     
     def _determine_target_muscle_groups(self, muscle_balance: Dict[str, Any]) -> List[str]:
         """Determine which muscle groups to target today"""
@@ -355,7 +355,7 @@ class WorkoutRecommendationService:
                     WorkoutLog.user_id == user_id,
                     WorkoutLog.exercise_name.ilike(f"%{exercise.name}%")
                 )
-            ).order_by(WorkoutLog.date.desc()).first()
+            ).order_by(WorkoutLog.created_at.desc()).first()
             
             if last_log and last_log.sets and last_log.reps:
                 # Progressive overload

@@ -14,6 +14,9 @@ from app.database import get_db
 from app.calorie_tracker_service import CalorieTrackerService
 
 
+from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
+
+
 router = APIRouter(prefix="/api/calorie-tracking", tags=["Calorie Tracking"])
 
 
@@ -42,10 +45,6 @@ def calculate_exercise_calories(
 ):
     """
     Calculate calories burned for a single exercise.
-    
-    Provide either duration_minutes OR reps.
-    - For cardio/timed exercises: Use duration_minutes
-    - For strength exercises: Use reps and sets
     """
     try:
         service = CalorieTrackerService(db)
@@ -70,8 +69,6 @@ def calculate_food_calories(
 ):
     """
     Calculate calories and macros for a food item based on quantity in grams.
-    
-    All foods in database are stored per 100g, this calculates for your specific portion.
     """
     try:
         service = CalorieTrackerService(db)
@@ -89,26 +86,14 @@ def calculate_food_calories(
 @router.post("/log-workout")
 def log_workout_with_calories(
     request: ExerciseLogRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Log a complete workout with automatic calorie calculation.
-    
-    Example request:
-    {
-        "user_id": 1,
-        "workout_name": "Upper Body Day",
-        "exercises": [
-            {"exercise_id": 5, "reps": 10, "sets": 3},
-            {"exercise_id": 12, "duration_minutes": 20}
-        ]
-    }
-    
-    The system automatically:
-    1. Fetches exercise data from Neon database
-    2. Calculates calories burned based on quantity (time or reps)
-    3. Logs workout with total calories burned
     """
+    if str(request.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = CalorieTrackerService(db)
         workout_log = service.log_exercise_with_calories(
@@ -136,27 +121,14 @@ def log_workout_with_calories(
 @router.post("/log-meal")
 def log_meal_with_calories(
     request: FoodLogRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Log a meal with automatic calorie and macro calculation.
-    
-    Example request:
-    {
-        "user_id": 1,
-        "meal_name": "Post-workout meal",
-        "meal_type": "lunch",
-        "foods": [
-            {"food_id": 23, "quantity_grams": 200},
-            {"food_id": 45, "quantity_grams": 150}
-        ]
-    }
-    
-    The system automatically:
-    1. Fetches food data from Neon database (per 100g values)
-    2. Calculates nutrition based on your specific quantity in grams
-    3. Logs meal with total calories and macros
     """
+    if str(request.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = CalorieTrackerService(db)
         meal_log = service.log_food_with_calories(
@@ -188,21 +160,14 @@ def log_meal_with_calories(
 def get_daily_calorie_summary(
     user_id: int,
     target_date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get complete daily calorie summary with net calories.
-    
-    Returns:
-    - Calories consumed from meals
-    - Calories burned from workouts
-    - Net calories (consumed - burned)
-    - Calories remaining to daily target
-    - Progress percentage
-    - On track status
-    
-    This is your personal trainer math dashboard!
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = CalorieTrackerService(db)
         
@@ -226,17 +191,14 @@ def get_daily_calorie_summary(
 def get_weekly_calorie_trends(
     user_id: int,
     weeks: int = Query(1, ge=1, le=12, description="Number of weeks to analyze"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get calorie trends over multiple weeks.
-    
-    Returns:
-    - Daily summaries for each day
-    - Average calories consumed/burned
-    - Adherence metrics
-    - Trend analysis
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = CalorieTrackerService(db)
         trends = service.get_weekly_calorie_trends(
@@ -250,17 +212,53 @@ def get_weekly_calorie_trends(
         raise HTTPException(status_code=500, detail=f"Failed to get trends: {str(e)}")
 
 
+@router.get("/workout-history/{user_id}")
+def get_workout_history(
+    user_id: int,
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
+):
+    """Get recent workout logs for history and reporting."""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
+    workouts = (
+        db.query(models.WorkoutLog)
+        .filter(models.WorkoutLog.user_id == user_id)
+        .order_by(models.WorkoutLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return {
+        "workouts": [
+            {
+                "id": w.id,
+                "name": w.workout_name or "Workout",
+                "duration": w.duration_minutes or 0,
+                "calories_burned": w.calories_burned or 0,
+                "exercises_completed": len(w.exercises_data or []),
+                "exercises_total": len(w.exercises_data or []),
+                "timestamp": w.created_at.isoformat() if w.created_at else None,
+                "goal": (w.exercises_data or {}).get("goal") if isinstance(w.exercises_data, dict) else None,
+                "exercises_data": w.exercises_data,
+            }
+            for w in workouts
+        ],
+        "total_count": len(workouts)
+    }
+
+
 @router.get("/quick-check/{user_id}")
 def quick_calorie_check(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Quick check of today's calorie status.
-    
-    Perfect for displaying in dashboard widgets.
-    Returns simplified summary of today's progress.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = CalorieTrackerService(db)
         summary = service.get_daily_calorie_summary(user_id=user_id)

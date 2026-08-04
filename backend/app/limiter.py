@@ -110,3 +110,12 @@ token_bucket_limiter = TokenBucketLimiter(redis_url)
 # SlowAPI Limiter instance for legacy endpoint routing
 limiter = Limiter(key_func=get_remote_address)
 
+# ── Tiered Rate Limit Presets ───────────────────────────────────────────
+# Apply these to endpoint decorators:
+#   @limiter.limit(TIER_AI_STRICT)   → Gemini / vision endpoints
+#   @limiter.limit(TIER_WRITE)       → POST / PUT / DELETE
+#   @limiter.limit(TIER_READ)        → GET read-only
+TIER_AI_STRICT = "10/minute"   # Expensive: LLM / CV inference
+TIER_WRITE = "30/minute"       # Moderate: data mutations
+TIER_READ = "120/minute"       # Cheap: read-only lookups
+

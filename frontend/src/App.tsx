@@ -19,6 +19,7 @@ import PageTransition from './components/PageTransition';
 import { useToast } from './hooks/useToast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { i18n } from './i18n';
+import { useUserProfile } from './hooks/useUserProfile';
 
 
 // Lazy-loaded page components
@@ -27,7 +28,6 @@ const ExerciseBrowser = lazy(() => import('./components/ExerciseBrowser'));
 const WorkoutAssistant = lazy(() => import('./pages/WorkoutAssistant'));
 const NutritionHub = lazy(() => import('./pages/NutritionHub'));
 const LiveCoach = lazy(() => import('./pages/LiveCoach'));
-const SmartyChat = lazy(() => import('./components/SmartyChat'));
 const HydrationHub = lazy(() => import('./components/HydrationHub'));
 const BioLink = lazy(() => import('./pages/BioLink'));
 const MealScanner = lazy(() => import('./pages/MealScanner'));
@@ -52,6 +52,7 @@ const SocialFeed = lazy(() => import('./pages/SocialFeed'));
 const WearableIntegrations = lazy(() => import('./pages/WearableIntegrations'));
 const FormCorrector = lazy(() => import('./pages/FormCorrector'));
 const AiInterpreter = lazy(() => import('./pages/AiInterpreter'));
+const AdminWorkspace = lazy(() => import('./pages/AdminWorkspace'));
 
 // -- Auth Guard
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -64,6 +65,20 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+// -- Admin Guard
+const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="min-h-screen bg-[#020617] flex items-center justify-center"><div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>;
+  
+  const cachedUser = localStorage.getItem('smarty_user_data');
+  const userObj = cachedUser ? JSON.parse(cachedUser) : user;
+  
+  if (!isAuthenticated || !userObj?.is_admin) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+};
+
 // -- Dashboard shell with sidebar
 const DashboardShell: React.FC = () => {
   const navigate = useNavigate();
@@ -71,8 +86,8 @@ const DashboardShell: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toasts, dismissToast } = useToast();
   const { user: authUser, logout } = useAuth();
-  const user = authUser || JSON.parse(localStorage.getItem('smarty_user') || '{}');
-  const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
+  const { user, profile } = useUserProfile();
+  const activeUser = authUser || user;
   const isFemaleExperience =
     String(profile.gender || authUser?.gender || '').toLowerCase() === 'female' ||
     Boolean(profile.femmecareEnabled || profile.femmecare_enabled || authUser?.femmecare_enabled);
@@ -157,7 +172,6 @@ const DashboardShell: React.FC = () => {
     { path: '/dashboard/weekly', label: 'Weekly Review', icon: Calendar },
     { path: '/dashboard/bio', label: 'Profile', icon: Fingerprint },
     { path: '/dashboard/coach', label: 'Voice Coach', icon: Mic },
-    { path: '/dashboard/chat', label: 'Chat', icon: Bot },
     { path: '/dashboard/hydration', label: 'Hydration', icon: Droplets },
     ...(isFemaleExperience ? [
       { path: '/dashboard/femmecare', label: 'FemmeCare', icon: Heart },
@@ -185,9 +199,12 @@ const DashboardShell: React.FC = () => {
   }[profile.goal as string] || profile.goal : null;
 
   return (
-    <div className={`flex h-screen bg-[#020617] overflow-hidden text-slate-200 ${accent.selection}`}>
+    <div className={`flex h-screen overflow-hidden text-slate-200 ${accent.selection} app-shell ${isFemaleExperience ? 'app-shell-femme' : 'app-shell-default'}`}>
+      <div className="app-shell-bg" />
+      <div className="app-shell-orb app-shell-orb-a" />
+      <div className="app-shell-orb app-shell-orb-b" />
       {/* Sidebar */}
-      <aside className="w-72 border-r border-white/5 flex-col hidden lg:flex bg-slate-950/20 backdrop-blur-2xl relative shrink-0">
+      <aside className="w-72 border-r border-white/5 flex-col hidden lg:flex premium-panel relative shrink-0">
         <div className={`absolute top-0 right-0 w-px h-full bg-linear-to-b from-transparent ${accent.lineVia} to-transparent`} />
 
         <div className="p-8">
@@ -204,14 +221,14 @@ const DashboardShell: React.FC = () => {
           </div>
 
           {/* User pill */}
-          {user.name && (
+          {activeUser?.name && (
             <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
               <div className="flex items-center space-x-3">
                 <div className={`w-9 h-9 ${accent.bgSofter} rounded-xl flex items-center justify-center`}>
                   <User size={16} className={accent.text} />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-white">{profile.name || user.name}</p>
+                  <p className="text-xs font-black text-white">{profile.name || activeUser?.name}</p>
                   {goalLabel && <p className="text-[9px] text-slate-500 mt-0.5">{goalLabel}</p>}
                 </div>
               </div>
@@ -252,7 +269,7 @@ const DashboardShell: React.FC = () => {
       {/* Main */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         {/* Topbar */}
-        <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 md:px-10 bg-[#020617]/40 backdrop-blur-3xl sticky top-0 z-40 shrink-0">
+        <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 md:px-10 bg-slate-950/50 backdrop-blur-3xl sticky top-0 z-40 shrink-0 premium-panel">
           <div className="flex items-center space-x-4">
             <button 
               className="lg:hidden p-2.5 text-slate-400 bg-white/5 rounded-xl" 
@@ -269,6 +286,10 @@ const DashboardShell: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <div className={`hidden xl:flex items-center space-x-2 px-4 py-2 rounded-xl border ${accent.border} ${accent.bgSoft}`}>
+              <div className={`w-2 h-2 rounded-full ${accent.bg} ${accent.dotGlow}`} />
+              <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${accent.text}`}>Live sync</span>
+            </div>
             {goalLabel && (
               <div className={`hidden md:flex items-center space-x-2 px-4 py-2 ${accent.bgSoft} border ${accent.border} rounded-xl`}>
                 <span className={`text-[9px] font-black uppercase tracking-widest ${accent.text}`}>Goal: {goalLabel}</span>
@@ -313,8 +334,8 @@ const DashboardShell: React.FC = () => {
 
         {/* Content area */}
         <NotificationScheduler />
-        <div className="flex-1 overflow-y-auto p-6 md:p-10 relative">
-          <div className="absolute inset-0 opacity-[0.015] pointer-events-none" style={{ backgroundImage: accent.grid, backgroundSize: '80px 80px' }} />
+        <div className="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10 relative">
+          <div className="absolute inset-0 opacity-[0.018] pointer-events-none" style={{ backgroundImage: accent.grid, backgroundSize: '88px 88px' }} />
           <div className="relative z-10">
             <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
               <PageTransition>
@@ -344,7 +365,6 @@ const DashboardShell: React.FC = () => {
                   <Route path="interpreter" element={<AiInterpreter />} />
                   <Route path="bio" element={<BioLink />} />
                   <Route path="coach" element={<LiveCoach />} />
-                  <Route path="chat" element={<SmartyChat />} />
                   <Route path="hydration" element={<div className="max-w-2xl mx-auto pt-6"><HydrationHub /></div>} />
                   <Route path="femmecare" element={<FemmeCare />} />
                   <Route path="female" element={<FemaleDashboard />} />
@@ -363,14 +383,14 @@ const DashboardShell: React.FC = () => {
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSidebarOpen(false)} />
-          <aside className="absolute top-0 left-0 bottom-0 w-72 bg-[#020617] border-r border-white/10 p-6 flex flex-col">
+          <aside className={`absolute top-0 left-0 bottom-0 w-72 border-r border-white/10 p-6 flex flex-col premium-panel ${isFemaleExperience ? 'app-shell-femme' : 'app-shell-default'}`}>
             <div className="flex items-center justify-between mb-8">
               <span className="text-xl font-black italic text-white">SMARTY <span className="text-emerald-400">AI</span></span>
               <button onClick={() => setSidebarOpen(false)} className="p-2 text-slate-500"><X size={20} /></button>
             </div>
-            {user.name && (
+            {activeUser?.name && (
               <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
-                <p className="text-sm font-black text-white">{profile.name || user.name}</p>
+                <p className="text-sm font-black text-white">{profile.name || activeUser?.name}</p>
                 {goalLabel && <p className="text-[10px] text-slate-500">{goalLabel}</p>}
               </div>
             )}
@@ -403,6 +423,7 @@ const App: React.FC = () => (
           <Route path="/" element={<LoginPage />} />
           <Route path="/onboarding" element={<ProtectedRoute><OnboardingPage /></ProtectedRoute>} />
           <Route path="/contact" element={<ContactPage />} />
+          <Route path="/admin" element={<AdminRoute><Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}><AdminWorkspace /></Suspense></AdminRoute>} />
           <Route path="/dashboard/*" element={<ProtectedRoute><DashboardShell /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

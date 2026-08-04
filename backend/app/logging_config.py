@@ -57,6 +57,37 @@ class JSONFormatter(logging.Formatter):
         return json.dumps(log_data)
 
 
+class SensitiveDataFilter(logging.Filter):
+    """
+    Redacts sensitive health data (FemmeCare, PHI-adjacent) from log
+    messages to prevent accidental exposure in plaintext logs.
+
+    Fields redacted: symptoms, mood, flow_intensity, menstrual,
+    pregnancy, cycle_phase, encrypted_*, period_*.
+    """
+
+    SENSITIVE_PATTERNS = [
+        "symptoms", "mood", "flow_intensity", "menstrual",
+        "pregnancy", "cycle_phase", "encrypted_symptoms",
+        "encrypted_mood", "encrypted_flow_intensity",
+        "encrypted_notes", "period_start", "period_end",
+    ]
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """Always returns True (allow log through) but redacts content."""
+        if record.msg and isinstance(record.msg, str):
+            for pattern in self.SENSITIVE_PATTERNS:
+                # Redact key=value patterns like symptoms=headache
+                import re
+                record.msg = re.sub(
+                    rf"({pattern})\s*[=:]\s*\S+",
+                    rf"\1=[REDACTED]",
+                    record.msg,
+                    flags=re.IGNORECASE,
+                )
+        return True
+
+
 def setup_logging(
     app_name: str = "fitness_app",
     log_level: str = "INFO",
@@ -83,15 +114,18 @@ def setup_logging(
     # Remove existing handlers
     logger.handlers.clear()
     
+    sensitive_filter = SensitiveDataFilter()
+    
     # Console handler
     if enable_console:
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
+        console_handler.setLevel(getattr(logging, log_level.upper()))
         console_formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
-        console_handler.setFormatter(console_formatter)
+        console_handler.setFormatter(JSONFormatter() if enable_json else console_formatter)
+        console_handler.addFilter(sensitive_filter)
         logger.addHandler(console_handler)
     
     # File handler for general logs
@@ -107,6 +141,7 @@ def setup_logging(
             datefmt='%Y-%m-%d %H:%M:%S'
         )
         file_handler.setFormatter(file_formatter)
+        file_handler.addFilter(sensitive_filter)
         logger.addHandler(file_handler)
     
     # JSON file handler for structured logs
@@ -118,6 +153,7 @@ def setup_logging(
         )
         json_handler.setLevel(logging.INFO)
         json_handler.setFormatter(JSONFormatter())
+        json_handler.addFilter(sensitive_filter)
         logger.addHandler(json_handler)
     
     # Error file handler
@@ -132,6 +168,7 @@ def setup_logging(
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     error_handler.setFormatter(error_formatter)
+    error_handler.addFilter(sensitive_filter)
     logger.addHandler(error_handler)
     
     return logger

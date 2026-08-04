@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
+from ..database import get_db
 from .. import database, models
 from ..gamification_service import (
     GamificationService,
@@ -15,6 +16,7 @@ from ..gamification_service import (
     AchievementEngine,
     BadgeEngine
 )
+from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
 
 router = APIRouter(prefix="/api/gamification", tags=["Gamification"])
 
@@ -52,17 +54,14 @@ def initialize_gamification(db: Session = Depends(database.get_db)):
 @router.get("/users/{user_id}/stats")
 def get_user_gamification_stats(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get complete gamification stats for a user.
-    
-    Returns:
-    - Points, level, and XP
-    - All streaks (workout, nutrition, etc.)
-    - Completed and in-progress achievements
-    - Earned badges
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         stats = GamificationService.get_user_gamification_stats(db, user_id)
         return stats
@@ -76,13 +75,14 @@ def get_user_gamification_stats(
 @router.get("/users/{user_id}/summary")
 def get_user_summary(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get a quick summary of user's gamification status.
-    
-    Perfect for dashboard widgets and quick stats.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     stats = GamificationService.get_user_gamification_stats(db, user_id)
     
     # Extract key metrics
@@ -110,13 +110,14 @@ def get_user_summary(
 @router.get("/users/{user_id}/streaks")
 def get_user_streaks(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get all streaks for a user.
-    
-    Returns workout, nutrition, hydration, and login streaks.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     streaks = StreakManager.get_all_streaks(db, user_id)
     return {"streaks": streaks}
 
@@ -125,13 +126,14 @@ def get_user_streaks(
 def update_streak(
     user_id: int,
     streak_type: str,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Update a specific streak for a user.
-    
-    Valid streak types: workout, nutrition, hydration, login
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     valid_types = ["workout", "nutrition", "hydration", "login"]
     if streak_type not in valid_types:
         raise HTTPException(
@@ -185,14 +187,14 @@ def get_all_achievements(db: Session = Depends(database.get_db)):
 def get_user_achievements(
     user_id: int,
     status: Optional[str] = None,  # completed, in_progress, all
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get user's achievements with progress tracking.
-    
-    Query params:
-    - status: Filter by 'completed', 'in_progress', or 'all' (default)
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     query = db.query(
         models.UserAchievement, models.Achievement
     ).join(
@@ -230,13 +232,14 @@ def get_user_achievements(
 @router.post("/users/{user_id}/achievements/check")
 def check_achievements(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Manually trigger achievement check for a user.
-    
-    Returns any newly unlocked achievements.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     newly_unlocked = AchievementEngine.check_achievements(db, user_id)
     
     return {
@@ -255,8 +258,6 @@ def check_achievements(
 def get_all_badges(db: Session = Depends(database.get_db)):
     """
     Get all available badges in the system.
-    
-    Shows the complete badge catalog with tiers and requirements.
     """
     badges = db.query(models.Badge).all()
     
@@ -280,11 +281,14 @@ def get_all_badges(db: Session = Depends(database.get_db)):
 @router.get("/users/{user_id}/badges")
 def get_user_badges(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get all badges earned by a user.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     user_badges = db.query(
         models.UserBadge, models.Badge
     ).join(
@@ -313,13 +317,14 @@ def get_user_badges(
 @router.post("/users/{user_id}/badges/check")
 def check_badges(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Manually trigger badge check for a user.
-    
-    Returns any newly earned badges.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     newly_earned = BadgeEngine.check_badges(db, user_id)
     
     return {
@@ -334,11 +339,14 @@ def equip_badge(
     user_id: int,
     badge_id: int,
     equip: bool = True,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Equip or unequip a badge for display on user profile.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     user_badge = db.query(models.UserBadge).filter(
         models.UserBadge.user_id == user_id,
         models.UserBadge.badge_id == badge_id
@@ -368,11 +376,14 @@ def equip_badge(
 @router.get("/users/{user_id}/points")
 def get_user_points(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get user's points, level, and XP breakdown.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     user_points = db.query(models.UserPoints).filter(
         models.UserPoints.user_id == user_id
     ).first()
@@ -409,8 +420,6 @@ def get_leaderboard(
 ):
     """
     Get the global leaderboard of top users by points.
-    
-    Shows top 10 users (or specified limit) ranked by total points.
     """
     top_users = db.query(
         models.UserPoints,
@@ -447,13 +456,14 @@ def get_leaderboard(
 @router.post("/events/workout-completed")
 def trigger_workout_completed(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Trigger gamification checks after a workout is completed.
-    
-    This should be called automatically by the workout logging endpoint.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     result = GamificationService.on_workout_completed(db, user_id)
     
     return {
@@ -467,13 +477,14 @@ def trigger_workout_completed(
 @router.post("/events/meal-logged")
 def trigger_meal_logged(
     user_id: int,
-    db: Session = Depends(database.get_db)
+    db: Session = Depends(database.get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Trigger gamification checks after a meal is logged.
-    
-    This should be called automatically by the meal logging endpoint.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     result = GamificationService.on_meal_logged(db, user_id)
     
     return {

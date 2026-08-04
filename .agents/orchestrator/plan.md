@@ -1,49 +1,54 @@
-# Validation & Sweep Plan: Fitness Smarty Recommender
+# Pure-ML Transformation Plan: Smarty AI Fitness Recommender
 
 ## Architecture
-- **Frontend**: React (Vite) + TS, including App.tsx, Dashboard.tsx, and 30+ dashboard routes/components. Supports dynamic theme switching based on profile gender (emerald/green for general, pink/female-theme for female/FemmeCare profiles) and language locale (EN/HI).
-- **Backend**: FastAPI (Python) web server with SQLAlchemy ORM, exposing endpoints for auth, recommendation engine, meal scanning (YOLOv8 + Gemini), time-series forecasting (LSTM), FemmeCare tracking, etc.
-- **Database**: Dual storage capability: local SQLite for local dev, Neon Serverless PostgreSQL for production (specified in backend/.env).
+- **Backend Framework**: FastAPI (Python) web server with SQLAlchemy ORM.
+- **ML Models**:
+  - LSTM Weight Predictor (moving-average fallback for <14 entries, saves `lstm_metrics.json`).
+  - Collaborative Filtering Re-ranker (blended into `hybrid_ranker.py`, cold-start rule-based fallback).
+  - Recommendation MLP (PyTorch, train/val split, saves `mlp_metrics.json`, aligned hierarchy with CF).
+  - K-Means User Clustering (cluster assignment active in ranker/dashboard).
+  - ResNet50 & DQN (labeled explicitly as "Planned" or "In Progress" in codebase & docs).
+- **Admin Dashboard**: FastAPI backend endpoints for asynchronous retraining with `is_admin=true` auth and concurrency locking.
+- **Testing**: Pytest unit & integration test suite.
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |
 |---|------|-------|-------------|--------|
-| 1 | Setup & Environment Verification | Verify backend & frontend dependencies, check configuration (e.g. .env, database URLs) | None | DONE |
-| 2 | Backend API Endpoint Verification | Run pytest suite to verify login, registration, workouts, foods, and cycle-phase tracking routes | M1 | IN_PROGRESS |
-| 3 | Database State Sync Verification | Verify direct writes and data sync to the Neon PostgreSQL database for active user sessions | M1, M2 | PLANNED |
-| 4 | Frontend & Theme Walkthrough | Run vitest suite and execute walkthrough checklist for 30+ dashboard shell routes, dynamic theme switching for female profiles, and viewport simulation | M1, M2 | PLANNED |
-| 5 | Synthesis & Final Sweep Report | Compile aggregated sweep findings, run Forensic Audit validation, and report to Sentinel | M1, M2, M3, M4 | PLANNED |
+| 1 | Exploration & Architecture Assessment | Codebase audit for security, ML models, admin endpoints, tests & docs | None | DONE |
+| 2 | Security Verification & Credentials Hardening | Remove plaintext credentials; dynamic `DATABASE_URL` & `ADMIN_PASSWORD` loading with secure fallback | M1 | DONE |
+| 3 | ML Model Training, Fallbacks & Integration | LSTM, CF, MLP, K-Means models + fallbacks + metrics JSON + ResNet50/DQN doc labeling | M1, M2 | DONE |
+| 4 | Hardened Admin Training Dashboard | Admin auth check (`is_admin=true`), async retraining jobs, model concurrency locking | M1, M3 | IN_PROGRESS |
+| 5 | Test Suite & Documentation Alignment | Unit tests (hybrid ranker, Mifflin-St Jeor), model load smoke test, doc update (`PROJECT_STRUCTURE_AND_WORKING.md`), full clean pytest pass | M1, M3, M4 | PLANNED |
 
-## Validation & Checklists
+## Checklists
 
-### Milestone 1: Setup & Environment Verification
-- [ ] Backend dependencies are installed (pip packages).
-- [ ] Frontend dependencies are installed (npm packages).
-- [ ] Database credentials (Neon and local) are verified.
-- [ ] Environment variables (.env) are valid and loaded.
+### Milestone 1: Exploration & Architecture Assessment
+- [x] Audit DB connection string handling and admin credentials across tracked code.
+- [x] Audit existing model files (`lstm_predictor.py`, `collaborative_filtering.py`, `train_neural_model.py`, `user_clustering.py`, `hybrid_ranker.py`, etc.).
+- [x] Audit admin endpoints and background task support in FastAPI backend.
+- [x] Audit test suite and `PROJECT_STRUCTURE_AND_WORKING.md`.
 
-### Milestone 2: Backend API Endpoint Verification
-- [ ] Run backend tests (e.g., `pytest tests/`) to check all major endpoints.
-- [ ] Specifically verify routes for:
-  - Auth (`/api/auth/register`, `/api/auth/login`, `/api/auth/me`)
-  - Workouts (`/api/workouts`)
-  - Foods/Nutrition (`/api/foods`, `/api/meals`)
-  - FemmeCare/Cycle-phase tracking (`/api/femmecare`)
-- [ ] Verify mock vs production model fallback behavior.
+### Milestone 2: Security Verification & Credentials Hardening
+- [x] Ensure no plaintext DB / admin credentials exist in tracked code.
+- [x] Dynamically load `DATABASE_URL` and `ADMIN_PASSWORD`.
+- [x] Implement secure random password generation fallback at seed/init time when `ADMIN_PASSWORD` is unset.
 
-### Milestone 3: Database State Sync Verification
-- [ ] Confirm backend correctly performs writes and updates to the Neon PostgreSQL database.
-- [ ] Verify database states after registering a new user, updating onboarding profiles, and setting goals.
-- [ ] Confirm no data loss or schema mismatches exist on Neon PostgreSQL.
+### Milestone 3: ML Model Training, Fallbacks & Integration
+- [x] LSTM Weight Predictor: train on trajectories, save `lstm_metrics.json`, moving-average fallback (<14 entries), align sequence length.
+- [x] Collaborative Filtering: train on feedback data, blend into `hybrid_ranker.py`, cold-start rule-based fallback.
+- [x] PyTorch Recommendation MLP: train/val split, save `mlp_metrics.json`, align hierarchy with CF.
+- [x] K-Means Clustering: verify cluster assignment consumption in ranker or dashboard.
+- [x] ResNet50 & DQN: label as "Planned" or "In Progress" in codebase, README, and doc tables.
 
-### Milestone 4: Frontend & Theme Walkthrough
-- [ ] Verify Vitest suite passes for React components.
-- [ ] Ensure all 30+ navigation sidebar tabs in `App.tsx` resolve to valid components.
-- [ ] Verify theme switches to `female-theme` (pink accent) when a female profile is active or registered.
-- [ ] Verify desktop and mobile viewport behavior (layout adaptability, mobile menu sidebar toggle).
+### Milestone 4: Hardened Admin Training Dashboard
+- [ ] Mount `training_api.py` in `backend/main.py`.
+- [ ] Secure retraining endpoints with server-side `is_admin=true` checks.
+- [ ] Implement async retraining jobs (FastAPI BackgroundTasks).
+- [ ] Implement concurrency locking to block duplicate concurrent retraining runs for the same model.
 
-### Milestone 5: Synthesis & Final Sweep Report
-- [ ] Run Forensic Auditor check to verify implementation authenticity and lack of cheat hacks.
-- [ ] Synthesize all test outputs and findings.
-- [ ] Create E2E Validation Sweep Report.
-- [ ] Notify Sentinel and submit handoff.
+### Milestone 5: Test Suite & Documentation Alignment
+- [ ] Create unit tests for `hybrid_ranker.py` scoring logic and Mifflin-St Jeor calculators.
+- [ ] Create integration smoke test verifying all model files load on startup; fix flawed 500 error assertions.
+- [ ] Update `PROJECT_STRUCTURE_AND_WORKING.md`, `README.md`, `PROJECT_DOCUMENTATION.md` to remove Gemini references and define visual fallback heuristic.
+- [ ] Run full `pytest` suite and confirm all tests pass cleanly.
+- [ ] Pass Forensic Integrity Audit.

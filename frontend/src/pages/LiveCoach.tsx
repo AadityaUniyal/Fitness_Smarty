@@ -1,6 +1,6 @@
 import { Activity, BrainCircuit, Camera, CameraOff, CheckCircle2, Info, Loader2, Play, Sparkles, Square, Zap, ShieldAlert, RefreshCw, Settings, Crosshair, Cloud } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
-import { logBiomechanicalFault } from '../services/api';
+import { logBiomechanicalFault } from '../services/apiService';
 
 type LiveServerMessage = any;
 type Blob = any;

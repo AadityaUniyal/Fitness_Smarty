@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Zap, ChevronRight, ChevronLeft, Check, User, Target, Utensils, Activity } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { PageFrame, InfoCard } from '../components/PageFrame';
 
 interface Profile {
     name: string;
@@ -46,8 +47,7 @@ const OnboardingPage: React.FC = () => {
 
     const totalSteps = 4;
     const progress = ((step + 1) / totalSteps) * 100;
-    const storedUser = JSON.parse(localStorage.getItem('smarty_user') || '{}');
-    const displayUser = user || storedUser;
+    const displayUser = user;
 
     const update = (field: keyof Profile, value: any) => setProfile(p => ({ ...p, [field]: value }));
 
@@ -230,77 +230,110 @@ const OnboardingPage: React.FC = () => {
     const currentStep = steps[step];
 
     return (
-        <div className="min-h-screen bg-[#020617] text-white flex items-center justify-center p-6">
-            <div className="absolute top-1/3 left-1/2 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl -translate-x-1/2" />
+        <div className="min-h-screen app-shell app-shell-default px-4 py-8 md:px-8 lg:px-10">
+            <div className="app-shell-bg" />
+            <div className="app-shell-orb app-shell-orb-a" />
+            <div className="app-shell-orb app-shell-orb-b" />
 
-            <div className="relative z-10 w-full max-w-lg">
-                {/* Header */}
-                <div className="flex items-center space-x-4 mb-10">
-                    <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.4)] rotate-3">
-                        <Zap size={26} className="fill-slate-950 text-slate-950" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-black italic text-white">SMARTY <span className="text-emerald-400">AI</span></h1>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Neural Calibration</p>
-                    </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div className="mb-8">
-                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                        <span>Step {step + 1} of {totalSteps}</span>
-                        <span>{Math.round(progress)}% complete</span>
-                    </div>
-                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-                            style={{ width: `${progress}%` }} />
-                    </div>
-                </div>
-
-                {/* Card */}
-                <div className="bg-slate-900/60 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
-                    <div className="flex items-center space-x-4 mb-6">
-                        <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center">
-                            <currentStep.icon size={22} className="text-emerald-400" />
+            <div className="relative z-10 mx-auto w-full max-w-5xl">
+                <PageFrame
+                    eyebrow="Neural Calibration"
+                    title="Set the System Up Right"
+                    subtitle="A focused onboarding flow that captures only what the planner, reports, and FemmeCare need to make better decisions."
+                    tone={profile.gender === 'Female' || profile.femmecareEnabled ? 'pink' : 'emerald'}
+                    rightSlot={
+                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">Progress</p>
+                            <p className="mt-1 text-lg font-black text-white">{Math.round(progress)}%</p>
                         </div>
-                        <div>
-                            <h2 className="text-2xl font-black italic text-white tracking-tight">{currentStep.title}</h2>
-                            <p className="text-xs text-slate-500">{currentStep.subtitle}</p>
+                    }
+                >
+                    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                        <div className="rounded-[2rem] border border-white/5 bg-slate-950/60 p-5 md:p-6">
+                            <div className="flex items-center space-x-4 mb-8">
+                                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.4)] rotate-3">
+                                    <Zap size={26} className="fill-slate-950 text-slate-950" />
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-black italic text-white">SMARTY <span className="text-emerald-400">AI</span></h1>
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Neural Calibration</p>
+                                </div>
+                            </div>
+
+                            <div className="mb-8">
+                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
+                                    <span>Step {step + 1} of {totalSteps}</span>
+                                    <span>{Math.round(progress)}% complete</span>
+                                </div>
+                                <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
+                                        style={{ width: `${progress}%` }} />
+                                </div>
+                            </div>
+
+                            <div className="bg-slate-900/60 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
+                                <div className="flex items-center space-x-4 mb-6">
+                                    <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center">
+                                        <currentStep.icon size={22} className="text-emerald-400" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black italic text-white tracking-tight">{currentStep.title}</h2>
+                                        <p className="text-xs text-slate-500">{currentStep.subtitle}</p>
+                                    </div>
+                                </div>
+                                <div className="max-h-[50vh] overflow-y-auto pr-1 space-y-1">
+                                    {currentStep.content}
+                                </div>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-6">
+                                <button
+                                    onClick={() => step > 0 ? setStep(s => s - 1) : navigate('/')}
+                                    className="flex items-center space-x-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-slate-400 font-black text-[10px] uppercase tracking-widest transition-all"
+                                >
+                                    <ChevronLeft size={16} />
+                                    <span>{step === 0 ? 'Back to Login' : 'Previous'}</span>
+                                </button>
+
+                                {step < totalSteps - 1 ? (
+                                    <button
+                                        onClick={() => setStep(s => s + 1)}
+                                        className="flex items-center space-x-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all"
+                                    >
+                                        <span>Continue</span>
+                                        <ChevronRight size={16} />
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={handleFinish}
+                                        disabled={saving}
+                                        className="flex items-center space-x-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all"
+                                    >
+                                        {saving ? <span className="animate-pulse">Saving...</span> : <><Check size={16} /><span>Launch Smarty AI</span></>}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <InfoCard
+                                title="What this unlocks"
+                                detail="Cleaner onboarding gives the planner better inputs, the report engine better baselines, and FemmeCare the right defaults."
+                                tone="cyan"
+                            />
+                            <InfoCard
+                                title="Privacy posture"
+                                detail="FemmeCare remains opt-in. If it is off, the rest of the app still functions normally."
+                                tone="pink"
+                            />
+                            <InfoCard
+                                title="Product quality"
+                                detail="A tighter setup flow means fewer weird defaults later and a better first impression from day one."
+                                tone="violet"
+                            />
                         </div>
                     </div>
-                    <div className="max-h-[50vh] overflow-y-auto pr-1 space-y-1">
-                        {currentStep.content}
-                    </div>
-                </div>
-
-                {/* Navigation */}
-                <div className="flex items-center justify-between mt-6">
-                    <button
-                        onClick={() => step > 0 ? setStep(s => s - 1) : navigate('/')}
-                        className="flex items-center space-x-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-slate-400 font-black text-[10px] uppercase tracking-widest transition-all"
-                    >
-                        <ChevronLeft size={16} />
-                        <span>{step === 0 ? 'Back to Login' : 'Previous'}</span>
-                    </button>
-
-                    {step < totalSteps - 1 ? (
-                        <button
-                            onClick={() => setStep(s => s + 1)}
-                            className="flex items-center space-x-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all"
-                        >
-                            <span>Continue</span>
-                            <ChevronRight size={16} />
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleFinish}
-                            disabled={saving}
-                            className="flex items-center space-x-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all"
-                        >
-                            {saving ? <span className="animate-pulse">Saving...</span> : <><Check size={16} /><span>Launch Smarty AI</span></>}
-                        </button>
-                    )}
-                </div>
+                </PageFrame>
             </div>
         </div>
     );

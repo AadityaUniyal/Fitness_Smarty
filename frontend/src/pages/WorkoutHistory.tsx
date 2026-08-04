@@ -1,6 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Dumbbell, Flame, Clock, Calendar, Filter, Trash2, Check, BarChart3, ChevronDown, ChevronUp, Trophy } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
+import { fetchWorkoutHistory } from '../services/apiService';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 interface WorkoutLog {
   name: string;
@@ -13,12 +15,21 @@ interface WorkoutLog {
 }
 
 const WorkoutHistory: React.FC = () => {
+  const userId = useCurrentUserId();
   const [logs, setLogs] = useState<WorkoutLog[]>(() => {
     try { return JSON.parse(localStorage.getItem('smarty_workout_logs') || '[]'); } catch { return []; }
   });
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
   const [filterDays, setFilterDays] = useState(0);
+
+  useEffect(() => {
+    const load = async () => {
+      const data = await fetchWorkoutHistory(userId, 200);
+      if (data?.workouts) setLogs(data.workouts);
+    };
+    load();
+  }, []);
 
   const filtered = useMemo(() => {
     if (filterDays === 0) return logs;

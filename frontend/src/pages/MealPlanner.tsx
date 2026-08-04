@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarDays, Plus, X, Trash2, Check, Search, ChevronLeft, ChevronRight, Utensils, Apple, Beef, Fish, Milk, Wheat, Coffee, Sparkles, Loader2 } from 'lucide-react';
 import { FoodAPI, FoodItem, FoodCategory } from '../services/apiService';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 const STORAGE_KEY = 'smarty_meal_plan';
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -92,6 +93,7 @@ const CATEGORY_ICONS: Record<number, React.ReactNode> = {
 };
 
 const MealPlanner: React.FC = () => {
+  const { profile } = useUserProfile();
   const [weekPlan, setWeekPlan] = useState<WeekPlan>(() => {
     try { const saved = localStorage.getItem(STORAGE_KEY); if (saved) return JSON.parse(saved); } catch { }
     const empty: WeekPlan = {};
@@ -193,7 +195,6 @@ const MealPlanner: React.FC = () => {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
       const prefs = {
         week_start: weekDates[0].toISOString().split('T')[0],
         daily_calories: profile.dailyCalorieTarget || 2000,

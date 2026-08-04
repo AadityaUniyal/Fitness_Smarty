@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.gender_specific_service import GenderSpecificService
+from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
 
 
 router = APIRouter(
@@ -27,15 +28,14 @@ class FemmeCarerToggleRequest(BaseModel):
 @router.get("/bmr/{user_id}")
 def calculate_bmr(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Calculate Basal Metabolic Rate with gender-specific formula.
-    
-    Uses Mifflin-St Jeor equation:
-    - Male: BMR = (10 × weight) + (6.25 × height) - (5 × age) + 5
-    - Female: BMR = (10 × weight) + (6.25 × height) - (5 × age) - 161
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         from app.models import EnhancedUser, UserProfile
         
@@ -65,6 +65,8 @@ def calculate_bmr(
             "explanation": f"Your body burns {bmr} calories per day at rest (gender-specific calculation)",
             "formula_used": "Mifflin-St Jeor equation"
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to calculate BMR: {str(e)}")
 
@@ -73,17 +75,14 @@ def calculate_bmr(
 def calculate_tdee(
     user_id: int,
     include_femmecare: bool = Query(True, description="Include cycle-based adjustments for females"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Calculate Total Daily Energy Expenditure with gender-specific adjustments.
-    
-    Includes:
-    - Gender-specific BMR calculation
-    - Activity level multiplier
-    - FemmeCare adjustments (cycle phase, pregnancy, menopause)
-    - Personalized recommendations
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = GenderSpecificService(db)
         result = service.calculate_tdee_gender_specific(
@@ -101,14 +100,14 @@ def calculate_tdee(
 def get_macro_targets(
     user_id: int,
     goal: str = Query("maintenance", description="weight_loss, muscle_gain, maintenance, or athletic"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Calculate macro targets with gender-specific adjustments.
-    
-    Females get slightly higher fat percentage for hormonal health.
-    Returns daily targets in grams and percentages.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = GenderSpecificService(db)
         result = service.get_gender_specific_macro_targets(
@@ -125,20 +124,14 @@ def get_macro_targets(
 @router.post("/femmecare/toggle")
 def toggle_femmecare(
     request: FemmeCarerToggleRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Enable or disable FemmeCare features for female users.
-    
-    FemmeCare includes:
-    - Menstrual cycle tracking
-    - Cycle-synced workout recommendations
-    - Phase-specific nutrition advice
-    - Hormonal health insights
-    - Optional pregnancy and menopause modes
-    
-    Only available for users with gender = "female"
     """
+    if str(request.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = GenderSpecificService(db)
         result = service.toggle_femmecare(
@@ -155,20 +148,14 @@ def toggle_femmecare(
 @router.get("/femmecare/dashboard/{user_id}")
 def get_femmecare_dashboard(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get comprehensive FemmeCare dashboard.
-    
-    Returns:
-    - Current cycle phase (menstrual, follicular, ovulation, luteal)
-    - Days since last period
-    - Next predicted period date
-    - Phase-specific recommendations (nutrition, exercise, wellness)
-    - Cycle history and patterns
-    
-    Requires FemmeCare to be enabled.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = GenderSpecificService(db)
         result = service.get_femmecare_dashboard(user_id=user_id)
@@ -182,13 +169,14 @@ def get_femmecare_dashboard(
 @router.get("/femmecare/current-phase/{user_id}")
 def get_current_cycle_phase(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get current menstrual cycle phase and recommendations.
-    
-    Quick endpoint for widget displays.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = GenderSpecificService(db)
         cycle_data = service._get_current_cycle_phase(user_id)

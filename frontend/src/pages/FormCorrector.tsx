@@ -54,6 +54,7 @@ const FormCorrector: React.FC = () => {
   const [lastFeedback, setLastFeedback] = useState<'good' | 'bad' | null>(null);
   const [frameRate, setFrameRate] = useState(0);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [lowPowerMode, setLowPowerMode] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -62,6 +63,7 @@ const FormCorrector: React.FC = () => {
   const animRef = useRef<number>(0);
   const frameCountRef = useRef(0);
   const lastTimeRef = useRef(Date.now());
+  const lastDetectionTimeRef = useRef(0);
   const prevAnglesRef = useRef<{ knee?: number; hip?: number; elbow?: number }>({});
   const poseStateRef = useRef<'up' | 'down'>('up');
 
@@ -167,6 +169,17 @@ const FormCorrector: React.FC = () => {
 
   const runPoseDetection = async (video: HTMLVideoElement, ctx: CanvasRenderingContext2D) => {
     try {
+      if (lowPowerMode) {
+        const now = Date.now();
+        if (now - lastDetectionTimeRef.current < 150) {
+          // Skip frame processing to save battery, but render helper text
+          ctx.fillStyle = 'rgba(16,185,129,0.5)';
+          ctx.font = '10px sans-serif';
+          ctx.fillText('Low Power Mode: Throttling Tracking (6.6 FPS)', 20, 20);
+          return;
+        }
+        lastDetectionTimeRef.current = now;
+      }
       const poses: Pose[] = await detectorRef.current.estimatePoses(video);
       if (poses.length > 0 && poses[0].score > 0.3) {
         setIsDetecting(true);
@@ -360,15 +373,27 @@ const FormCorrector: React.FC = () => {
             </p>
           </div>
         </div>
-        <button onClick={cameraActive ? stopCamera : startCamera}
-          className={`flex items-center space-x-2 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition ${
-            cameraActive
-              ? 'bg-rose-500 hover:bg-rose-400 text-slate-950'
-              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
-          }`}>
-          {cameraActive ? <CameraOff size={14} /> : <Camera size={14} />}
-          <span>{cameraActive ? 'Stop Camera' : 'Start Camera'}</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setLowPowerMode(!lowPowerMode)}
+            className={`flex items-center space-x-2 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition ${
+              lowPowerMode
+                ? 'bg-yellow-500 hover:bg-yellow-400 text-slate-950 shadow-yellow-500/20'
+                : 'bg-slate-900 hover:bg-slate-800 text-slate-400 border border-white/5'
+            }`}
+          >
+            <span>{lowPowerMode ? 'Low Power ON' : 'Low Power OFF'}</span>
+          </button>
+          <button onClick={cameraActive ? stopCamera : startCamera}
+            className={`flex items-center space-x-2 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition ${
+              cameraActive
+                ? 'bg-rose-500 hover:bg-rose-400 text-slate-950'
+                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+            }`}>
+            {cameraActive ? <CameraOff size={14} /> : <Camera size={14} />}
+            <span>{cameraActive ? 'Stop Camera' : 'Start Camera'}</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex gap-6">

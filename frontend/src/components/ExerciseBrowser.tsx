@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dumbbell, Search, Filter, Loader2, Info, Heart, ChevronRight, Trophy, Calendar, Sparkles, X } from 'lucide-react';
 import { ExerciseAPI } from '../services/apiService';
 import { useAPI } from '../hooks/useAPI';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 const FAV_KEY = 'smarty_exercise_favorites';
 
@@ -217,12 +218,12 @@ const ExerciseStickFigure: React.FC<{ name: string; primaryMuscle: string; large
 };
 
 const ExerciseBrowser: React.FC = () => {
+  const { profile } = useUserProfile();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('');
   const [selectedGoal, setSelectedGoal] = useState<string>(() => {
     try {
-      const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
       return profile.goal || profile.primary_goal || '';
     } catch {
       return '';

@@ -8,6 +8,8 @@ import { useAPI } from '../hooks/useAPI';
 import { BodyGoal, BodyTypeAdvice } from '../types';
 import MealAdvisor from '../components/MealAdvisor';
 import ManualFoodEntry from '../components/ManualFoodEntry';
+import { fetchDailyProgress, logMealProgress } from '../services/apiService';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 // ───────────────────────── Inline Donut Component ─────────────────────────
 interface DailyDonutProps { proteinCal: number; carbCal: number; fatCal: number; totalCal: number; }
@@ -75,30 +77,18 @@ const NutritionHub: React.FC = () => {
   const [goalFoods, setGoalFoods] = useState<any[]>([]);
   const [loadingGoalFoods, setLoadingGoalFoods] = useState(false);
 
-  // Daily macro summary from local logs
+  // Daily macro summary from server progress
   const [dailyMacros, setDailyMacros] = useState({ cal: 0, protein: 0, carbs: 0, fat: 0 });
+  const userId = useCurrentUserId();
 
-  const computeDailyMacros = () => {
-    const today = new Date().toDateString();
-    const logs = JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]');
-    const todayLogs = logs.filter((l: any) => new Date(l.timestamp).toDateString() === today);
-    const cal = todayLogs.reduce((s: number, l: any) => s + (l.totalCalories || 0), 0);
-    // items might come from PortionPanel or from Gemini analysis
-    let protein = 0, carbs = 0, fat = 0;
-    todayLogs.forEach((l: any) => {
-      if (l.items) {
-        l.items.forEach((i: any) => {
-          protein += i.protein_g || i.protein || 0;
-          carbs += i.carbs_g || i.carbs || 0;
-          fat += i.fat_g || i.fats || 0;
-        });
-      } else {
-        protein += l.totalProtein || 0;
-        carbs += l.totalCarbs || 0;
-        fat += l.totalFat || 0;
-      }
+  const computeDailyMacros = async () => {
+    const progress = await fetchDailyProgress(userId);
+    setDailyMacros({
+      cal: Math.round(progress?.calories?.consumed || 0),
+      protein: Math.round(progress?.protein?.consumed || 0),
+      carbs: Math.round(progress?.carbs?.consumed || 0),
+      fat: Math.round(progress?.fats?.consumed || 0),
     });
-    setDailyMacros({ cal: Math.round(cal), protein: Math.round(protein), carbs: Math.round(carbs), fat: Math.round(fat) });
   };
 
   const { data: foodData, loading: loadingLibrary, execute: searchFood } = useAPI(
@@ -173,18 +163,6 @@ const NutritionHub: React.FC = () => {
 
   const fetchDailyStrategy = async (lastMealMacros?: any) => {
     try {
-      // Recompute locally first to get accurate "consumed"
-      const today = new Date().toDateString();
-      const logs = JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]');
-      const todayLogs = logs.filter((l: any) => new Date(l.timestamp).toDateString() === today);
-
-      const consumed = {
-        calories: todayLogs.reduce((s: number, l: any) => s + (l.totalCalories || 0), 0),
-        protein: todayLogs.reduce((s: number, l: any) => s + (l.totalProtein || 0), 0),
-        carbs: todayLogs.reduce((s: number, l: any) => s + (l.totalCarbs || 0), 0),
-        fats: todayLogs.reduce((s: number, l: any) => s + (l.totalFat || 0), 0)
-      };
-
       // Goals map for TDEE (mocked logic or fetched from profile)
       const targets = { calories: 2200, protein: 160, carbs: 240, fats: 60 };
 
@@ -192,7 +170,7 @@ const NutritionHub: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          consumed,
+          consumed: dailyMacros,
           targets,
           goal: selectedGoal,
           last_meal: lastMealMacros,
@@ -232,10 +210,8 @@ const NutritionHub: React.FC = () => {
         }]
       };
 
-      const prev = JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]');
-      localStorage.setItem('smarty_meal_logs', JSON.stringify([logEntry, ...prev]));
-
-      computeDailyMacros();
+      await logMealProgress(userId);
+      await computeDailyMacros();
       await fetchDailyStrategy({
         calories: summary.calories,
         protein: summary.protein_g,
@@ -244,7 +220,7 @@ const NutritionHub: React.FC = () => {
       });
 
       setLoggingFood(null);
-      alert(`${food.name} (${grams}g) logged!`);
+      alert(`${food.name} (${grams}g) logged to server!`);
     } catch (e) {
       console.error(e);
       alert('Failed to log food macros.');

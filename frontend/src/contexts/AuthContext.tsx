@@ -12,6 +12,7 @@ interface User {
   activity_level?: string;
   primary_goal?: string;
   femmecare_enabled?: boolean;
+  is_admin?: boolean;
 }
 
 interface AuthContextType {

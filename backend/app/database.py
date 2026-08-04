@@ -33,6 +33,7 @@ def _sqlite_engine(database_url: str):
                     "menopause_mode",
                     "pregnancy_mode",
                     "local_only",
+                    "is_admin",
                 ]:
                     try:
                         cursor.execute(
@@ -80,6 +81,60 @@ def _sqlite_engine(database_url: str):
                         )
                     except sqlite3.OperationalError:
                         pass
+                for col, col_type in [
+                    ("muscle_group", "TEXT"),
+                    ("secondary_muscles", "TEXT"),
+                    ("movement_pattern", "TEXT"),
+                    ("avg_set_duration_sec", "INTEGER"),
+                    ("avg_rest_sec", "INTEGER"),
+                    ("default_sets", "INTEGER"),
+                    ("default_reps", "TEXT"),
+                    ("est_calories_per_set", "REAL"),
+                ]:
+                    try:
+                        cursor.execute(
+                            f"ALTER TABLE exercise_items ADD COLUMN {col} {col_type}"
+                        )
+                    except sqlite3.OperationalError:
+                        pass
+                try:
+                    cursor.execute(
+                        "ALTER TABLE food_items ADD COLUMN prep_time_minutes INTEGER"
+                    )
+                except sqlite3.OperationalError:
+                    pass
+                try:
+                    cursor.execute(
+                        "CREATE TABLE IF NOT EXISTS daily_progress ("
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                        "user_id INTEGER NOT NULL,"
+                        "date DATETIME NOT NULL,"
+                        "calories_target REAL DEFAULT 0,"
+                        "calories_consumed REAL DEFAULT 0,"
+                        "calories_remaining REAL DEFAULT 0,"
+                        "protein_target REAL DEFAULT 0,"
+                        "protein_consumed REAL DEFAULT 0,"
+                        "protein_remaining REAL DEFAULT 0,"
+                        "carbs_target REAL DEFAULT 0,"
+                        "carbs_consumed REAL DEFAULT 0,"
+                        "carbs_remaining REAL DEFAULT 0,"
+                        "fats_target REAL DEFAULT 0,"
+                        "fats_consumed REAL DEFAULT 0,"
+                        "fats_remaining REAL DEFAULT 0,"
+                        "workout_planned_id INTEGER,"
+                        "workout_status TEXT DEFAULT 'not_started',"
+                        "sets_completed INTEGER DEFAULT 0,"
+                        "sets_planned INTEGER DEFAULT 0,"
+                        "energy_level INTEGER,"
+                        "soreness_level INTEGER,"
+                        "symptom_severity INTEGER,"
+                        "water_intake_ml INTEGER DEFAULT 0,"
+                        "water_target_ml INTEGER DEFAULT 0,"
+                        "created_at DATETIME,"
+                        "updated_at DATETIME)"
+                    )
+                except sqlite3.OperationalError:
+                    pass
                 conn.commit()
                 conn.close()
             except Exception as migration_err:
@@ -132,6 +187,42 @@ def ensure_compatible_schema(engine_obj) -> None:
                     "ALTER TABLE menstrual_cycle_logs "
                     "ADD COLUMN IF NOT EXISTS "
                     "encrypted_notes TEXT",
+                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS muscle_group TEXT",
+                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS secondary_muscles JSONB",
+                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS movement_pattern TEXT",
+                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS avg_set_duration_sec INTEGER",
+                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS avg_rest_sec INTEGER",
+                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS default_sets INTEGER",
+                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS default_reps TEXT",
+                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS est_calories_per_set DOUBLE PRECISION",
+                    "ALTER TABLE food_items ADD COLUMN IF NOT EXISTS prep_time_minutes INTEGER",
+                    "CREATE TABLE IF NOT EXISTS daily_progress ("
+                    "id SERIAL PRIMARY KEY,"
+                    "user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+                    "date TIMESTAMP NOT NULL,"
+                    "calories_target DOUBLE PRECISION DEFAULT 0,"
+                    "calories_consumed DOUBLE PRECISION DEFAULT 0,"
+                    "calories_remaining DOUBLE PRECISION DEFAULT 0,"
+                    "protein_target DOUBLE PRECISION DEFAULT 0,"
+                    "protein_consumed DOUBLE PRECISION DEFAULT 0,"
+                    "protein_remaining DOUBLE PRECISION DEFAULT 0,"
+                    "carbs_target DOUBLE PRECISION DEFAULT 0,"
+                    "carbs_consumed DOUBLE PRECISION DEFAULT 0,"
+                    "carbs_remaining DOUBLE PRECISION DEFAULT 0,"
+                    "fats_target DOUBLE PRECISION DEFAULT 0,"
+                    "fats_consumed DOUBLE PRECISION DEFAULT 0,"
+                    "fats_remaining DOUBLE PRECISION DEFAULT 0,"
+                    "workout_planned_id INTEGER,"
+                    "workout_status TEXT DEFAULT 'not_started',"
+                    "sets_completed INTEGER DEFAULT 0,"
+                    "sets_planned INTEGER DEFAULT 0,"
+                    "energy_level INTEGER,"
+                    "soreness_level INTEGER,"
+                    "symptom_severity INTEGER,"
+                    "water_intake_ml INTEGER DEFAULT 0,"
+                    "water_target_ml INTEGER DEFAULT 0,"
+                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
                 ]:
                     conn.execute(text(statement))
     except Exception as schema_err:
@@ -167,8 +258,22 @@ try:
         else:
             TrainingSessionLocal = SessionLocal
 except Exception as e:
+    _env = os.getenv("ENVIRONMENT", "development").lower()
+    if _env in {"production", "prod"}:
+        logger.critical(
+            "FATAL: PostgreSQL connection failed in production: %s. "
+            "SQLite fallback is disabled in production to prevent "
+            "silent data loss.",
+            e,
+        )
+        raise RuntimeError(
+            f"PostgreSQL connection failed in production: {e}. "
+            "Fix DATABASE_URL or resolve the database issue."
+        ) from e
+
     logger.warning(
-        f"PostgreSQL connection failed ({e}), falling back to SQLite"
+        f"PostgreSQL connection failed ({e}), falling back to SQLite "
+        "(development/test mode only)"
     )
     fallback_url = os.getenv(
         "SQLITE_FALLBACK_URL", "sqlite:///./smarty_neural_core.db"
@@ -726,7 +831,7 @@ def seed_nutrition_database():
         for f in foods:
             db.add(models.FoodItem(**f))
         db.commit()
-        print(f"✅ Food database seeded with {len(foods)} items.")
+        print(f"[OK] Food database seeded with {len(foods)} items.")
     except Exception as e:
         print(f"Error seeding food database: {e}")
         db.rollback()

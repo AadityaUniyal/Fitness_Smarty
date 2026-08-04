@@ -60,10 +60,9 @@ class NeonConfig:
     @classmethod
     def from_environment(cls) -> 'NeonConfig':
         """Create NeonConfig from environment variables"""
-        default_url = "postgresql://neondb_owner:npg_u8mPOinQJwt0@ep-spring-forest-ae89a0gy-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-        database_url = os.getenv('DATABASE_URL', default_url)
+        database_url = os.getenv('DATABASE_URL')
         if not database_url:
-            raise ValueError("DATABASE_URL environment variable not set and no default provided")
+            raise ValueError("DATABASE_URL environment variable not set. Please specify it in .env or your environment.")
         
         config = cls.from_database_url(database_url)
         

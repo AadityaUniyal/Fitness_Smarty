@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, User, Bot, Loader2, Zap, Trash2 } from 'lucide-react';
 import { sendCoachMessage } from '../services/geminiService';
-import { fetchDailyCoach } from '../services/api';
+import { fetchDailyCoach } from '../services/apiService';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface Message {
   role: 'user' | 'model';
@@ -41,6 +42,7 @@ const loadMessages = (): Message[] => {
 };
 
 const SmartyChat: React.FC = () => {
+  const { profile } = useUserProfile();
   const [messages, setMessages] = useState<Message[]>(loadMessages);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -109,7 +111,6 @@ const SmartyChat: React.FC = () => {
     // Rule-grounded query interception
     if (lowerText.includes('protein') || lowerText.includes('target') || lowerText.includes('why') || lowerText.includes('rule')) {
       try {
-        const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
         const proteinGoal = profile.proteinGoal || 120;
         const calGoal = profile.calorieGoal || 2000;
         
@@ -136,7 +137,6 @@ const SmartyChat: React.FC = () => {
     }
 
     try {
-      const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
       const enhancedProfile = {
         ...profile,
         today_coach_summary: dailyCoach?.coach_summary || '',

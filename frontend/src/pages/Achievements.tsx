@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Trophy, Flame, Dumbbell, Utensils, Zap, Star, Target, Heart, Calendar, Award, Lock, TrendingUp, Camera, MessageCircle, Timer } from 'lucide-react';
+import { fetchGamificationSummary, fetchUserAchievements } from '../services/apiService';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 const STORAGE_KEY = 'smarty_earned_achievements';
 
@@ -77,7 +80,7 @@ const createAchievements = (): Achievement[] => [
   {
     id: 'profile_set', title: 'Identified', description: 'Complete your bio profile', category: 'Milestones',
     icon: <Target size={20} />, color: 'emerald',
-    check: () => { const p = localStorage.getItem('smarty_profile'); if (!p) return false; try { const parsed = JSON.parse(p); return parsed.weight && parsed.height && parsed.goal; } catch { return false; } }
+    check: () => Boolean(profile.weight || profile.weight_kg) && Boolean(profile.height || profile.height_cm) && Boolean(profile.goal || profile.primary_goal)
   },
   {
     id: 'measurement_3', title: 'Tracked', description: 'Log 3 body measurements', category: 'Milestones',
@@ -107,6 +110,8 @@ const categoryColors: Record<string, string> = {
 
 const Achievements: React.FC = () => {
   const allAchievements = createAchievements();
+  const userId = useCurrentUserId();
+  const { profile } = useUserProfile();
   const [earned, setEarned] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
   });
@@ -114,19 +119,21 @@ const Achievements: React.FC = () => {
   const [filter, setFilter] = useState<string>('all');
 
   useEffect(() => {
-    const newlyEarned: string[] = [];
-    for (const a of allAchievements) {
-      if (!earned.includes(a.id) && a.check()) {
-        newlyEarned.push(a.id);
+    const load = async () => {
+      const [summary, userAch] = await Promise.all([
+        fetchGamificationSummary(userId),
+        fetchUserAchievements(userId),
+      ]);
+      const serverEarned = new Set<string>();
+      userAch?.achievements?.forEach((a: any) => serverEarned.add(String(a.id)));
+      if (summary?.achievements_completed != null) {
+        // summary loaded; nothing extra needed here except ensuring UI refresh
       }
-    }
-    if (newlyEarned.length > 0) {
-      const updated = [...earned, ...newlyEarned];
-      setEarned(updated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setJustEarned(newlyEarned[0]);
-      setTimeout(() => setJustEarned(null), 4000);
-    }
+      const merged = [...new Set([...earned, ...Array.from(serverEarned)])];
+      setEarned(merged);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    };
+    load();
   }, []);
 
   const categories = ['all', ...new Set(allAchievements.map(a => a.category))];

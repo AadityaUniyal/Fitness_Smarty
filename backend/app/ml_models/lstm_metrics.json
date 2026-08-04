@@ -1,0 +1,11 @@
+{
+  "mae": 0.1824,
+  "rmse": 0.2312,
+  "train_loss": 0.00078,
+  "val_loss": 0.000657,
+  "epochs": 10,
+  "seq_length": 14,
+  "num_samples": 4560,
+  "status": "success",
+  "updated_at": "2026-08-04T22:50:11.373669"
+}

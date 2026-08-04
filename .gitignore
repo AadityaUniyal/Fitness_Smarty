@@ -113,3 +113,9 @@ backend/data/
 
 # Keep the wger exercise seed JSON tracked (small, avoids API dependency on deploy)
 !backend/app/seed_data/exercises_wger.json
+
+# Large Archives and Datasets
+*.tar.gz
+*.zip
+*.tgz
+

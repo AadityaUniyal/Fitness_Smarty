@@ -10,8 +10,9 @@ Preserves: all users, enhanced_users, user_profiles, meal_logs, meal_components
 import os, sys, uuid, random
 from datetime import datetime, timedelta
 
-NEON_URL = "postgresql://neondb_owner:npg_u8mPOinQJwt0@ep-spring-forest-ae89a0gy-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-os.environ["DATABASE_URL"] = NEON_URL
+NEON_URL = os.getenv("DATABASE_URL")
+if not NEON_URL:
+    raise ValueError("DATABASE_URL environment variable is required to run the mega seed script.")
 from sqlalchemy import create_engine, text
 engine = create_engine(NEON_URL, pool_pre_ping=True)
 

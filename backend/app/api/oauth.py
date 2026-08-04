@@ -52,6 +52,10 @@ class OAuthProvider:
             pass
         except Exception as e:
             print(f"[!] Google token verification failed: {e}")
+            # In development, fall back to mock verification instead of throwing
+            if os.getenv("ENVIRONMENT", "development").lower() in ("development", "dev", "test"):
+                return OAuthProvider._mock_verify("google", id_token)
+            raise e
 
         return OAuthProvider._mock_verify("google", id_token)
 

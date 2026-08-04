@@ -12,6 +12,7 @@ from datetime import date
 
 from ..database import get_db
 from ..hydration_service import HydrationService
+from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
 
 router = APIRouter(prefix="/api/hydration", tags=["hydration"])
 
@@ -26,17 +27,14 @@ class WaterLogRequest(BaseModel):
 @router.post("/log-water")
 async def log_water_intake(
     request: WaterLogRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Log water intake
-    
-    Provide either:
-    - amount_ml: Water in milliliters
-    - glasses: Number of glasses (250ml each)
-    
-    Returns updated daily summary with progress toward goal.
     """
+    if str(request.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = HydrationService(db)
     result = service.log_water(
         user_id=request.user_id,
@@ -54,17 +52,14 @@ async def log_water_intake(
 async def get_daily_summary(
     user_id: int,
     target_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get hydration summary for today or a specific date
-    
-    Shows:
-    - Current water intake
-    - Daily goal
-    - Progress percentage
-    - Remaining amount to drink
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = HydrationService(db)
     
     parsed_date = None
@@ -86,18 +81,14 @@ async def get_daily_summary(
 async def get_hydration_goal(
     user_id: int,
     target_date: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Calculate daily hydration goal
-    
-    Based on:
-    - Body weight (35ml per kg)
-    - Workout activity (adds 500ml)
-    - Gender
-    
-    Returns goal in both milliliters and glasses.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = HydrationService(db)
     
     parsed_date = None
@@ -118,18 +109,14 @@ async def get_hydration_goal(
 @router.get("/trends/{user_id}")
 async def get_hydration_trends(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get 7-day hydration trends
-    
-    Shows:
-    - Daily water intake
-    - Goals achieved
-    - Average intake
-    - Consistency score
-    - Trend analysis (improving/declining/stable)
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = HydrationService(db)
     result = service.get_weekly_trends(user_id)
     
@@ -142,19 +129,14 @@ async def get_hydration_trends(
 @router.get("/reminders/{user_id}")
 async def get_hydration_reminders(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get personalized hydration reminders
-    
-    Returns time-based reminders:
-    - Morning: Start your day right
-    - Afternoon: Stay hydrated
-    - Evening: Don't forget
-    - Night: One more before bed
-    
-    Includes motivational messages based on progress.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = HydrationService(db)
     result = service.get_hydration_reminders(user_id)
     
@@ -168,14 +150,14 @@ async def get_hydration_reminders(
 async def quick_log_glass(
     user_id: int,
     glasses: float = Query(default=1, description="Number of glasses to log"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Quick log for mobile/simple interfaces
-    
-    Just tap to log 1 glass (or specify amount).
-    Perfect for quick tracking throughout the day.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = HydrationService(db)
     result = service.log_water(user_id=user_id, glasses=glasses)
     

@@ -22,3 +22,5 @@ google-auth>=2.0.0
 email-validator>=2.0.0
 gunicorn>=21.2.0
 alembic>=1.13.0
+ultralytics>=8.0.0
+opencv-python-headless>=4.8.0

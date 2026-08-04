@@ -8,7 +8,8 @@ import {
 import {
     PieChart, Pie, Cell, ResponsiveContainer,
 } from 'recharts';
-import { fetchFemmeCareAdvice, logPeriod } from '../services/api';
+import { fetchFemmeCareAdvice, logPeriod } from '../services/apiService';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface PeriodLog {
     start_date: string;
@@ -49,18 +50,20 @@ const FemmeCare: React.FC = () => {
     const [saveSuccess, setSaveSuccess] = useState(false);
     const [cycleDay, setCycleDay] = useState(computeCycleDay);
     const [expandedExercise, setExpandedExercise] = useState<number | null>(null);
-    const user = JSON.parse(localStorage.getItem('smarty_user') || '{}');
+    const { user, profile } = useUserProfile();
 
     // UI Toggles State
     const [localOnlyMode, setLocalOnlyMode] = useState(false);
     const [menopauseMode, setMenopauseMode] = useState(false);
     const [pregnancyMode, setPregnancyMode] = useState(false);
+    const [femmecareEnabled, setFemmecareEnabled] = useState(false);
 
     const loadData = async () => {
         setLoading(true);
-        const data = await fetchFemmeCareAdvice(user.id || 'anonymous');
+        const data = await fetchFemmeCareAdvice(user?.id || 'anonymous');
         setAdvice(data);
         if (data?.user_profile) {
+            setFemmecareEnabled(!!data.user_profile.femmecare_enabled);
             setLocalOnlyMode(!!data.user_profile.local_only);
             setMenopauseMode(!!data.user_profile.menopause_mode);
             setPregnancyMode(!!data.user_profile.pregnancy_mode);
@@ -72,25 +75,26 @@ const FemmeCare: React.FC = () => {
         loadData();
     }, []);
 
-    const handleToggleSetting = async (key: 'local_only' | 'menopause_mode' | 'pregnancy_mode', val: boolean) => {
+    const handleToggleSetting = async (key: 'femmecare_enabled' | 'local_only' | 'menopause_mode' | 'pregnancy_mode', val: boolean) => {
+        if (key === 'femmecare_enabled') setFemmecareEnabled(val);
         if (key === 'local_only') setLocalOnlyMode(val);
         if (key === 'menopause_mode') setMenopauseMode(val);
         if (key === 'pregnancy_mode') setPregnancyMode(val);
 
         // Update local settings copy
         const currentSettings = {
+            femmecare_enabled: key === 'femmecare_enabled' ? val : femmecareEnabled,
             local_only: key === 'local_only' ? val : localOnlyMode,
             menopause_mode: key === 'menopause_mode' ? val : menopauseMode,
             pregnancy_mode: key === 'pregnancy_mode' ? val : pregnancyMode,
-            femmecare_enabled: true
         };
 
         // Submit settings change to backend
         try {
             const { updateFemmeCareSettings } = await import('../services/api');
-            await updateFemmeCareSettings(user.id || 'anonymous', currentSettings);
+            await updateFemmeCareSettings(user?.id || 'anonymous', currentSettings);
             // Refresh insights and recommendations
-            const data = await fetchFemmeCareAdvice(user.id || 'anonymous');
+            const data = await fetchFemmeCareAdvice(user?.id || 'anonymous');
             setAdvice(data);
         } catch (e) {
             console.error("Failed to update FemmeCare settings:", e);
@@ -111,8 +115,9 @@ const FemmeCare: React.FC = () => {
         };
 
         // Save to localStorage
-        const prev: PeriodLog[] = JSON.parse(localStorage.getItem('smarty_period_log') || '[]');
-        localStorage.setItem('smarty_period_log', JSON.stringify([entry, ...prev].slice(0, 24)));
+        const storageKey = `smarty_period_log_${user?.id || 'anonymous'}`;
+        const prev: PeriodLog[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify([entry, ...prev].slice(0, 24)));
 
         // Submit to backend ONLY if localOnlyMode is false
         if (!localOnlyMode) {
@@ -160,7 +165,7 @@ const FemmeCare: React.FC = () => {
     return (
         <div className="space-y-8 pb-10">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 rounded-[2.5rem] border border-pink-500/15 bg-linear-to-br from-rose-950/30 via-slate-950 to-fuchsia-950/20 p-6 md:p-8 shadow-[0_20px_80px_rgba(190,24,93,0.12)]">
                 <div>
                     <div className="flex items-center space-x-2 mb-2">
                         <Heart size={16} className="text-pink-500 fill-pink-500" />
@@ -169,7 +174,19 @@ const FemmeCare: React.FC = () => {
                     <h1 className="text-4xl font-black text-white italic tracking-tighter">
                         AURA <span className="text-pink-500">PINK</span>
                     </h1>
-                    <p className="text-slate-400 text-sm mt-1">Bio-synchronized training and nutrition for peak hormonal health.</p>
+                    <p className="text-slate-300 text-sm mt-1 max-w-2xl">A softer, private space that adapts training, food, and check-ins to cycle phase, symptoms, and how you feel today.</p>
+                    <div className="mt-4 inline-flex items-center gap-3 rounded-full border border-pink-500/20 bg-pink-500/10 px-4 py-2">
+                        <span className="text-[10px] font-black uppercase tracking-[0.25em] text-pink-300">Cycle Tracking</span>
+                        <label className="inline-flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={femmecareEnabled}
+                                onChange={(e) => handleToggleSetting('femmecare_enabled', e.target.checked)}
+                                className="accent-pink-500 rounded"
+                            />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white">Enable cycle support</span>
+                        </label>
+                    </div>
                     
                     {/* Mode Toggle Controls */}
                     <div className="flex flex-wrap gap-4 mt-4">
@@ -204,7 +221,7 @@ const FemmeCare: React.FC = () => {
                         </label>
                     </div>
 
-                    <div className="mt-4 p-4 bg-pink-500/10 border border-pink-500/20 rounded-2xl flex items-start gap-3 max-w-2xl">
+                    <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-2xl flex items-start gap-3 max-w-2xl">
                         <Info size={16} className="text-pink-400 shrink-0 mt-0.5" />
                         <p className="text-[11px] text-pink-300 leading-relaxed font-semibold">
                             <span className="font-bold uppercase tracking-wider text-pink-400">General Wellness Guidance:</span> This module provides educational insights and cycle-synced tips based on general physiological patterns. It does not constitute medical advice, diagnosis, or treatment. It is not a substitute for advice from a doctor, gynecologist, or registered dietitian. Always consult a healthcare professional before changing your training, nutrition, or medical routine.
@@ -251,7 +268,7 @@ const FemmeCare: React.FC = () => {
                     </h2>
 
                     <div className="h-64 relative">
-                        <ResponsiveContainer width="100%" height="100%">
+                        <ResponsiveContainer width="100%" height="100%" minWidth={240} minHeight={240}>
                             <PieChart>
                                 <Pie
                                     data={data}
@@ -307,7 +324,7 @@ const FemmeCare: React.FC = () => {
                     {/* Period log history */}
                     <div className="mt-5 space-y-2">
                         {(() => {
-                            const logs: PeriodLog[] = JSON.parse(localStorage.getItem('smarty_period_log') || '[]');
+                            const logs: PeriodLog[] = JSON.parse(localStorage.getItem(`smarty_period_log_${user?.id || 'anonymous'}`) || '[]');
                             if (!logs.length) return (
                                 <p className="text-[9px] text-slate-600 text-center italic">No cycle logs yet. Log your first cycle above.</p>
                             );
@@ -352,6 +369,29 @@ const FemmeCare: React.FC = () => {
                                         <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Nutrition Protocol</p>
                                         <p className="text-sm text-slate-200 font-medium leading-relaxed">{advice?.advice?.nutrition}</p>
                                     </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Setup</p>
+                                    <p className="mt-1 text-sm font-black text-white">1. Last period start</p>
+                                    <p className="text-[11px] text-slate-400">Logged in your period history card</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Setup</p>
+                                    <p className="mt-1 text-sm font-black text-white">2. Usual cycle length</p>
+                                    <p className="text-[11px] text-slate-400">Defaults to 28 days if you are unsure</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Setup</p>
+                                    <p className="mt-1 text-sm font-black text-white">3. Symptom profile</p>
+                                    <p className="text-[11px] text-slate-400">Cramps, fatigue, mood, bloating, headaches</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Setup</p>
+                                    <p className="mt-1 text-sm font-black text-white">4. Workout impact</p>
+                                    <p className="text-[11px] text-slate-400">Chooses how gently we should adjust training</p>
                                 </div>
                             </div>
                         </div>

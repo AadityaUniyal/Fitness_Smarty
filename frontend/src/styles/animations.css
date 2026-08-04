@@ -155,6 +155,80 @@
   animation: border-glow 3s ease-in-out infinite;
 }
 
+/* App Shell System */
+.app-shell {
+  position: relative;
+  isolation: isolate;
+}
+
+.app-shell-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -3;
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.15), transparent 30%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 28%),
+    linear-gradient(180deg, #020617 0%, #07111f 55%, #020617 100%);
+}
+
+.app-shell-femme .app-shell-bg {
+  background:
+    radial-gradient(circle at top left, rgba(244, 114, 182, 0.24), transparent 30%),
+    radial-gradient(circle at top right, rgba(251, 113, 133, 0.16), transparent 28%),
+    linear-gradient(180deg, #120716 0%, #1b0f1d 55%, #0f172a 100%);
+}
+
+.app-shell-default .app-shell-bg {
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.15), transparent 30%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 28%),
+    linear-gradient(180deg, #020617 0%, #07111f 55%, #020617 100%);
+}
+
+.app-shell-orb {
+  position: fixed;
+  width: 28rem;
+  height: 28rem;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.22;
+  z-index: -2;
+  pointer-events: none;
+  animation: float 12s ease-in-out infinite;
+}
+
+.app-shell-orb-a {
+  top: -6rem;
+  left: -5rem;
+  background: rgba(16, 185, 129, 0.24);
+}
+
+.app-shell-orb-b {
+  bottom: -7rem;
+  right: -5rem;
+  background: rgba(59, 130, 246, 0.14);
+  animation-delay: -4s;
+}
+
+.app-shell-femme .app-shell-orb-a {
+  background: rgba(244, 114, 182, 0.26);
+}
+
+.app-shell-femme .app-shell-orb-b {
+  background: rgba(251, 113, 133, 0.18);
+}
+
+.premium-panel {
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 90px rgba(2, 6, 23, 0.45);
+  backdrop-filter: blur(22px);
+}
+
+.app-shell-femme .premium-panel {
+  background: linear-gradient(180deg, rgba(30, 12, 24, 0.82), rgba(15, 23, 42, 0.92));
+}
+
 /* ───── Ripple Click ───── */
 @keyframes ripple {
   to { transform: scale(4); opacity: 0; }

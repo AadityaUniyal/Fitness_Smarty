@@ -220,21 +220,26 @@ class UserProfileResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        json_encoders = {
-            # Ensure UUIDs are serialized as strings
-            'UUID': lambda v: str(v)
-        }
 
     @classmethod
     def model_validate(cls, obj):
-        """Custom validation to handle UUID conversion"""
+        """Custom validation to handle string conversion of Integer IDs"""
         if hasattr(obj, '__dict__'):
             data = obj.__dict__.copy()
-            # Convert UUID objects to strings
-            if 'id' in data and hasattr(data['id'], 'hex'):
+            if 'id' in data:
                 data['id'] = str(data['id'])
-            if 'user_id' in data and hasattr(data['user_id'], 'hex'):
+            if 'user_id' in data:
                 data['user_id'] = str(data['user_id'])
+            # Map fitness_goal model field back to primary_goal response key
+            if 'fitness_goal' in data and 'primary_goal' not in data:
+                data['primary_goal'] = data['fitness_goal']
+            elif 'primary_goal' not in data:
+                data['primary_goal'] = 'maintenance'
+            # Fallback for dietary_restrictions / dietary_preferences
+            if 'dietary_restrictions' not in data:
+                data['dietary_restrictions'] = data.get('dietary_preferences', []) or []
+            if 'allergies' not in data:
+                data['allergies'] = data.get('allergies', []) or []
             return cls(**data)
         return super().model_validate(obj)
 
@@ -252,18 +257,15 @@ class UserGoalResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        json_encoders = {
-            'UUID': lambda v: str(v)
-        }
 
     @classmethod
     def model_validate(cls, obj):
-        """Custom validation to handle UUID conversion"""
+        """Custom validation to handle string conversion of Integer IDs"""
         if hasattr(obj, '__dict__'):
             data = obj.__dict__.copy()
-            if 'id' in data and hasattr(data['id'], 'hex'):
+            if 'id' in data:
                 data['id'] = str(data['id'])
-            if 'user_id' in data and hasattr(data['user_id'], 'hex'):
+            if 'user_id' in data:
                 data['user_id'] = str(data['user_id'])
             return cls(**data)
         return super().model_validate(obj)

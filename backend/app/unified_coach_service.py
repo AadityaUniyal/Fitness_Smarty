@@ -1,6 +1,6 @@
 import json
 import os
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from typing import Any, Dict, List, Optional
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,8 @@ class UnifiedCoachService:
     Unified Coach Service orchestrates the user's daily fitness and nutrition targets.
     It combines rules/local ML algorithms with Gemini narration.
     """
+    # Class-level in-memory cache for Gemini coach briefings to minimize API overhead
+    _briefing_cache: Dict[str, str] = {}
 
     def __init__(self, db: Session):
         self.db = db
@@ -301,25 +303,30 @@ class UnifiedCoachService:
                 "detail": "Keep the momentum going."
             }
 
-        # 10. Gemini Pass
-        coach_summary = self._generate_gemini_narration(
-            user_profile={
-                "gender": gender,
-                "goal": goal,
-                "recovery_score": recovery_context["score"],
-                "cycle_phase": cycle_phase if gender_mode == "femmecare" else None,
-                "menopause": menopause_mode,
-                "pregnancy": pregnancy_mode
-            },
-            today_metrics={
-                "calories_eaten": calories_eaten,
-                "protein_eaten": protein_eaten,
-                "hydration_ml": hydration_ml
-            },
-            workout_rec=workout_rec,
-            meal_rec=meal_rec,
-            next_action=next_action
-        )
+        # 10. Gemini Pass (with Local Cache optimization)
+        cache_key = f"{user.id}_{today_start.date().isoformat()}_{calories_eaten}_{protein_eaten}_{hydration_ml}_{recovery_context['score']}"
+        if cache_key in self._briefing_cache:
+            coach_summary = self._briefing_cache[cache_key]
+        else:
+            coach_summary = self._generate_gemini_narration(
+                user_profile={
+                    "gender": gender,
+                    "goal": goal,
+                    "recovery_score": recovery_context["score"],
+                    "cycle_phase": cycle_phase if gender_mode == "femmecare" else None,
+                    "menopause": menopause_mode,
+                    "pregnancy": pregnancy_mode
+                },
+                today_metrics={
+                    "calories_eaten": calories_eaten,
+                    "protein_eaten": protein_eaten,
+                    "hydration_ml": hydration_ml
+                },
+                workout_rec=workout_rec,
+                meal_rec=meal_rec,
+                next_action=next_action
+            )
+            self._briefing_cache[cache_key] = coach_summary
 
         return {
             "coach_summary": coach_summary,
@@ -333,6 +340,218 @@ class UnifiedCoachService:
             "daily_tasks": daily_tasks,
             "next_action": next_action,
             "constraints_applied": constraints_applied
+        }
+
+    def get_explainable_coach(self, user_id: str) -> Dict[str, Any]:
+        """Return a deterministic, auditable coach explanation payload."""
+        plan = self.get_daily_coach_plan(user_id)
+        user = self.db.query(models.EnhancedUser).filter(
+            (models.EnhancedUser.clerk_user_id == user_id) | (models.EnhancedUser.id == user_id)
+        ).first()
+        if not user:
+            raise ValueError("User not found")
+
+        profile = self.db.query(models.UserProfile).filter(
+            models.UserProfile.user_id == str(user.id)
+        ).first()
+        daily_progress = self.db.query(models.DailyProgress).filter(
+            models.DailyProgress.user_id == user.id
+        ).order_by(models.DailyProgress.date.desc()).first()
+
+        workout = plan.get("workout_recommendation", {})
+        meal = plan.get("meal_recommendation", {})
+        next_action = plan.get("next_action", {})
+
+        calories_remaining = 0.0
+        protein_remaining = 0.0
+        workout_status = "not_started"
+        sets_completed = 0
+        sets_planned = 0
+        if daily_progress:
+            calories_remaining = float(getattr(daily_progress, "calories_remaining", 0) or 0)
+            protein_remaining = float(getattr(daily_progress, "protein_remaining", 0) or 0)
+            workout_status = getattr(daily_progress, "workout_status", "not_started") or "not_started"
+            sets_completed = int(getattr(daily_progress, "sets_completed", 0) or 0)
+            sets_planned = int(getattr(daily_progress, "sets_planned", 0) or 0)
+
+        risk_factors: List[str] = []
+        if "recovery_low" in plan.get("constraints_applied", []):
+            risk_factors.append("Recovery score is low")
+        if "protein_deficit" in plan.get("constraints_applied", []):
+            risk_factors.append("Protein intake is behind target")
+        if "cycle_" in " ".join(plan.get("constraints_applied", [])):
+            risk_factors.append("Cycle phase suggests training adjustment")
+        if workout_status in {"in_progress", "done"}:
+            risk_factors.append("Workout progress is already underway")
+
+        if not risk_factors:
+            risk_factors.append("Current data supports a steady training day")
+
+        explanation_lines = []
+        if workout.get("type") == "deload":
+            explanation_lines.append("A lighter training block is recommended today.")
+        elif workout.get("type") == "rest":
+            explanation_lines.append("Recovery is the best use of today's energy.")
+        else:
+            explanation_lines.append("You can proceed with the planned session.")
+        if calories_remaining > 0:
+            explanation_lines.append(f"About {round(calories_remaining)} kcal remain for the day.")
+        if protein_remaining > 0:
+            explanation_lines.append(f"You still need roughly {round(protein_remaining)}g protein.")
+
+        confidence = 92
+        if workout.get("type") == "deload":
+            confidence -= 4
+        if "recovery_low" in plan.get("constraints_applied", []):
+            confidence -= 8
+        if "protein_deficit" in plan.get("constraints_applied", []):
+            confidence -= 5
+        if daily_progress is None:
+            confidence -= 10
+        confidence = max(55, min(98, confidence))
+
+        if profile and getattr(profile, "femmecare_enabled", False):
+            phase_note = "FemmeCare is enabled, so cycle-aware nudges are active."
+        else:
+            phase_note = "Standard mode is active."
+
+        return {
+            "recommendation": {
+                "title": next_action.get("title", "Continue with today's plan"),
+                "detail": next_action.get("detail") or workout.get("reasoning") or "Stay consistent.",
+                "route": next_action.get("route", "/dashboard"),
+                "priority": next_action.get("priority", "Medium"),
+            },
+            "confidence_score": confidence,
+            "explanation": explanation_lines,
+            "factors": risk_factors,
+            "progress_snapshot": {
+                "calories_remaining": calories_remaining,
+                "protein_remaining": protein_remaining,
+                "workout_status": workout_status,
+                "sets_completed": sets_completed,
+                "sets_planned": sets_planned,
+            },
+            "mode_note": phase_note,
+            "coach_summary": plan.get("coach_summary"),
+            "gender_mode": plan.get("gender_mode"),
+            "workout_recommendation": workout,
+            "meal_recommendation": meal,
+            "next_action": next_action,
+        }
+
+    def get_coach_history(self, user_id: str, days: int = 7) -> Dict[str, Any]:
+        """Return a compact coach history timeline for the dashboard."""
+        user = self.db.query(models.EnhancedUser).filter(
+            (models.EnhancedUser.clerk_user_id == user_id) | (models.EnhancedUser.id == user_id)
+        ).first()
+        if not user:
+            raise ValueError("User not found")
+
+        safe_days = max(3, min(14, int(days or 7)))
+        start_date = datetime.utcnow().date() - timedelta(days=safe_days - 1)
+
+        progress_rows = (
+            self.db.query(models.DailyProgress)
+            .filter(models.DailyProgress.user_id == user.id)
+            .order_by(models.DailyProgress.date.desc())
+            .limit(safe_days)
+            .all()
+        )
+        feedback_rows = (
+            self.db.query(models.CoachFeedback)
+            .filter(models.CoachFeedback.user_id == str(user.id))
+            .order_by(models.CoachFeedback.created_at.desc())
+            .limit(50)
+            .all()
+        )
+
+        feedback_by_date: Dict[str, List[models.CoachFeedback]] = {}
+        for feedback in feedback_rows:
+            key = feedback.created_at.date().isoformat()
+            feedback_by_date.setdefault(key, []).append(feedback)
+
+        entries: List[Dict[str, Any]] = []
+        for row in progress_rows:
+            day = row.date.date()
+            if day < start_date:
+                continue
+            progress_pct = 0
+            if row.sets_planned:
+                progress_pct = int(round((row.sets_completed / max(row.sets_planned, 1)) * 100))
+
+            feedback_for_day = feedback_by_date.get(day.isoformat(), [])
+            liked = sum(1 for item in feedback_for_day if int(item.rating or 0) >= 4)
+            disliked = sum(1 for item in feedback_for_day if int(item.rating or 0) <= 2)
+            dominant_feedback = "balanced"
+            if liked > disliked and liked > 0:
+                dominant_feedback = "positive"
+            elif disliked > liked and disliked > 0:
+                dominant_feedback = "needs_adjustment"
+
+            workout_state = row.workout_status or "not_started"
+            if workout_state == "done":
+                title = "Workout completed"
+                detail = f"{row.sets_completed}/{row.sets_planned or 0} sets logged with steady execution."
+            elif workout_state == "in_progress":
+                title = "Workout in motion"
+                detail = f"{row.sets_completed}/{row.sets_planned or 0} sets completed so far."
+            elif workout_state == "skipped":
+                title = "Workout skipped"
+                detail = "The session was intentionally skipped so recovery could take priority."
+            else:
+                title = "Plan queued"
+                detail = "Today’s session was prepared and waiting for action."
+
+            if row.calories_remaining and row.calories_remaining < 0:
+                nutrition_note = "You finished above the calorie target."
+            elif row.calories_remaining and row.calories_remaining > 0:
+                nutrition_note = f"{round(row.calories_remaining)} kcal still available."
+            else:
+                nutrition_note = "Nutrition stayed near target."
+
+            entries.append({
+                "date": day.isoformat(),
+                "title": title,
+                "detail": f"{detail} {nutrition_note}".strip(),
+                "confidence": max(55, min(98, 88 + (5 if workout_state == 'done' else 0) - (4 if disliked else 0))),
+                "workout_status": workout_state,
+                "progress_percent": progress_pct,
+                "sets_completed": int(row.sets_completed or 0),
+                "sets_planned": int(row.sets_planned or 0),
+                "calories_remaining": float(row.calories_remaining or 0),
+                "protein_remaining": float(row.protein_remaining or 0),
+                "feedback": dominant_feedback,
+                "feedback_count": len(feedback_for_day),
+            })
+
+        if not entries:
+            entries = [{
+                "date": datetime.utcnow().date().isoformat(),
+                "title": "No history yet",
+                "detail": "Log a meal or workout to start building your coach timeline.",
+                "confidence": 60,
+                "workout_status": "not_started",
+                "progress_percent": 0,
+                "sets_completed": 0,
+                "sets_planned": 0,
+                "calories_remaining": 0,
+                "protein_remaining": 0,
+                "feedback": "balanced",
+                "feedback_count": 0,
+            }]
+
+        week_completion = sum(1 for item in entries if item["workout_status"] == "done")
+        trend_note = "Consistency is solid this week."
+        if week_completion == 0:
+            trend_note = "No completed sessions yet, so the coach is keeping the plan lighter."
+        elif week_completion >= max(1, len(entries) // 2):
+            trend_note = "Training consistency is trending upward."
+
+        return {
+            "period_days": safe_days,
+            "trend_note": trend_note,
+            "entries": entries[:safe_days],
         }
 
     def _generate_gemini_narration(self, user_profile: Dict, today_metrics: Dict, workout_rec: Dict, meal_rec: Dict, next_action: Dict) -> str:

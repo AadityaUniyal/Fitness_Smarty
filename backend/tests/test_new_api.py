@@ -39,6 +39,8 @@ def api_request(method, path, json_data=None):
 
 def setup_module():
     global ACCESS_TOKEN, USER_ID
+    # Clear any previous module's overrides to ensure we use conftest config
+    app.dependency_overrides.clear()
     # Try login first
     r = api_request("post", "/api/auth/login", {
         "email": TEST_EMAIL, "password": TEST_PASSWORD,

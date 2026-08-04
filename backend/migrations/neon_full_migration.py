@@ -12,8 +12,9 @@ Run from backend directory:
 """
 import os, sys
 
-NEON_URL = "postgresql://neondb_owner:npg_u8mPOinQJwt0@ep-spring-forest-ae89a0gy-pooler.c-2.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-os.environ["DATABASE_URL"] = NEON_URL
+NEON_URL = os.getenv("DATABASE_URL")
+if not NEON_URL:
+    raise ValueError("DATABASE_URL environment variable is required to run migrations.")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 

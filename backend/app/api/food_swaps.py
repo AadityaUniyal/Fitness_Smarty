@@ -11,6 +11,7 @@ from typing import List, Optional
 
 from ..database import get_db
 from ..food_swap_service import FoodSwapService
+from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
 
 router = APIRouter(prefix="/api/food-swaps", tags=["food-swaps"])
 
@@ -31,23 +32,14 @@ class MealSwapRequest(BaseModel):
 @router.post("/suggest")
 async def suggest_food_swap(
     request: SwapRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Suggest a healthier alternative for a specific food
-    
-    Analyzes:
-    - Calorie content
-    - Macronutrient profile
-    - User's goals
-    
-    Returns top 5 alternatives with swap benefits.
-    
-    Optional reasons:
-    - lower_calorie
-    - higher_protein
-    - lower_fat
     """
+    if str(request.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = FoodSwapService(db)
     result = service.suggest_swap(
         user_id=request.user_id,
@@ -65,14 +57,14 @@ async def suggest_food_swap(
 async def get_food_alternatives(
     food_id: int,
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get all alternatives for a food
-    
-    Simple endpoint that just needs food_id and user_id.
-    Returns ranked list of healthier options.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = FoodSwapService(db)
     result = service.suggest_swap(user_id=user_id, food_id=food_id)
     
@@ -86,21 +78,14 @@ async def get_food_alternatives(
 async def get_category_alternatives(
     user_id: int,
     category: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get healthy food options by category
-    
-    Categories:
-    - protein (chicken, fish, beef, etc.)
-    - carbs (rice, bread, pasta, etc.)
-    - snacks (chips, cookies, etc.)
-    - dairy (milk, cheese, yogurt)
-    - vegetables
-    - fruits
-    
-    Returns top 10 healthiest options for user's goal.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = FoodSwapService(db)
     result = service.get_alternatives_by_category(user_id, category)
     
@@ -114,18 +99,14 @@ async def get_category_alternatives(
 async def get_goal_specific_swaps(
     goal: str,
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get food swaps optimized for a specific goal
-    
-    Goals:
-    - fat_loss: Lower calorie, high volume swaps
-    - muscle_gain: Higher protein, nutrient-dense swaps
-    - maintenance: Balanced, whole food swaps
-    
-    Returns common swaps and tips for the goal.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = FoodSwapService(db)
     result = service.get_goal_specific_swaps(user_id, goal)
     
@@ -138,22 +119,14 @@ async def get_goal_specific_swaps(
 @router.post("/meal-swaps")
 async def suggest_meal_swaps(
     request: MealSwapRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Suggest swaps for an entire meal
-    
-    Analyzes all foods in a meal and suggests improvements.
-    Shows total calorie savings and protein increases.
-    
-    Example request:
-    ```json
-    {
-      "user_id": 1,
-      "meal_foods": [101, 205, 387]
-    }
-    ```
     """
+    if str(request.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = FoodSwapService(db)
     result = service.suggest_meal_swaps(
         user_id=request.user_id,
@@ -166,14 +139,14 @@ async def suggest_meal_swaps(
 @router.get("/quick-swaps/{user_id}")
 async def get_quick_common_swaps(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get quick common swaps for all goals
-    
-    Returns popular, easy-to-implement food swaps
-    that work for most people.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = FoodSwapService(db)
     
     # Get swaps for all goals

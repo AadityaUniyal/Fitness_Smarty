@@ -12,6 +12,9 @@ from app.database import get_db
 from app.smart_meal_service import SmartMealService
 
 
+from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
+
+
 router = APIRouter(prefix="/api/smart-meals", tags=["Smart Meal Recommendations"])
 
 
@@ -22,20 +25,14 @@ def get_meal_recommendation(
         None, 
         description="Meal type: breakfast, lunch, dinner, snack"
     ),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get intelligent meal recommendation based on current daily status.
-    
-    This endpoint:
-    1. Checks today's calorie consumption and burn
-    2. Calculates remaining calories
-    3. Determines optimal meal type (if not specified)
-    4. Suggests meals that fit remaining macros
-    5. Provides reasoning and food recommendations
-    
-    Perfect for: "What should I eat now?" feature
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = SmartMealService(db)
         recommendation = service.get_meal_recommendation(
@@ -59,19 +56,14 @@ def get_post_workout_meal(
         ..., 
         description="Calories burned in workout"
     ),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get post-workout meal recommendation.
-    
-    Provides:
-    - How many calories to eat back
-    - Optimal macro split for recovery
-    - Meal suggestions with timing
-    - Recovery tips
-    
-    Use after: User completes and logs a workout
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = SmartMealService(db)
         recommendation = service.get_post_workout_meal(
@@ -91,14 +83,14 @@ def get_post_workout_meal(
 @router.get("/quick-suggestions/{user_id}")
 def get_quick_meal_suggestions(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get quick meal suggestions without detailed analysis.
-    
-    Faster endpoint for showing quick meal ideas in UI.
-    Returns simplified suggestions based on user's goal.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         from app.models import EnhancedUser
         

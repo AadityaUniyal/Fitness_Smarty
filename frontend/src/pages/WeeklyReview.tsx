@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Calendar, Flame, Dumbbell, Utensils, TrendingUp, Trophy, Target, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid, AreaChart, Area } from 'recharts';
 import { Reveal } from '../components/Reveal';
+import { PageFrame } from '../components/PageFrame';
+import { fetchWeeklyProgress } from '../services/apiService';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 interface WorkoutLog {
   name: string; duration: number; caloriesBurned: number; exercisesCompleted: number;
@@ -14,6 +17,18 @@ interface MealLog {
 
 const WeeklyReview: React.FC = () => {
   const [days, setDays] = useState(7);
+  const [serverSummary, setServerSummary] = useState<any>(null);
+  const [serverDaily, setServerDaily] = useState<any[]>([]);
+  const userId = useCurrentUserId();
+
+  useEffect(() => {
+    fetchWeeklyProgress(userId, days).then(data => {
+      if (data) {
+        setServerSummary(data.summary || null);
+        setServerDaily(data.daily || []);
+      }
+    }).catch(() => {});
+  }, [days]);
 
   const getLastNDays = (n: number): Date[] => {
     return Array.from({ length: n }, (_, i) => {
@@ -37,12 +52,12 @@ const WeeklyReview: React.FC = () => {
     const dayMeals = mealLogs.filter(m => new Date(m.timestamp).toDateString() === ds);
     return {
       date: shortDates[i],
-      caloriesBurned: dayWorkouts.reduce((s, w) => s + (w.caloriesBurned || 0), 0),
-      caloriesEaten: dayMeals.reduce((s, m) => s + (m.totalCalories || 0), 0),
-      protein: dayMeals.reduce((s, m) => s + (m.totalProtein || 0), 0),
-      workouts: dayWorkouts.length,
+      caloriesBurned: serverDaily[i]?.calories_consumed ?? dayWorkouts.reduce((s, w) => s + (w.caloriesBurned || 0), 0),
+      caloriesEaten: serverDaily[i]?.calories_consumed ?? dayMeals.reduce((s, m) => s + (m.totalCalories || 0), 0),
+      protein: serverDaily[i]?.protein_consumed ?? dayMeals.reduce((s, m) => s + (m.totalProtein || 0), 0),
+      workouts: serverDaily[i]?.sets_completed ? 1 : dayWorkouts.length,
       meals: dayMeals.length,
-      duration: dayWorkouts.reduce((s, w) => s + (w.duration || 0), 0),
+      duration: serverDaily[i]?.sets_completed ? serverDaily[i].sets_completed * 8 : dayWorkouts.reduce((s, w) => s + (w.duration || 0), 0),
     };
   });
 
@@ -55,35 +70,36 @@ const WeeklyReview: React.FC = () => {
     duration: s.duration + d.duration,
   }), { workouts: 0, meals: 0, caloriesBurned: 0, caloriesEaten: 0, protein: 0, duration: 0 });
 
-  const dailyAvg = days > 0 ? {
+  const dailyAvg = serverSummary ? {
+    caloriesBurned: Math.round(serverSummary.avg_daily_burn || 0),
+    caloriesEaten: Math.round(serverSummary.avg_daily_calories || 0),
+    protein: Math.round(serverSummary.avg_daily_protein || 0),
+  } : (days > 0 ? {
     caloriesBurned: Math.round(totals.caloriesBurned / days),
     caloriesEaten: Math.round(totals.caloriesEaten / days),
     protein: Math.round(totals.protein / days),
-  } : null;
+  } : null);
 
   const netCalories = totals.caloriesEaten - totals.caloriesBurned;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-6">
-          <div className="w-16 h-16 bg-emerald-500/10 border border-emerald-500/20 rounded-3xl flex items-center justify-center text-emerald-400">
-            <Calendar size={32} />
+      <PageFrame
+        eyebrow="Reports"
+        title="Weekly Review"
+        subtitle="A structured look at workouts, nutrition, and trend direction across the last 7, 14, or 30 days."
+        tone="cyan"
+        rightSlot={
+          <div className="flex bg-slate-900 border border-white/10 rounded-2xl p-1">
+            {[7, 14, 30].map(n => (
+              <button key={n} onClick={() => setDays(n)}
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${days === n ? 'bg-cyan-500 text-slate-950' : 'text-slate-500 hover:text-cyan-400'}`}>
+                {n}d
+              </button>
+            ))}
           </div>
-          <div>
-            <h2 className="text-4xl font-black italic tracking-tighter text-white uppercase">Weekly Review</h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Your past week summarized</p>
-          </div>
-        </div>
-        <div className="flex bg-slate-900 border border-white/10 rounded-2xl p-1">
-          {[7, 14, 30].map(n => (
-            <button key={n} onClick={() => setDays(n)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${days === n ? 'bg-emerald-500 text-slate-950' : 'text-slate-500 hover:text-emerald-400'}`}>
-              {n}d
-            </button>
-          ))}
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[

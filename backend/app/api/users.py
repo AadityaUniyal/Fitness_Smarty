@@ -30,9 +30,12 @@ def get_current_user_profile(
 def create_user_profile(
     user_id: str,
     profile_data: schemas.UserProfileCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """Create a user profile"""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You can only manage your own profile.")
     service = UserProfileService(db)
     existing_profile = service.get_user_profile(user_id)
     if existing_profile:
@@ -48,9 +51,12 @@ def create_user_profile(
 @router.get("/{user_id}/profile", response_model=schemas.UserProfileResponse)
 def get_user_profile(
     user_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """Get user profile information"""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You can only view your own profile.")
     service = UserProfileService(db)
     profile = service.get_user_profile(user_id)
     if not profile:
@@ -61,9 +67,12 @@ def get_user_profile(
 def update_user_profile(
     user_id: str,
     profile_data: schemas.UserProfileUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """Update user profile information"""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You can only update your own profile.")
     service = UserProfileService(db)
     try:
         update_dict = profile_data.model_dump(exclude_unset=True)
@@ -76,9 +85,12 @@ def update_user_profile(
 @router.get("/{user_id}/profile/validate", response_model=schemas.ProfileValidationResponse)
 def validate_user_profile(
     user_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """Validate user profile completeness"""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You can only validate your own profile.")
     service = UserProfileService(db)
     try:
         return service.validate_profile(user_id)
@@ -90,9 +102,12 @@ def validate_user_profile(
 def create_user_goal(
     user_id: str,
     goal_data: schemas.GoalCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """Create a new fitness goal"""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You can only create goals for yourself.")
     service = UserProfileService(db)
     try:
         service_goal_data = GoalCreate(**goal_data.model_dump())
@@ -105,9 +120,12 @@ def create_user_goal(
 def get_user_goals(
     user_id: str,
     active_only: bool = Query(True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """Get all goals for a user"""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You can only retrieve your own goals.")
     service = UserProfileService(db)
     goals = service.get_user_goals(user_id, active_only=active_only)
     goals_response = [schemas.UserGoalResponse.model_validate(goal) for goal in goals]
@@ -116,9 +134,12 @@ def get_user_goals(
 @router.get("/{user_id}/progress", response_model=schemas.ProgressMetricsResponse)
 def get_progress_metrics(
     user_id: str,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """Get progress metrics for active goals"""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     service = UserProfileService(db)
     try:
         metrics = service.calculate_progress_metrics(user_id)

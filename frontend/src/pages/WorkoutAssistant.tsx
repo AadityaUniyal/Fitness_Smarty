@@ -7,6 +7,9 @@ import {
 import { generateWorkoutPlan } from '../services/geminiService';
 import { WorkoutPlan, BodyGoal } from '../types';
 import RestTimer from '../components/RestTimer';
+import { logWorkoutSetProgress } from '../services/apiService';
+import { useUserProfile } from '../hooks/useUserProfile';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -56,11 +59,12 @@ const WorkoutAssistant: React.FC = () => {
   const [savedCalories, setSavedCalories] = useState(0);
   const [showRestTimer, setShowRestTimer] = useState(false);
   const [feedbackSent, setFeedbackSent] = useState<Record<string, boolean>>({});
+  const { profile } = useUserProfile();
+  const userId = useCurrentUserId();
 
   const handleWorkoutFeedback = async (rating: number) => {
     try {
-      const uId = localStorage.getItem('smarty_user_id') || 'local-user';
-      const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
+      const uId = userId;
       await fetch(`${API_BASE}/api/feedback/coach`, {
         method: 'POST',
         headers: {
@@ -84,7 +88,6 @@ const WorkoutAssistant: React.FC = () => {
   };
 
   useEffect(() => {
-    const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
     if (profile.primary_goal || profile.goal) {
       const g = (profile.primary_goal || profile.goal).toLowerCase();
       if (g.includes('loss')) setGoal(BodyGoal.SLIM);
@@ -265,13 +268,8 @@ const WorkoutAssistant: React.FC = () => {
       goal: goal,
     };
 
-    // Save to localStorage
-    const prev = JSON.parse(localStorage.getItem('smarty_workout_logs') || '[]');
-    localStorage.setItem('smarty_workout_logs', JSON.stringify([session, ...prev].slice(0, 50)));
-
     // Sync to backend
     try {
-      const userId = localStorage.getItem('smarty_user_id') || 'local-user';
       await fetch(`${API_BASE}/api/workouts/log`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -291,6 +289,10 @@ const WorkoutAssistant: React.FC = () => {
             })),
           },
         }),
+      });
+      await logWorkoutSetProgress(userId, {
+        sets_added: completedExercises.size,
+        workout_planned_id: null
       });
     } catch {
       // Silent fail

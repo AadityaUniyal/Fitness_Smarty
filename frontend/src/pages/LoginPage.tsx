@@ -28,12 +28,13 @@ interface LoginForm { name: string; email: string; password: string; }
 
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
-    const { login, register, googleLogin, appleLogin, loading: authLoading } = useAuth();
+    const { user, login, register, googleLogin, appleLogin, loading: authLoading } = useAuth();
     const [isRegister, setIsRegister] = useState(false);
     const [showPass, setShowPass] = useState(false);
     const [form, setForm] = useState<LoginForm>({ name: '', email: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [acceptDisclaimer, setAcceptDisclaimer] = useState(false);
     
     // Smooth scroll reveals state
     const [scrollY, setScrollY] = useState(0);
@@ -44,9 +45,13 @@ const LoginPage: React.FC = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const routeAfterAuth = () => {
-        const profile = localStorage.getItem('smarty_profile');
-        navigate(profile ? '/dashboard' : '/onboarding');
+    const routeAfterAuth = (userObj?: any) => {
+        const u = userObj || user;
+        if (u?.is_admin) {
+            navigate('/admin');
+            return;
+        }
+        navigate('/onboarding');
     };
 
     const handleLoginSubmit = async (e: React.FormEvent) => {
@@ -133,13 +138,9 @@ const LoginPage: React.FC = () => {
 
     const busy = loading || authLoading;
 
-    // Detect if user is returning as female to customize landing page experience
-    const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
-    const isFemaleDefault = profile.gender === 'Female' || profile.femmecareEnabled;
-    const primaryAccent = isFemaleDefault ? 'pink' : 'emerald';
-    const accentClass = isFemaleDefault ? 'text-pink-500' : 'text-emerald-400';
-    const accentBg = isFemaleDefault ? 'bg-pink-500 hover:bg-pink-600' : 'bg-emerald-500 hover:bg-emerald-600';
-    const accentGlow = isFemaleDefault ? 'shadow-pink-500/25' : 'shadow-emerald-500/20';
+    const accentClass = 'text-emerald-400';
+    const accentBg = 'bg-emerald-500 hover:bg-emerald-600';
+    const accentGlow = 'shadow-emerald-500/20';
 
     return (
         <div className="min-h-screen bg-[#020617] text-white overflow-hidden font-sans selection:bg-emerald-500/30 selection:text-white">
@@ -153,7 +154,7 @@ const LoginPage: React.FC = () => {
             <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur px-6 py-4 sm:px-10 lg:px-16">
                 <div className="mx-auto flex max-w-7xl items-center justify-between">
 <div className="flex items-center gap-3">
-  <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${isFemaleDefault ? 'bg-pink-500' : 'bg-emerald-500'} text-slate-950 shadow-lg`}>
+  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500 text-slate-950 shadow-lg">
     <Zap className="h-7 w-auto fill-slate-950" />
   </div>
   <div>
@@ -161,7 +162,7 @@ const LoginPage: React.FC = () => {
       SMARTY <span className={accentClass}>AI</span>
     </h1>
     <p className="text-[7px] font-bold uppercase tracking-[0.4em] text-slate-500">
-      {isFemaleDefault ? 'Femme Fitness v4.0' : 'Fit Intelligence'}
+      Fit Intelligence
     </p>
   </div>
 </div>
@@ -264,6 +265,22 @@ const LoginPage: React.FC = () => {
                                 </button>
                             </div>
 
+                            {isRegister && (
+                                <div className="flex items-start gap-2.5 bg-slate-900/50 border border-white/5 p-3 rounded-xl">
+                                    <input
+                                        type="checkbox"
+                                        id="disclaimer"
+                                        checked={acceptDisclaimer}
+                                        onChange={e => setAcceptDisclaimer(e.target.checked)}
+                                        className="mt-0.5 accent-emerald-500 rounded cursor-pointer"
+                                        required
+                                    />
+                                    <label htmlFor="disclaimer" className="text-[9px] text-slate-400 leading-snug cursor-pointer select-none">
+                                        I understand that Smarty AI provides fitness and nutritional guides, which are NOT medical advice. I accept the disclaimers and assume liability for my training.
+                                    </label>
+                                </div>
+                            )}
+
                             {error && (
                                 <p className="bg-rose-500/10 border border-rose-500/20 text-rose-400 px-4 py-2.5 rounded-xl text-xs font-bold text-center">
                                     {error}
@@ -272,7 +289,7 @@ const LoginPage: React.FC = () => {
 
                             <button
                                 type="submit"
-                                disabled={busy}
+                                disabled={busy || (isRegister && !acceptDisclaimer)}
                                 className={`flex w-full items-center justify-center gap-2 rounded-xl ${accentBg} py-3.5 text-xs font-black uppercase tracking-widest text-slate-950 shadow-lg transition disabled:bg-slate-800 disabled:text-slate-500`}
                             >
                                 {busy ? 'Syncing...' : isRegister ? 'Register' : 'Access Hub'}

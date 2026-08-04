@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { Zap, Clock, Dumbbell, PlayCircle, CheckCircle2, Circle, Timer, StopCircle, Loader2, Target, Trophy } from 'lucide-react';
+import { logWorkoutSetProgress } from '../services/apiService';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 interface QuickExercise {
   name: string;
@@ -102,6 +104,7 @@ const TEMPLATES: WorkoutTemplate[] = [
 ];
 
 const QuickWorkout: React.FC = () => {
+  const userId = useCurrentUserId();
   const [selectedTemplate, setSelectedTemplate] = useState<WorkoutTemplate | null>(null);
   const [sessionActive, setSessionActive] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -156,11 +159,34 @@ const QuickWorkout: React.FC = () => {
       timestamp: new Date().toISOString(),
       goal: selectedTemplate?.goal || 'general',
     };
-    const prev = JSON.parse(localStorage.getItem('smarty_workout_logs') || '[]');
-    localStorage.setItem('smarty_workout_logs', JSON.stringify([session, ...prev].slice(0, 50)));
-    setSessionActive(false);
-    setSaving(false);
-    setSaved(true);
+    fetch(`${API_BASE}/api/workouts/log`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: Number(userId),
+        workout_name: session.name,
+        duration_minutes: session.duration,
+        calories_burned: session.caloriesBurned,
+        exercises_data: {
+          total: session.exercisesTotal,
+          completed: session.exercisesCompleted,
+          exercises: selectedTemplate?.exercises.map((ex, i) => ({
+            name: ex.name,
+            sets: ex.sets,
+            reps: ex.reps,
+            completed: completed.has(i),
+          })) || [],
+        },
+      }),
+    }).finally(async () => {
+      await logWorkoutSetProgress(String(userId), {
+        sets_added: completed.size,
+        workout_planned_id: null
+      });
+      setSessionActive(false);
+      setSaving(false);
+      setSaved(true);
+    });
   };
 
   return (

@@ -1,4 +1,6 @@
 from typing import List, Optional, Dict, Any
+import json
+from pathlib import Path
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_, func
 from .models import ExerciseItem, ExerciseCategory
@@ -170,3 +172,33 @@ class ExerciseService:
         if not exercise.equipment: missing.append('equipment')
         if not exercise.description: missing.append('description')
         return {'is_complete': len(missing) == 0, 'missing_fields': missing}
+
+    @staticmethod
+    def check_exercise_coverage(db: Session) -> Dict[str, Any]:
+        """Compute coverage matrix for muscle_group x equipment x difficulty.
+        Returns a nested dict structure and writes the result to
+        'exercise_coverage.json' in the project root.
+        """
+        # Retrieve distinct values
+        muscle_groups = [mg[0] for mg in db.query(ExerciseItem.targeted_muscle).distinct().all()]
+        equipments = [eq[0] for eq in db.query(ExerciseItem.equipment).distinct().all()]
+        difficulties = ExerciseService.VALID_DIFFICULTY_LEVELS
+        # Initialize matrix
+        coverage = {}
+        for mg in muscle_groups:
+            coverage[mg] = {}
+            for eq in equipments:
+                coverage[mg][eq] = {}
+                for diff in difficulties:
+                    count = db.query(ExerciseItem).filter(
+                        func.lower(ExerciseItem.targeted_muscle) == mg.lower(),
+                        func.lower(ExerciseItem.equipment) == eq.lower(),
+                        ExerciseItem.difficulty == diff
+                    ).count()
+                    coverage[mg][eq][diff] = count
+        # Write to JSON file
+        output_path = Path(__file__).resolve().parents[2] / 'exercise_coverage.json'
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(coverage, f, indent=2)
+        return coverage

@@ -6,6 +6,7 @@ Uses PyTorch for production-grade neural network training
 """
 
 import json
+from datetime import datetime
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -14,11 +15,10 @@ import numpy as np
 from pathlib import Path
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
 import joblib
 from app.database import get_training_db
 from app.models import FoodTrainingSample
+
 
 
 class MealDataset(Dataset):
@@ -359,10 +359,69 @@ class NeuralModelTrainer:
         print()
         print(f"[OK] Training complete! Best accuracy: {best_accuracy:.2f}%")
         
+        # Calculate detailed validation metrics
+        self.model.eval()
+        all_preds = []
+        all_labels = []
+        val_loss_sum = 0
+        total_val_samples = 0
+        with torch.no_grad():
+            for features, labels in test_loader:
+                features, labels = features.to(self.device), labels.to(self.device)
+                outputs = self.model(features).squeeze()
+                loss = criterion(outputs, labels)
+                val_loss_sum += loss.item() * labels.size(0)
+                total_val_samples += labels.size(0)
+                predicted = (outputs > 0.5).float()
+                all_preds.extend(predicted.cpu().numpy())
+                all_labels.extend(labels.cpu().numpy())
+
+        avg_val_loss = val_loss_sum / max(1, total_val_samples)
+        all_preds = np.array(all_preds)
+        all_labels = np.array(all_labels)
+
+        tp = np.sum((all_preds == 1) & (all_labels == 1))
+        fp = np.sum((all_preds == 1) & (all_labels == 0))
+        fn = np.sum((all_preds == 0) & (all_labels == 1))
+
+        precision = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+        recall = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+        f1 = float(2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
+
+        metrics = {
+            "accuracy": round(best_accuracy, 2),
+            "precision": round(precision, 4),
+            "recall": round(recall, 4),
+            "f1_score": round(f1, 4),
+            "train_loss": round(avg_train_loss, 6),
+            "val_loss": round(avg_val_loss, 6),
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "input_size": input_size,
+            "num_samples": len(X),
+            "status": "success",
+            "updated_at": datetime.now().isoformat()
+        }
+
+        # Save metrics to output_dir / mlp_metrics.json and backend/ml/mlp_metrics.json
+        with open(self.output_dir / "mlp_metrics.json", "w") as f:
+            json.dump(metrics, f, indent=2)
+
+        backend_dir = Path("backend/ml")
+        if not backend_dir.exists():
+            backend_dir = Path(__file__).resolve().parent.parent.parent / "ml"
+        backend_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(backend_dir / "mlp_metrics.json", "w") as f:
+            json.dump(metrics, f, indent=2)
+
+        print(f"[SAVE] Exported metrics to: {self.output_dir / 'mlp_metrics.json'} and {backend_dir / 'mlp_metrics.json'}")
+
         # Save model
         self.save_model()
         
         return best_accuracy
+
     
     def save_model(self):
         """Save trained model and scaler"""

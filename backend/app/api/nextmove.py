@@ -6,10 +6,18 @@ from app.database import get_db
 from app.models import SmartNextMove, DailyTask, EnhancedUser
 import math
 
+from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
+
 router = APIRouter(prefix="/api/nextmove", tags=["Smart Next Move"])
 
 @router.get("/{user_id}")
-def get_next_move(user_id: int, db: Session = Depends(get_db)):
+def get_next_move(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
+):
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(403, "Operation forbidden. You cannot access recommendations for another user.")
     user = db.query(EnhancedUser).filter(EnhancedUser.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")

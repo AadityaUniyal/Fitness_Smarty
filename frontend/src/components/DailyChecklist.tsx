@@ -50,7 +50,7 @@ export default function DailyChecklist({ userId, onComplete, compact }: Props) {
       }
       onComplete?.(id);
     } catch (err) {
-      console.error("[Optimistic UI] Failed to sync task toggle. Rolling back...", err);
+      console.warn("[Optimistic UI] Failed to sync task toggle. Rolling back...");
       // 2. Rollback state if network failed
       setTasks(prev => prev.map(t => t.id === id ? { ...t, is_completed: !t.is_completed } : t));
     }

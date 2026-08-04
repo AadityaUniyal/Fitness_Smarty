@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '../hooks/useToast';
 import ToastContainer from '../components/ToastContainer';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -80,7 +81,7 @@ const StarRating: React.FC<{ value: number; onChange: (v: number) => void; hover
 const STAR_LABELS = ['', 'Terrible', 'Poor', 'Average', 'Good', 'Excellent'];
 
 const FeedbackPage: React.FC = () => {
-  const user = JSON.parse(localStorage.getItem('smarty_user') || '{}');
+  const userId = useCurrentUserId();
   const { toasts, showToast, dismissToast } = useToast();
 
   // Form state
@@ -105,7 +106,7 @@ const FeedbackPage: React.FC = () => {
   const loadHistory = async () => {
     setLoadingHistory(true);
     try {
-      const res = await fetch(`${API_BASE}/api/feedback/user/${user.id || 'anonymous'}`);
+      const res = await fetch(`${API_BASE}/api/feedback/user/${userId}`);
       if (res.ok) setHistory(await res.json());
     } catch {
       // Show local mock if backend down

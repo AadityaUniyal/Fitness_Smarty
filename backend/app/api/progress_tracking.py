@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from app.database import get_db
 from app.progress_tracking_service import ProgressTrackingService
+from app.clerk_auth import get_current_user_id_from_clerk as get_current_user_id
 
 
 router = APIRouter(prefix="/api/progress", tags=["Progress Tracking"])
@@ -32,17 +33,16 @@ class MeasurementLogRequest(BaseModel):
 
 
 @router.post("/log-weight")
-def log_weight(request: WeightLogRequest, db: Session = Depends(get_db)):
+def log_weight(
+    request: WeightLogRequest,
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
+):
     """
     Log weight measurement.
-    
-    Example:
-    {
-      "user_id": 1,
-      "weight_kg": 75.5,
-      "measured_at": "2026-07-09T08:00:00"
-    }
     """
+    if str(request.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You cannot log progress for another user.")
     try:
         service = ProgressTrackingService(db)
         
@@ -68,21 +68,16 @@ def log_weight(request: WeightLogRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/log-measurements")
-def log_measurements(request: MeasurementLogRequest, db: Session = Depends(get_db)):
+def log_measurements(
+    request: MeasurementLogRequest,
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
+):
     """
     Log body measurements.
-    
-    Example:
-    {
-      "user_id": 1,
-      "measurements": {
-        "chest_cm": 100,
-        "waist_cm": 85,
-        "arms_cm": 35,
-        "thighs_cm": 55
-      }
-    }
     """
+    if str(request.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You cannot log progress for another user.")
     try:
         service = ProgressTrackingService(db)
         
@@ -111,14 +106,14 @@ def log_measurements(request: MeasurementLogRequest, db: Session = Depends(get_d
 def get_weight_history(
     user_id: int,
     days: int = Query(90, description="Number of days to retrieve"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get weight history for charts/graphs.
-    
-    Returns data formatted for visualization with trend analysis.
-    Perfect for line charts in frontend.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You can only view your own weight history.")
     try:
         service = ProgressTrackingService(db)
         history = service.get_weight_history(user_id, days)
@@ -131,13 +126,14 @@ def get_weight_history(
 def get_measurement_history(
     user_id: int,
     days: int = Query(90, description="Number of days to retrieve"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get body measurement history.
-    
-    Returns all measurements organized by type with change calculations.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden. You can only view your own measurement history.")
     try:
         service = ProgressTrackingService(db)
         history = service.get_measurement_history(user_id, days)
@@ -150,20 +146,14 @@ def get_measurement_history(
 def get_comprehensive_progress(
     user_id: int,
     days: int = Query(30, description="Number of days to analyze"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get comprehensive progress report.
-    
-    Combines:
-    - Weight trends
-    - Measurements
-    - Calorie statistics
-    - Workout statistics
-    - Consistency metrics
-    
-    Perfect for monthly/weekly progress reports.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = ProgressTrackingService(db)
         report = service.get_comprehensive_progress(user_id, days)
@@ -173,17 +163,16 @@ def get_comprehensive_progress(
 
 
 @router.get("/goal-progress/{user_id}")
-def get_goal_progress(user_id: int, db: Session = Depends(get_db)):
+def get_goal_progress(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
+):
     """
     Get goal progress visualization data.
-    
-    Returns progress towards all active goals with:
-    - Percentage completion
-    - Time remaining
-    - On-track status
-    
-    Perfect for progress bars and goal dashboards.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = ProgressTrackingService(db)
         progress = service.get_goal_progress_visualization(user_id)
@@ -197,18 +186,14 @@ def get_trends(
     user_id: int,
     metric: str = Query("weight", description="Metric: weight, calories, workout_frequency"),
     days: int = Query(90, description="Number of days"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get trend visualization data for charts.
-    
-    Supported metrics:
-    - weight: Weight over time
-    - calories: Daily calories consumed vs burned
-    - workout_frequency: Workout frequency over time
-    
-    Returns data formatted for chart libraries (Chart.js, Recharts, etc.)
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = ProgressTrackingService(db)
         trends = service.get_trends_visualization(user_id, metric, days)
@@ -222,17 +207,14 @@ def get_trends(
 @router.get("/dashboard-summary/{user_id}")
 def get_dashboard_summary(
     user_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_auth_id: str = Depends(get_current_user_id)
 ):
     """
     Get quick progress summary for dashboard widget.
-    
-    Returns:
-    - Latest weight
-    - Weight change this week
-    - Current streak
-    - Goals progress
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Operation forbidden.")
     try:
         service = ProgressTrackingService(db)
         

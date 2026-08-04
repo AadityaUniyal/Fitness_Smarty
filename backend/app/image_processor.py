@@ -26,8 +26,14 @@ class ImageProcessor:
     # Supported image formats
     SUPPORTED_FORMATS = {'JPEG', 'JPG', 'PNG'}
 
+    # Magic bytes for file-type verification (prevents spoofed extensions)
+    MAGIC_BYTES = {
+        b'\xff\xd8\xff': 'JPEG',      # JPEG / JPG
+        b'\x89PNG': 'PNG',             # PNG
+    }
+
     # Size constraints (in bytes)
-    MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+    MAX_FILE_SIZE = 8 * 1024 * 1024  # 8MB (reduced from 10MB for safety)
     MIN_FILE_SIZE = 1024  # 1KB
 
     # Dimension constraints (in pixels)
@@ -78,6 +84,18 @@ class ImageProcessor:
             raise ImageValidationError(
                 f"Image too large: {file_size} bytes "
                 f"(maximum {self.MAX_FILE_SIZE} bytes)"
+            )
+
+        # Verify magic bytes to prevent spoofed file extensions
+        magic_match = False
+        for magic, fmt in self.MAGIC_BYTES.items():
+            if image_bytes[:len(magic)] == magic:
+                magic_match = True
+                break
+        if not magic_match:
+            raise ImageValidationError(
+                "File does not match any supported image format signature. "
+                "Only JPEG and PNG files are accepted."
             )
 
         # Try to open and validate image

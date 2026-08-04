@@ -5,6 +5,7 @@ import { UserProfileAPI } from '../services/apiService';
 import { useAPI } from '../hooks/useAPI';
 import { BioProfile } from '../types';
 import GoalManager from '../components/GoalManager';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   'Sedentary': 1.2, 'Light': 1.375, 'Moderate': 1.55, 'Active': 1.725, 'Elite': 1.9
@@ -40,6 +41,7 @@ const getMacroTargets = (tdee: number, goal: string) => {
 };
 
 const BioLink: React.FC = () => {
+  const { profile: userProfile } = useUserProfile();
   const [profile, setProfile] = useState<BioProfile>({
     age: 28,
     gender: 'Male',
@@ -61,15 +63,16 @@ const BioLink: React.FC = () => {
   );
 
   useEffect(() => {
-    const savedProfile = localStorage.getItem('smarty_profile');
-    if (savedProfile) {
-      try {
-        const parsed = JSON.parse(savedProfile);
-        if (parsed.gender) {
-          setProfile(parsed);
-          return;
-        }
-      } catch {}
+    if (userProfile && (userProfile.gender || userProfile.weight || userProfile.height)) {
+      setProfile({
+        age: userProfile.age || 28,
+        gender: userProfile.gender || 'Male',
+        weight: userProfile.weight || userProfile.weight_kg || 82,
+        height: userProfile.height || userProfile.height_cm || 182,
+        activityLevel: userProfile.activityLevel || userProfile.activity_level || 'Active',
+        goal: userProfile.goal || userProfile.primary_goal || 'Athletic/Tone',
+      });
+      return;
     }
     // Load from backend
     const loadExistingProfile = async () => {

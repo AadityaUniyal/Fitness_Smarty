@@ -6,12 +6,13 @@ import {
   Droplets, Apple, ArrowRight, Camera, Play, CalendarCheck, CalendarDays, Moon, Gauge, Heart, ThumbsUp, ThumbsDown
 } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
-import { fetchRecoveryScore, fetchNeuralIntegrity, fetchMissionBriefing, fetchDailyCoach } from '../services/api';
+import { fetchRecoveryScore, fetchNeuralIntegrity, fetchMissionBriefing, fetchDailyCoach, fetchExplainableCoach, fetchCoachHistory, fetchDailyProgress } from '../services/apiService';
 import { DailyTask } from '../types';
 import SmartNextMove from '../components/SmartNextMove';
 import DailyChecklist from '../components/DailyChecklist';
 import AnimatedNumber from '../components/AnimatedNumber';
 import { Reveal } from '../components/Reveal';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 interface WorkoutLog { name: string; duration: number; caloriesBurned: number; exercisesCompleted: number; exercisesTotal: number; timestamp: string; goal: string; }
 interface MealLog { mealName: string; totalCalories: number; totalProtein: number; totalCarbs: number; totalFats: number; mealType: string; timestamp: string; }
@@ -125,7 +126,7 @@ const MetricSparkline: React.FC<{
 }> = ({ data, color }) => {
   return (
     <div className="w-full h-10 mt-3 overflow-hidden rounded-lg">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={120} minHeight={40}>
         <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
           <defs>
             <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
@@ -201,15 +202,16 @@ const Dashboard: React.FC = () => {
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [briefing, setBriefing] = useState<any>(null);
   const [dailyCoach, setDailyCoach] = useState<any>(null);
+  const [explainableCoach, setExplainableCoach] = useState<any>(null);
+  const [coachHistory, setCoachHistory] = useState<any>(null);
   const [typedBriefing, setTypedBriefing] = useState('');
   const [briefingIndex, setBriefingIndex] = useState(0);
   const [femmeData, setFemmeData] = useState<any>(null);
   const [feedbackSent, setFeedbackSent] = useState<Record<string, boolean>>({});
-
-  const user = JSON.parse(localStorage.getItem('smarty_user') || '{}');
+  const [dailyProgress, setDailyProgress] = useState<any>(null);
+  const { profile, user } = useUserProfile();
   const workoutLogs: WorkoutLog[] = JSON.parse(localStorage.getItem('smarty_workout_logs') || '[]');
   const mealLogs: MealLog[] = JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]');
-  const profile = JSON.parse(localStorage.getItem('smarty_profile') || localStorage.getItem('bio_profile') || '{}');
 
   const handleCoachFeedback = async (domain: string, itemId: string, rating: number) => {
     try {
@@ -242,8 +244,8 @@ const Dashboard: React.FC = () => {
   const todayWorkouts = workoutLogs.filter(w => new Date(w.timestamp).toDateString() === today);
   const todayMeals = mealLogs.filter(m => new Date(m.timestamp).toDateString() === today);
   const todayCalsBurned = todayWorkouts.reduce((s, w) => s + (w.caloriesBurned || 0), 0);
-  const todayCalEaten = todayMeals.reduce((s, m) => s + (m.totalCalories || 0), 0);
-  const todayProtein = todayMeals.reduce((s, m) => s + (m.totalProtein || 0), 0);
+  const todayCalEaten = dailyProgress?.calories?.consumed ?? todayMeals.reduce((s, m) => s + (m.totalCalories || 0), 0);
+  const todayProtein = dailyProgress?.protein?.consumed ?? todayMeals.reduce((s, m) => s + (m.totalProtein || 0), 0);
   const todayMinutes = todayWorkouts.reduce((s, w) => s + (Number(w.duration) || 0), 0);
   const calorieGoal = Number(profile.dailyCalorieGoal || profile.calorieGoal || 2200);
   const proteinGoal = Number(profile.proteinGoal || Math.max(90, Math.round((Number(profile.weight || profile.weight_kg) || 75) * 1.6)));
@@ -293,6 +295,9 @@ const Dashboard: React.FC = () => {
     }
     return streak;
   })();
+  const workoutProgress = dailyProgress?.workout?.sets_planned
+    ? Math.min(100, Math.round(((dailyProgress?.workout?.sets_completed || 0) / Math.max(dailyProgress.workout.sets_planned, 1)) * 100))
+    : null;
   const weekCalData = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(); d.setDate(d.getDate() - (6 - i));
     const ds = d.toDateString();
@@ -354,6 +359,8 @@ const Dashboard: React.FC = () => {
         setTasks(data.tasks);
       }
     }).finally(() => setLoadingTasks(false));
+    fetchExplainableCoach().then(setExplainableCoach).catch(() => {});
+    fetchCoachHistory().then(setCoachHistory).catch(() => {});
     const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
     setLoadingRecs(true);
     fetch(`${API_BASE}/api/users/user-1/recommendations`)
@@ -362,6 +369,21 @@ const Dashboard: React.FC = () => {
       .catch(() => {})
       .finally(() => setLoadingRecs(false));
   }, []);
+
+  useEffect(() => {
+    const userId = String(user.id || user.user_id || '1');
+    let active = true;
+    const loadProgress = async () => {
+      const progress = await fetchDailyProgress(userId);
+      if (active && progress) setDailyProgress(progress);
+    };
+    loadProgress();
+    const timer = window.setInterval(loadProgress, 15000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [user.id, user.user_id]);
 
   useEffect(() => {
     if (briefing?.directive && briefingIndex < briefing.directive.length) {
@@ -409,7 +431,10 @@ const Dashboard: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-10">
+    <div className={`space-y-10 app-shell ${dailyCoach?.gender_mode === 'femmecare' ? 'app-shell-femme' : 'app-shell-default'}`}>
+      <div className="app-shell-bg" />
+      <div className="app-shell-orb app-shell-orb-a" />
+      <div className="app-shell-orb app-shell-orb-b" />
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center space-x-6">
           <div className="w-16 h-16 rounded-2xl border-2 border-emerald-500/30 bg-slate-900 flex items-center justify-center text-emerald-500 card-hover">
@@ -446,6 +471,18 @@ const Dashboard: React.FC = () => {
                       ? `You have logged ${todayWorkouts.length} workout${todayWorkouts.length === 1 ? '' : 's'} and ${todayMeals.length} meal${todayMeals.length === 1 ? '' : 's'} today.`
                       : 'Start with one useful action and the rest of the day gets easier to steer.')}
                   </p>
+                  {dailyProgress && (
+                    <div className="mt-4 grid grid-cols-2 gap-3 max-w-xl">
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Live calories</p>
+                        <p className="text-lg font-black text-white">{Math.round(todayCalEaten)}<span className="text-xs text-slate-500"> kcal</span></p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Workout</p>
+                        <p className="text-lg font-black text-white capitalize">{dailyProgress?.workout?.status || 'not_started'}</p>
+                      </div>
+                    </div>
+                  )}
                   
                   {/* Phase 4 Feedback controls */}
                   <div className="mt-4 flex items-center space-x-3">
@@ -539,9 +576,11 @@ const Dashboard: React.FC = () => {
                 <CheckCircle2 size={16} className="text-purple-400" />
               </div>
               <div className="h-1.5 overflow-hidden rounded-full bg-slate-900">
-                <div className="h-full rounded-full bg-purple-400 transition-all" style={{ width: `${taskPct}%` }} />
+                <div className="h-full rounded-full bg-purple-400 transition-all" style={{ width: `${workoutProgress ?? taskPct}%` }} />
               </div>
-              <p className="mt-2 text-xs font-bold text-slate-300">{completedTasks}/{tasks.length || 0} tasks done</p>
+              <p className="mt-2 text-xs font-bold text-slate-300">
+                {workoutProgress != null ? `${dailyProgress?.workout?.sets_completed || 0}/${dailyProgress?.workout?.sets_planned || 0} sets done` : `${completedTasks}/${tasks.length || 0} tasks done`}
+              </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/3 p-4">
               <div className="mb-2 flex items-center justify-between">
@@ -827,6 +866,81 @@ const Dashboard: React.FC = () => {
           )}
 
           <Reveal animation="slide-in-right" delay={100}>
+            {explainableCoach && (
+              <div className={`mb-6 rounded-[2rem] border ${dailyCoach?.gender_mode === 'femmecare' ? 'border-pink-500/20 bg-pink-500/5' : 'border-cyan-500/20 bg-cyan-500/5'} p-5`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Explainable Coach</p>
+                    <h3 className="mt-1 text-lg font-black italic text-white">{explainableCoach.recommendation?.title}</h3>
+                  </div>
+                  <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${dailyCoach?.gender_mode === 'femmecare' ? 'border-pink-500/20 text-pink-300' : 'border-cyan-500/20 text-cyan-300'}`}>
+                    {explainableCoach.confidence_score}% confidence
+                  </span>
+                </div>
+                <p className="mt-3 text-sm text-slate-300">{explainableCoach.recommendation?.detail}</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Why this</p>
+                    <ul className="mt-2 space-y-1 text-xs text-slate-300">
+                      {(explainableCoach.explanation || []).map((line: string, idx: number) => (
+                        <li key={idx}>• {line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Signals</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {(explainableCoach.factors || []).map((factor: string, idx: number) => (
+                        <span key={idx} className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-bold text-slate-300">
+                          {factor}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="mt-3 text-[10px] uppercase tracking-widest text-slate-500">{explainableCoach.mode_note}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+            {coachHistory?.entries?.length > 0 && (
+              <div className="mb-6 rounded-[2rem] border border-white/10 bg-slate-950/70 p-5">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">Coach Timeline</p>
+                    <h3 className="mt-1 text-lg font-black italic text-white">Last {coachHistory.period_days || 7} days</h3>
+                  </div>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-300">
+                    {coachHistory.trend_note || 'Trend stable'}
+                  </span>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {coachHistory.entries.slice(0, 5).map((entry: any) => (
+                    <div key={entry.date} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-widest text-pink-300">{entry.date}</p>
+                          <h4 className="mt-1 text-sm font-black text-white">{entry.title}</h4>
+                        </div>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-slate-300">
+                          {entry.confidence}% confidence
+                        </span>
+                      </div>
+                      <p className="mt-2 text-xs leading-relaxed text-slate-300">{entry.detail}</p>
+                      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-widest">
+                        <span className={`rounded-full px-2.5 py-1 border ${entry.workout_status === 'done' ? 'border-emerald-500/20 text-emerald-300 bg-emerald-500/10' : entry.workout_status === 'in_progress' ? 'border-cyan-500/20 text-cyan-300 bg-cyan-500/10' : 'border-slate-700 text-slate-400 bg-white/5'}`}>
+                          {entry.workout_status}
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
+                          {entry.progress_percent}% sets
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-slate-300">
+                          {entry.feedback_count} feedback
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <SmartNextMove
               userId={user.id || 1}
               action={dailyCoach?.next_action}

@@ -99,9 +99,14 @@ class UserProfileService:
         Returns:
             Created UserProfile model
         """
+        try:
+            user_id_int = int(user_id)
+        except (ValueError, TypeError):
+            user_id_int = user_id
+
         # Check if profile already exists
         existing_profile = self.db.query(models.UserProfile).filter(
-            models.UserProfile.user_id == user_id
+            models.UserProfile.user_id == user_id_int
         ).first()
         
         if existing_profile:
@@ -109,12 +114,12 @@ class UserProfileService:
         
         # Create new profile
         profile = models.UserProfile(
-            user_id=user_id,
+            user_id=user_id_int,
             age=profile_data.age,
             weight_kg=profile_data.weight_kg,
             height_cm=profile_data.height_cm,
             activity_level=profile_data.activity_level,
-            primary_goal=profile_data.primary_goal,
+            fitness_goal=profile_data.primary_goal,
             dietary_restrictions=profile_data.dietary_restrictions,
             allergies=profile_data.allergies
         )
@@ -127,11 +132,11 @@ class UserProfileService:
 
     def get_user_profile(self, user_id: str) -> Optional[models.UserProfile]:
         """Get user profile by user ID"""
-        # Convert string UUID to UUID object if using PostgreSQL
+        # Convert string to int since user_id is now unified to Integer ForeignKey
         try:
-            import uuid as uuid_module
-            user_uuid = uuid_module.UUID(user_id) if isinstance(user_id, str) else user_id
-        except (ValueError, AttributeError):
+            user_uuid = int(user_id)
+        except (ValueError, TypeError):
+            # Fallback to string handling if it's a Clerk ID string
             user_uuid = user_id
             
         return self.db.query(models.UserProfile).filter(
@@ -238,14 +243,20 @@ class UserProfileService:
         Returns:
             Created UserGoal model
         """
+        # Convert string to int since user_id is now unified to Integer ForeignKey
+        try:
+            user_id_int = int(user_id)
+        except (ValueError, TypeError):
+            user_id_int = user_id
+
         # Validate goal against user profile
-        validation = self.validate_goal(user_id, goal_data)
+        validation = self.validate_goal(str(user_id_int), goal_data)
         if not validation.is_realistic:
             raise ValueError(f"Goal is not realistic: {', '.join(validation.warnings)}")
         
         # Create goal
         goal = models.UserGoal(
-            user_id=user_id,
+            user_id=user_id_int,
             goal_type=goal_data.goal_type,
             target_value=goal_data.target_value,
             current_value=Decimal(0),
@@ -261,8 +272,13 @@ class UserProfileService:
 
     def get_user_goals(self, user_id: str, active_only: bool = True) -> List[models.UserGoal]:
         """Get all goals for a user"""
+        try:
+            user_id_int = int(user_id)
+        except (ValueError, TypeError):
+            user_id_int = user_id
+
         query = self.db.query(models.UserGoal).filter(
-            models.UserGoal.user_id == user_id
+            models.UserGoal.user_id == user_id_int
         )
         
         if active_only:

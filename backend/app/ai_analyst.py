@@ -78,11 +78,16 @@ class AIAnalyst:
                 cleaned_query.startswith("SELECT")
                 or cleaned_query.startswith("WITH")
             )
-            if not is_select_or_with:
+            
+            # Detect injection and destructive SQL patterns in any part of the query
+            mutating_keywords = {"INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "REPLACE", "CREATE"}
+            has_mutation = any(kw in cleaned_query.split() or f" {kw} " in cleaned_query or f"\n{kw} " in cleaned_query for kw in mutating_keywords)
+
+            if not is_select_or_with or has_mutation or ";" in cleaned_query:
                 logging.getLogger(__name__).error(
-                    f"Blocked potential destructive query: {sql_query}"
+                    f"Blocked potential destructive query or multi-statement execution attempt: {sql_query}"
                 )
-                return {"error": "Only SELECT queries are allowed."}
+                return {"error": "Blocked potential security violation in query execution. Only safe read-only single-statement SELECT/WITH queries are allowed."}
 
             result = self.db.execute(text(sql_query), {"user_id": user_id})
             columns = result.keys()

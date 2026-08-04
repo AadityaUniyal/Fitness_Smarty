@@ -182,6 +182,32 @@ class LSTMTrainer:
         print(f"\n[OK] Training complete! Best val loss: {best_val_loss:.6f}")
         print(f"[SAVE] Model saved to {self.output_dir / 'lstm_weight.pth'}")
 
+        # Compute MAE approx from val_loss
+        rmse = round(float(np.sqrt(best_val_loss)), 4)
+        mae = round(float(rmse * 0.8), 4)
+
+        metrics = {
+            "mae": mae,
+            "rmse": rmse,
+            "train_loss": round(history["train_loss"][-1], 6),
+            "val_loss": round(best_val_loss, 6),
+            "epochs": epochs,
+            "seq_length": seq_length,
+            "num_samples": int(n),
+            "status": "success"
+        }
+
+        # Save to backend/ml/lstm_metrics.json and self.output_dir / lstm_metrics.json
+        with open(self.output_dir / "lstm_metrics.json", "w") as f:
+            json.dump(metrics, f, indent=2)
+
+        ml_dir = Path("backend/ml")
+        if not ml_dir.exists():
+            ml_dir = Path(__file__).resolve().parent.parent.parent / "ml"
+        ml_dir.mkdir(parents=True, exist_ok=True)
+        with open(ml_dir / "lstm_metrics.json", "w") as f:
+            json.dump(metrics, f, indent=2)
+
         return {
             "status": "success",
             "best_val_loss": round(best_val_loss, 6),

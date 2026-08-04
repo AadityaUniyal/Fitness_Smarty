@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Flame, Dumbbell, Scale, Target, Plus, Check, Award, Calendar, CheckCircle2, Timer, Droplets, GlassWater } from 'lucide-react';
 import HydrationHub from '../components/HydrationHub';
+import { fetchWorkoutHistory, fetchDailyProgress } from '../services/apiService';
+import { useUserProfile } from '../hooks/useUserProfile';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -9,21 +11,11 @@ interface MealLog { mealName: string; totalCalories: number; totalProtein: numbe
 interface WorkoutLog { name: string; duration: number; caloriesBurned: number; exercisesCompleted: number; exercisesTotal: number; timestamp: string; goal: string; }
 
 const ProgressTracking: React.FC = () => {
-  const profile = JSON.parse(localStorage.getItem('smarty_profile') || '{}');
-  const [weightLog, setWeightLog] = useState<WeightEntry[]>(() => {
-    const saved = localStorage.getItem('smarty_weight_log');
-    if (saved) return JSON.parse(saved);
-    // Seed with starting weight
-    if (profile.weight) {
-      return [{ date: new Date(Date.now() - 7 * 86400000).toLocaleDateString(), weight: Number(profile.weight) + 1.5 },
-      { date: new Date(Date.now() - 4 * 86400000).toLocaleDateString(), weight: Number(profile.weight) + 0.8 },
-      { date: new Date().toLocaleDateString(), weight: Number(profile.weight) }];
-    }
-    return [];
-  });
+  const { profile } = useUserProfile();
+  const [weightLog, setWeightLog] = useState<WeightEntry[]>([]);
   const [newWeight, setNewWeight] = useState('');
-  const [mealLogs, setMealLogs] = useState<MealLog[]>(() => JSON.parse(localStorage.getItem('smarty_meal_logs') || '[]'));
-  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>(() => JSON.parse(localStorage.getItem('smarty_workout_logs') || '[]'));
+  const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
+  const [workoutLogs, setWorkoutLogs] = useState<WorkoutLog[]>([]);
   const [addingWeight, setAddingWeight] = useState(false);
 
   const dailyCalGoal = profile.dailyCalorieGoal || 2200;
@@ -67,9 +59,7 @@ const ProgressTracking: React.FC = () => {
   const addWeight = () => {
     if (!newWeight) return;
     const entry: WeightEntry = { date: new Date().toLocaleDateString(), weight: Number(newWeight) };
-    const updated = [...weightLog, entry];
-    setWeightLog(updated);
-    localStorage.setItem('smarty_weight_log', JSON.stringify(updated));
+    setWeightLog(prev => [...prev, entry]);
     setNewWeight('');
     setAddingWeight(false);
   };
@@ -81,18 +71,31 @@ const ProgressTracking: React.FC = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   React.useEffect(() => {
-    // Fetch real-time budget and streak if backend is reachable
     const fetchData = async () => {
       try {
         const userId = profile.id || 1; // Fallback for demo
+        const workoutData = await fetchWorkoutHistory(String(userId), 200);
+        if (workoutData?.workouts) setWorkoutLogs(workoutData.workouts);
+
+        const mealRes = await fetch(`${API_BASE}/api/meals/user/${userId}/history?limit=200`);
+        if (mealRes.ok) {
+          const mealData = await mealRes.json();
+          setMealLogs(mealData.meals || []);
+        }
+
+        const daily = await fetchDailyProgress(String(userId));
+        if (daily?.check_in?.energy_level != null) {
+          // keep the data live in state by touching the backend; no-op here
+        }
+
         const budgetRes = await fetch(`${API_BASE}/api/analytics/daily-budget/${userId}`);
         if (budgetRes.ok) setDailyBudget(await budgetRes.json());
 
         const streakRes = await fetch(`${API_BASE}/api/analytics/db-streak/${userId}`);
         if (streakRes.ok) setDbStreak((await streakRes.json()).streak);
       } catch {
-        setDailyBudget({ consumed: todayCalories, burned: todayCalsBurned, net: todayCalories - todayCalsBurned });
-        setDbStreak(workoutStreak);
+        setDailyBudget({ consumed: 0, burned: 0, net: 0 });
+        setDbStreak(0);
       }
     };
     fetchData();

@@ -3,6 +3,7 @@
  * Provides type-safe methods for all backend API endpoints
  * Includes automatic JWT token refresh on 401 responses.
  */
+import { UserStats, BiometricPoint, WorkoutPlan } from '../types';
 
 const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
 
@@ -653,4 +654,363 @@ export const TrainingAPI = {
       body: JSON.stringify({ episodes, alpha, gamma }),
     });
   },
+};
+
+// ============= LEGACY API FUNCTIONS =============
+
+export const fetchUserStats = async (userId: string): Promise<UserStats> => {
+  try {
+    return await apiRequest<UserStats>(`/api/users/me`);
+  } catch (e) {
+    return {
+      id: userId,
+      name: 'Operator Alex',
+      level: 'Elite Tier 4',
+      xp: 12450,
+      daily_calories: 2450,
+      daily_steps: 12402,
+      active_minutes: 84,
+      weight: 80.2,
+      heart_rate: 72
+    };
+  }
+};
+
+export const fetchAnalytics = async (
+  userId: string,
+  metric: string = 'steps',
+  range: number = 7
+): Promise<BiometricPoint[]> => {
+  try {
+    return await apiRequest<BiometricPoint[]>(`/api/analytics/${userId}?metric=${metric}&range=${range}`);
+  } catch (e) {
+    return Array.from({ length: range || 7 }, (_, i) => ({
+      timestamp: new Date(Date.now() - ((range || 7) - i) * 24 * 60 * 60 * 1000).toISOString(),
+      value: 68 + Math.random() * 8, // Default value field for generic chart
+      category: metric as any
+    }));
+  }
+};
+
+export const fetchRecoveryScore = async (): Promise<any> => {
+  try {
+    return await apiRequest<any>('/api/neural/recovery');
+  } catch (e) {
+    return { score: 85, breakdown: { strain_recovery: 80, nutritional_status: 90, system_stability: 85 }, status: "EMERALD" };
+  }
+};
+
+export const fetchNeuralIntegrity = async (): Promise<any> => {
+  try {
+    return await apiRequest<any>('/api/neural/integrity');
+  } catch (e) {
+    return {
+      integrity_score: 98,
+      precision_index: 'HIGH',
+      focus_area: 'Posterior Chain'
+    };
+  }
+};
+
+export const fetchMissionBriefing = async (): Promise<any> => {
+  try {
+    return await apiRequest<any>('/api/neural/briefing');
+  } catch (e) {
+    return {
+      directive: "System nominal. Objective: Maintain kinetic precision and follow high-protein fuel protocols.",
+      timestamp: new Date().toISOString()
+    };
+  }
+};
+
+export const fetchDailyCoach = async (payload?: any): Promise<any> => {
+  try {
+    return await apiRequest<any>('/api/coach/daily');
+  } catch (e) {
+    return {
+      coach_summary: 'Your day is ready to steer. Start with one logged action, then let SMARTY adjust the next move.',
+      gender_mode: 'male',
+      today_focus: { training: 'Lighter movement block', nutrition: 'Daily consistency' },
+      workout_recommendation: { type: 'rest', exercises: [], reasoning: 'Rest day recommended.' },
+      meal_recommendation: { next_meal: 'Balanced Meal', foods: [], macro_gap: {} },
+      next_action: {
+        title: 'Start a focused workout',
+        detail: 'A short movement block will anchor today.',
+        route: '/dashboard/quick',
+        priority: 'High',
+      },
+      daily_tasks: [],
+    };
+  }
+};
+
+export const fetchExplainableCoach = async (): Promise<any> => {
+  try {
+    return await apiRequest<any>('/api/coach/explainable');
+  } catch {
+    return {
+      recommendation: {
+        title: 'Keep moving with purpose',
+        detail: 'Follow the highest-priority task on your dashboard.',
+        route: '/dashboard',
+        priority: 'Medium',
+      },
+      confidence_score: 82,
+      explanation: [
+        'A deterministic rule check found no major blockers.',
+        'Use the current plan and log the next action.'
+      ],
+      factors: ['Current data supports a steady training day'],
+      progress_snapshot: {
+        calories_remaining: 0,
+        protein_remaining: 0,
+        workout_status: 'not_started',
+        sets_completed: 0,
+        sets_planned: 0,
+      },
+      mode_note: 'Standard mode is active.',
+    };
+  }
+};
+
+export const fetchCoachHistory = async (): Promise<any> => {
+  try {
+    return await apiRequest<any>('/api/coach/history');
+  } catch {
+    return {
+      period_days: 7,
+      trend_note: 'Consistency is solid this week.',
+      entries: [
+        {
+          date: new Date().toISOString().split('T')[0],
+          title: 'No history yet',
+          detail: 'Log a meal or workout to start building your coach timeline.',
+          confidence: 60,
+          workout_status: 'not_started',
+          progress_percent: 0,
+          feedback: 'balanced',
+          feedback_count: 0,
+        },
+      ],
+    };
+  }
+};
+
+export const logWorkout = async (userId: string, workout: WorkoutPlan): Promise<void> => {
+  try {
+    await apiRequest<void>('/api/workouts/log', {
+      method: 'POST',
+      body: JSON.stringify({ userId, workout })
+    });
+  } catch (e) {
+    console.error('Workout log failed:', e);
+  }
+};
+
+export const submitFoodCorrection = async (
+  mealLogId: string,
+  imageUrl: string,
+  originalDetections: any[],
+  correctedLabels: any[]
+) => {
+  try {
+    return await apiRequest<any>('/api/training/corrections/food', {
+      method: 'POST',
+      body: JSON.stringify({
+        meal_log_id: mealLogId,
+        image_url: imageUrl,
+        original_detections: originalDetections,
+        corrected_labels: correctedLabels
+      })
+    });
+  } catch { return { success: false }; }
+};
+
+export const submitHealthFeedback = async (
+  mealLogId: string,
+  userProfile: any,
+  mealComposition: any,
+  feedback: 'good_for_me' | 'not_good_for_me',
+  reason: string | null
+) => {
+  try {
+    return await apiRequest<any>('/api/training/feedback/health', {
+      method: 'POST',
+      body: JSON.stringify({
+        meal_log_id: mealLogId,
+        user_profile: userProfile,
+        meal_composition: mealComposition,
+        user_feedback: feedback,
+        reason
+      })
+    });
+  } catch { return { success: false }; }
+};
+
+export const predictMealHealth = async (
+  userProfile: any,
+  mealComposition: any
+) => {
+  try {
+    return await apiRequest<any>('/api/training/predict/health', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_profile: userProfile,
+        meal_composition: mealComposition
+      })
+    });
+  } catch { return { success: false }; }
+};
+
+export const logBiomechanicalFault = async (fault: any) => {
+  try {
+    return await apiRequest<any>('/api/feedback/', {
+      method: 'POST',
+      body: JSON.stringify(fault)
+    });
+  } catch (e) {
+    return { success: true };
+  }
+};
+
+export const getDatasetStats = async () => {
+  try {
+    return await apiRequest<any>('/api/training/dataset/stats');
+  } catch { return null; }
+};
+
+export const fetchFemmeCareAdvice = async (userId: string) => {
+  try {
+    return await apiRequest<any>(`/api/female/cycle-phase/${userId}`);
+  } catch (e) {
+    return {
+      phase: "Follicular",
+      advice: {
+        training: "Energy is rising. Best time for progressive overload and building muscle.",
+        nutrition: "Support rising estrogen with fermented foods and complex carbs for stamina.",
+        focus: "Strength & Growth",
+        intensity_limit: "High",
+        bio_context: "Estrogen is climbing, increasing insulin sensitivity and strength capacity."
+      },
+      recommended_exercises: [],
+      learned_cycle_length: 28,
+      anomaly_warning: "",
+      cycle_history_stats: null,
+      user_profile: { menopause_mode: false, pregnancy_mode: false, local_only: false }
+    };
+  }
+};
+
+export const logPeriod = async (userId: string, logData: any) => {
+  try {
+    const params = new URLSearchParams({
+      start_date: logData.start_date,
+      mood: logData.mood || '',
+      flow_intensity: logData.flow_intensity || '',
+      notes: logData.notes || '',
+      cycle_length_days: String(logData.cycle_length_days || 28)
+    });
+    if (logData.symptoms) {
+      logData.symptoms.forEach((s: string) => params.append('symptoms', s));
+    }
+    return await apiRequest<any>(`/api/female/log-period/${userId}?${params.toString()}`, {
+      method: 'POST'
+    });
+  } catch { return { success: false }; }
+};
+
+export const updateFemmeCareSettings = async (
+  userId: string, 
+  settings: { femmecare_enabled?: boolean; menopause_mode?: boolean; pregnancy_mode?: boolean; local_only?: boolean }
+) => {
+  try {
+    const params = new URLSearchParams();
+    if (settings.femmecare_enabled !== undefined) params.append('femmecare_enabled', String(settings.femmecare_enabled));
+    if (settings.menopause_mode !== undefined) params.append('menopause_mode', String(settings.menopause_mode));
+    if (settings.pregnancy_mode !== undefined) params.append('pregnancy_mode', String(settings.pregnancy_mode));
+    if (settings.local_only !== undefined) params.append('local_only', String(settings.local_only));
+
+    return await apiRequest<any>(`/api/female/update-settings/${userId}?${params.toString()}`, {
+      method: 'POST'
+    });
+  } catch { return { success: false }; }
+};
+
+export const fetchDailyProgress = async (userId: string) => {
+  try {
+    return await apiRequest<any>(`/api/daily-progress/${userId}`);
+  } catch {
+    return null;
+  }
+};
+
+export const refreshDailyProgress = async (userId: string) => {
+  try {
+    return await apiRequest<any>(`/api/daily-progress/refresh/${userId}`, {
+      method: 'POST'
+    });
+  } catch {
+    return null;
+  }
+};
+
+export const logWorkoutSetProgress = async (
+  userId: string,
+  payload: { sets_added?: number; workout_planned_id?: number | null }
+) => {
+  try {
+    return await apiRequest<any>(`/api/daily-progress/set-logged`, {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: Number(userId),
+        sets_added: payload.sets_added ?? 1,
+        workout_planned_id: payload.workout_planned_id ?? null
+      })
+    });
+  } catch {
+    return null;
+  }
+};
+
+export const logMealProgress = async (userId: string) => {
+  try {
+    return await apiRequest<any>(`/api/daily-progress/meal-logged`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: Number(userId) })
+    });
+  } catch {
+    return null;
+  }
+};
+
+export const fetchWeeklyProgress = async (userId: string, days = 7) => {
+  try {
+    return await apiRequest<any>(`/api/daily-progress/weekly/${userId}?days=${days}`);
+  } catch {
+    return null;
+  }
+};
+
+export const fetchWorkoutHistory = async (userId: string, limit = 100) => {
+  try {
+    return await apiRequest<any>(`/api/calorie-tracking/workout-history/${userId}?limit=${limit}`);
+  } catch {
+    return null;
+  }
+};
+
+export const fetchGamificationSummary = async (userId: string) => {
+  try {
+    return await apiRequest<any>(`/api/gamification/users/${userId}/summary`);
+  } catch {
+    return null;
+  }
+};
+
+export const fetchUserAchievements = async (userId: string) => {
+  try {
+    return await apiRequest<any>(`/api/gamification/users/${userId}/achievements`);
+  } catch {
+    return null;
+  }
 };

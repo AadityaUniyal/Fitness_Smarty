@@ -56,6 +56,7 @@ class LSTMWeightPredictor:
         self.model = None
         self.means = [75.0, 2000.0, 30.0]
         self.stds = [10.0, 400.0, 15.0]
+        self.seq_length = 14
         self.mock_mode = True
         
         if TORCH_AVAILABLE:
@@ -72,13 +73,14 @@ class LSTMWeightPredictor:
                         config = json.load(f)
                         self.means = config.get("means", self.means)
                         self.stds = config.get("stds", self.stds)
+                        self.seq_length = config.get("seq_length", self.seq_length)
                     
                     # Load weights
                     self.model.load_state_dict(torch.load(weights_path, map_location=self.device))
                     self.mock_mode = False
-                    print("[OK] Real LSTM Weights and Config loaded successfully.")
+                    print(f"[OK] Real LSTM Weights and Config loaded successfully (seq_length={self.seq_length}).")
                 else:
-                    print("[!] No trained weights found. Running in baseline/mock mode.")
+                    print("[!] No trained weights found. Running in baseline/moving-average mode.")
                 self.model.eval()
             except Exception as e:
                 print(f"[!] Error initializing LSTM: {e}")
@@ -99,8 +101,9 @@ class LSTMWeightPredictor:
         historical_data: List[Dict[str, float]],
         days_ahead: int = 7
     ) -> Dict[str, Any]:
-        if self.mock_mode or len(historical_data) < 7:
-            return self._mock_predict(historical_data, days_ahead)
+        # Fallback to moving average if trajectory has fewer than 14 entries or model is in mock mode
+        if self.mock_mode or len(historical_data) < 14:
+            return self._moving_average_predict(historical_data, days_ahead)
         
         try:
             # Prepare scaled history sequence
@@ -115,15 +118,15 @@ class LSTMWeightPredictor:
                     self._scale(entry.get("activity_minutes", 30.0), 2)
                 ])
             
-            # Run prediction step-by-step
-            predictions = []
-            current_seq = np.array(sequence[-30:])  # Take last 30 days
+            # Align sequence length cleanly with trained seq_length
+            current_seq = np.array(sequence[-self.seq_length:])
             
-            # Fallback if history is less than 30 days
-            if len(current_seq) < 30:
-                pad_width = 30 - len(current_seq)
+            # Pad if history is less than seq_length
+            if len(current_seq) < self.seq_length:
+                pad_width = self.seq_length - len(current_seq)
                 current_seq = np.pad(current_seq, ((pad_width, 0), (0, 0)), mode='edge')
 
+            predictions = []
             with torch.no_grad():
                 for day in range(days_ahead):
                     input_tensor = torch.FloatTensor(current_seq).unsqueeze(0).to(self.device)
@@ -140,7 +143,6 @@ class LSTMWeightPredictor:
                     })
                     
                     # Update sequence for next step
-                    # Assume average calories/activity of last 7 days continues
                     avg_calories = np.mean([d.get('calories', 2000.0) for d in sorted_history[-7:]])
                     avg_activity = np.mean([d.get('activity_minutes', 30.0) for d in sorted_history[-7:]])
                     
@@ -165,7 +167,7 @@ class LSTMWeightPredictor:
             
         except Exception as e:
             print(f"[!] PyTorch LSTM prediction failure: {e}")
-            return self._mock_predict(historical_data, days_ahead)
+            return self._moving_average_predict(historical_data, days_ahead)
 
     def _calculate_confidence(self, day_offset: int) -> float:
         return max(0.5, 0.9 - (day_offset * 0.05))
@@ -178,24 +180,47 @@ class LSTMWeightPredictor:
             return 'stable'
         return 'decreasing' if change < 0 else 'increasing'
 
-    def _mock_predict(self, historical_data: List[Dict], days_ahead: int) -> Dict[str, Any]:
-        current_weight = historical_data[-1].get('weight', 75.0) if historical_data else 75.0
+    def _moving_average_predict(self, historical_data: List[Dict], days_ahead: int) -> Dict[str, Any]:
+        """Moving-average fallback when user trajectory has fewer than 14 entries."""
+        if not historical_data:
+            current_weight = 75.0
+            daily_change = -0.08
+        else:
+            sorted_data = sorted(historical_data, key=lambda x: x.get("date", ""))
+            current_weight = float(sorted_data[-1].get('weight', 75.0))
+            if len(sorted_data) >= 2:
+                weights = [float(d.get('weight', current_weight)) for d in sorted_data]
+                ma_weights = float(np.mean(weights))
+                # Calculate daily change rate over available history
+                daily_change = (weights[-1] - weights[0]) / max(1, len(weights) - 1)
+                daily_change = float(np.clip(daily_change, -0.3, 0.3))
+            else:
+                daily_change = -0.05
+
         predictions = []
         for day in range(days_ahead):
             pred_date = datetime.now() + timedelta(days=day+1)
-            pred_weight = current_weight - (day * 0.08)
+            pred_weight = max(30.0, current_weight + ((day + 1) * daily_change))
             predictions.append({
                 'date': pred_date.strftime('%Y-%m-%d'),
                 'predicted_weight': round(pred_weight, 2),
-                'confidence': round(max(0.6, 0.85 - (day * 0.03)), 2)
+                'confidence': round(max(0.60, 0.80 - (day * 0.02)), 2)
             })
+
+        weights = [p['predicted_weight'] for p in predictions]
+        trend = self._calculate_trend(weights)
+        avg_change_per_week = round(daily_change * 7.0, 2)
+
         return {
             'predictions': predictions,
-            'trend': 'decreasing',
-            'avg_change_per_week': -0.56,
-            'model': 'baseline_fallback',
-            'confidence_score': 0.75
+            'trend': trend,
+            'avg_change_per_week': avg_change_per_week,
+            'model': 'moving_average_fallback' if historical_data else 'baseline_fallback',
+            'confidence_score': 0.70
         }
+
+    def _mock_predict(self, historical_data: List[Dict], days_ahead: int) -> Dict[str, Any]:
+        return self._moving_average_predict(historical_data, days_ahead)
 
 
 # Singleton instance
@@ -206,3 +231,4 @@ def get_weight_predictor() -> LSTMWeightPredictor:
     if _lstm_instance is None:
         _lstm_instance = LSTMWeightPredictor()
     return _lstm_instance
+
