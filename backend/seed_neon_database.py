@@ -2,7 +2,7 @@
 Comprehensive Production Seeding Script for Neon PostgreSQL
 
 Database Connection:
-postgresql://neondb_owner:npg_VscPlK6OM9vm@ep-morning-term-aymxxv10-pooler.c-5.us-east-2.aws.neon.tech/neondb?sslmode=require
+Set DATABASE_URL in backend/.env or environment variables.
 
 Seeds:
 1. Exercise Categories & Detailed Exercise Items (Calorie burn per min/rep, duration, sets, reps, goal mappings, muscle groups, equipment, difficulty, MET values)
