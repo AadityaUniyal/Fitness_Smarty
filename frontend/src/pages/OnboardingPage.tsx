@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap, ChevronRight, ChevronLeft, Check, User, Target, Utensils, Activity } from 'lucide-react';
+import { Zap, ChevronRight, ChevronLeft, Check, User, Target, Utensils, Activity, Heart } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { PageFrame, InfoCard } from '../components/PageFrame';
+import { use3DTilt } from '../hooks/use3DTilt';
 
 interface Profile {
     name: string;
@@ -45,6 +46,8 @@ const OnboardingPage: React.FC = () => {
         femmecareEnabled: false
     });
 
+    const wizardTilt = use3DTilt<HTMLDivElement>({ maxTilt: 5, scale: 1.005 });
+
     const totalSteps = 4;
     const progress = ((step + 1) / totalSteps) * 100;
     const displayUser = user;
@@ -67,7 +70,7 @@ const OnboardingPage: React.FC = () => {
         const fullProfile = {
             ...profile,
             femmecareEnabled,
-            name: profile.name || displayUser?.full_name || displayUser?.name || 'Operator',
+            name: profile.name || displayUser?.full_name || displayUser?.name || 'Athlete',
             dailyCalorieGoal: profile.goal === 'weight_loss' ? 1800 : profile.goal === 'muscle_gain' ? 2800 : 2200,
         };
         localStorage.setItem('smarty_profile', JSON.stringify(fullProfile));
@@ -91,29 +94,29 @@ const OnboardingPage: React.FC = () => {
         {
             icon: User,
             title: 'About You',
-            subtitle: "Let's build your neural identity",
+            subtitle: 'Let us personalize your fitness profile',
             content: (
                 <div className="space-y-5">
                     <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Full Name</label>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Full Name</label>
                         <input
                             type="text"
                             value={profile.name}
                             onChange={e => update('name', e.target.value)}
                             placeholder={displayUser?.full_name || displayUser?.name || 'Enter your name'}
-                            className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-600"
+                            className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-semibold text-white focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-500"
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Age</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Age</label>
                             <input type="number" value={profile.age} onChange={e => update('age', e.target.value)} placeholder="25"
-                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-600" />
+                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-semibold text-white focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-500" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Biological Sex</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Biological Sex</label>
                             <select value={profile.gender} onChange={e => update('gender', e.target.value)}
-                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition text-white">
+                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-semibold focus:outline-none focus:border-emerald-500/50 transition text-white">
                                 <option value="Male">Male</option>
                                 <option value="Female">Female</option>
                                 <option value="Other">Other</option>
@@ -122,215 +125,217 @@ const OnboardingPage: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Weight (kg)</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Weight (kg)</label>
                             <input type="number" value={profile.weight} onChange={e => update('weight', e.target.value)} placeholder="70"
-                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-600" />
+                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-semibold text-white focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-500" />
                         </div>
                         <div>
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Height (cm)</label>
+                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Height (cm)</label>
                             <input type="number" value={profile.height} onChange={e => update('height', e.target.value)} placeholder="175"
-                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-600" />
+                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm font-semibold text-white focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-500" />
                         </div>
                     </div>
                     {profile.gender === 'Female' && (
-                        <div className="mt-2 p-4 bg-pink-500/5 border border-pink-500/20 rounded-2xl flex items-center justify-between transition-all">
-                            <div>
-                                <p className="text-xs font-black text-pink-400">FemmeCare Cycle Syncing</p>
-                                <p className="text-[10px] text-slate-500 mt-0.5">Tune training & nutrition to your hormonal phases</p>
+                        <div className="p-4 bg-pink-500/10 border border-pink-500/20 rounded-2xl flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <Heart className="text-pink-400" size={20} />
+                                <div>
+                                    <p className="text-xs font-black text-pink-300">FemmeCare Cycle Syncing</p>
+                                    <p className="text-[10px] text-slate-400">Align workout load and diet with your hormonal cycle</p>
+                                </div>
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={profile.femmecareEnabled}
-                                    onChange={e => update('femmecareEnabled', e.target.checked)}
-                                    className="sr-only peer"
-                                />
-                                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500 peer-checked:after:bg-white peer-checked:after:border-pink-500" />
-                            </label>
+                            <input
+                                type="checkbox"
+                                checked={profile.femmecareEnabled}
+                                onChange={e => update('femmecareEnabled', e.target.checked)}
+                                className="w-5 h-5 accent-pink-500 rounded cursor-pointer"
+                            />
                         </div>
                     )}
                 </div>
-            ),
+            )
         },
         {
             icon: Target,
-            title: 'Your Fitness Goal',
-            subtitle: 'This shapes all your AI recommendations',
+            title: 'Primary Goal',
+            subtitle: 'What is your main target for the next 90 days?',
             content: (
-                <div className="space-y-3">
-                    {GOALS.map(g => (
-                        <button key={g.id} onClick={() => update('goal', g.id)}
-                            className={`w-full flex items-center space-x-5 p-5 rounded-2xl border transition-all text-left ${profile.goal === g.id
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
-                                : 'bg-slate-900 border-white/10 text-slate-400 hover:border-white/20'}`}>
-                            <span className="text-3xl">{g.emoji}</span>
-                            <div className="flex-1">
-                                <p className="font-black text-sm">{g.label}</p>
-                                <p className="text-xs text-slate-500 mt-0.5">{g.desc}</p>
-                            </div>
-                            {profile.goal === g.id && <Check size={18} className="text-emerald-400 shrink-0" />}
-                        </button>
-                    ))}
-                    {profile.goal === 'weight_loss' && (
-                        <div className="mt-2">
-                            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 block">Target Weight (kg) — Optional</label>
-                            <input type="number" value={profile.targetWeight} onChange={e => update('targetWeight', e.target.value)} placeholder="e.g. 65"
-                                className="w-full bg-slate-900 border border-white/10 rounded-2xl px-6 py-4 text-sm focus:outline-none focus:border-emerald-500/50 transition placeholder:text-slate-600" />
-                        </div>
-                    )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {GOALS.map(g => {
+                        const selected = profile.goal === g.id;
+                        return (
+                            <button
+                                key={g.id}
+                                onClick={() => update('goal', g.id)}
+                                className={`p-5 rounded-2xl border transition-all text-left card-3d ${selected
+                                    ? 'bg-emerald-500/10 border-emerald-500 text-white shadow-lg shadow-emerald-500/10'
+                                    : 'bg-slate-900 border-white/10 text-slate-400 hover:border-white/20'}`}
+                            >
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-2xl">{g.emoji}</span>
+                                    {selected && <Check size={18} className="text-emerald-400" />}
+                                </div>
+                                <h4 className="font-black text-white text-base italic">{g.label}</h4>
+                                <p className="text-xs text-slate-400 mt-1">{g.desc}</p>
+                            </button>
+                        );
+                    })}
                 </div>
-            ),
+            )
         },
         {
             icon: Activity,
             title: 'Activity Level',
-            subtitle: 'How active is your current lifestyle?',
+            subtitle: 'How active are you in your current routine?',
             content: (
                 <div className="space-y-3">
-                    {ACTIVITY_LEVELS.map(a => (
-                        <button key={a.id} onClick={() => update('activityLevel', a.id)}
-                            className={`w-full flex items-center space-x-4 p-5 rounded-2xl border transition-all text-left ${profile.activityLevel === a.id
-                                ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
-                                : 'bg-slate-900 border-white/10 text-slate-400 hover:border-white/20'}`}>
-                            <div className="flex-1">
-                                <p className="font-black text-sm">{a.label}</p>
-                                <p className="text-xs text-slate-500 mt-0.5">{a.desc}</p>
-                            </div>
-                            {profile.activityLevel === a.id && <Check size={18} className="text-emerald-400 shrink-0" />}
-                        </button>
-                    ))}
+                    {ACTIVITY_LEVELS.map(a => {
+                        const selected = profile.activityLevel === a.id;
+                        return (
+                            <button
+                                key={a.id}
+                                onClick={() => update('activityLevel', a.id)}
+                                className={`w-full p-4 rounded-2xl border transition-all text-left flex items-center justify-between ${selected
+                                    ? 'bg-emerald-500/10 border-emerald-500 text-white shadow-md'
+                                    : 'bg-slate-900 border-white/10 text-slate-400 hover:border-white/20'}`}
+                            >
+                                <div>
+                                    <p className="font-black text-white text-sm">{a.label}</p>
+                                    <p className="text-xs text-slate-400">{a.desc}</p>
+                                </div>
+                                {selected && <Check size={18} className="text-emerald-400" />}
+                            </button>
+                        );
+                    })}
                 </div>
-            ),
+            )
         },
         {
             icon: Utensils,
-            title: 'Diet & Restrictions',
-            subtitle: 'Select all that apply (optional)',
+            title: 'Diet & Fuel',
+            subtitle: 'Select any dietary preferences or restrictions',
             content: (
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                        {DIET_OPTIONS.map(d => (
-                            <button key={d} onClick={() => toggleDiet(d)}
-                                className={`px-5 py-4 rounded-2xl border text-sm font-black transition-all ${profile.dietaryRestrictions.includes(d) || (d === 'None' && profile.dietaryRestrictions.length === 0)
-                                    ? 'bg-emerald-500/10 border-emerald-500/50 text-emerald-400'
-                                    : 'bg-slate-900 border-white/10 text-slate-500 hover:border-white/20'}`}>
-                                {d}
-                            </button>
-                        ))}
-                    </div>
-                    <div className="p-5 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl mt-4">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 mb-2">Ready to Start!</p>
-                        <p className="text-sm text-slate-400">Based on your goal of <span className="text-white font-black">{GOALS.find(g => g.id === profile.goal)?.label}</span>, Smarty AI will create your personalised daily plan.</p>
+                    <div className="flex flex-wrap gap-2.5">
+                        {DIET_OPTIONS.map(d => {
+                            const selected = d === 'None'
+                                ? profile.dietaryRestrictions.length === 0
+                                : profile.dietaryRestrictions.includes(d);
+                            return (
+                                <button
+                                    key={d}
+                                    onClick={() => toggleDiet(d)}
+                                    className={`px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider border transition-all ${selected
+                                        ? 'bg-emerald-500 text-slate-950 border-emerald-500 shadow-md'
+                                        : 'bg-slate-900 border-white/10 text-slate-400 hover:border-white/20'}`}
+                                >
+                                    {d}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
-            ),
-        },
+            )
+        }
     ];
 
     const currentStep = steps[step];
+    const isFemaleTone = profile.gender === 'Female' || profile.femmecareEnabled;
 
     return (
-        <div className="min-h-screen app-shell app-shell-default px-4 py-8 md:px-8 lg:px-10">
-            <div className="app-shell-bg" />
-            <div className="app-shell-orb app-shell-orb-a" />
-            <div className="app-shell-orb app-shell-orb-b" />
-
-            <div className="relative z-10 mx-auto w-full max-w-5xl">
+        <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 lg:p-10 flex flex-col justify-center">
+            <div className="max-w-4xl mx-auto w-full">
                 <PageFrame
-                    eyebrow="Neural Calibration"
-                    title="Set the System Up Right"
-                    subtitle="A focused onboarding flow that captures only what the planner, reports, and FemmeCare need to make better decisions."
-                    tone={profile.gender === 'Female' || profile.femmecareEnabled ? 'pink' : 'emerald'}
-                    rightSlot={
-                        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-                            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">Progress</p>
-                            <p className="mt-1 text-lg font-black text-white">{Math.round(progress)}%</p>
-                        </div>
-                    }
+                    eyebrow="Profile Calibration"
+                    title="Welcome to SMARTY"
+                    subtitle="Let's build your personalized training profile"
+                    tone={isFemaleTone ? 'pink' : 'emerald'}
                 >
-                    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-                        <div className="rounded-[2rem] border border-white/5 bg-slate-950/60 p-5 md:p-6">
-                            <div className="flex items-center space-x-4 mb-8">
-                                <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.4)] rotate-3">
-                                    <Zap size={26} className="fill-slate-950 text-slate-950" />
+                    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr] items-start mt-6">
+                        {/* Step Card with 3D Tilt */}
+                        <div 
+                            ref={wizardTilt.ref as any}
+                            style={wizardTilt.style}
+                            onMouseMove={wizardTilt.onMouseMove as any}
+                            onMouseLeave={wizardTilt.onMouseLeave as any}
+                            className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 md:p-8 backdrop-blur-xl card-3d"
+                        >
+                            <div className="card-3d-shine" />
+                            {/* Progress bar */}
+                            <div className="mb-8">
+                                <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-slate-400 mb-2">
+                                    <span>Step 0{step + 1} of 0{totalSteps}</span>
+                                    <span>{Math.round(progress)}%</span>
+                                </div>
+                                <div className="h-2 w-full bg-slate-900 rounded-full overflow-hidden border border-white/5">
+                                    <div
+                                        className={`h-full ${isFemaleTone ? 'bg-pink-500' : 'bg-emerald-500'} transition-all duration-500 rounded-full`}
+                                        style={{ width: `${progress}%` }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Step Header */}
+                            <div className="flex items-center space-x-4 mb-6">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isFemaleTone ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
+                                    <currentStep.icon size={22} />
                                 </div>
                                 <div>
-                                    <h1 className="text-2xl font-black italic text-white">SMARTY <span className="text-emerald-400">AI</span></h1>
-                                    <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">Neural Calibration</p>
+                                    <h3 className="text-xl font-black italic uppercase tracking-tight text-white">{currentStep.title}</h3>
+                                    <p className="text-xs text-slate-400">{currentStep.subtitle}</p>
                                 </div>
                             </div>
 
-                            <div className="mb-8">
-                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">
-                                    <span>Step {step + 1} of {totalSteps}</span>
-                                    <span>{Math.round(progress)}% complete</span>
-                                </div>
-                                <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-                                        style={{ width: `${progress}%` }} />
-                                </div>
+                            {/* Step Content */}
+                            <div className="min-h-[220px]">
+                                {currentStep.content}
                             </div>
 
-                            <div className="bg-slate-900/60 border border-white/10 rounded-3xl p-8 backdrop-blur-xl">
-                                <div className="flex items-center space-x-4 mb-6">
-                                    <div className="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center">
-                                        <currentStep.icon size={22} className="text-emerald-400" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-2xl font-black italic text-white tracking-tight">{currentStep.title}</h2>
-                                        <p className="text-xs text-slate-500">{currentStep.subtitle}</p>
-                                    </div>
-                                </div>
-                                <div className="max-h-[50vh] overflow-y-auto pr-1 space-y-1">
-                                    {currentStep.content}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between mt-6">
+                            {/* Nav Controls */}
+                            <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
                                 <button
-                                    onClick={() => step > 0 ? setStep(s => s - 1) : navigate('/')}
-                                    className="flex items-center space-x-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl text-slate-400 font-black text-[10px] uppercase tracking-widest transition-all"
+                                    onClick={() => setStep(s => Math.max(0, s - 1))}
+                                    disabled={step === 0}
+                                    className="flex items-center space-x-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 font-bold text-xs uppercase tracking-widest transition"
                                 >
                                     <ChevronLeft size={16} />
-                                    <span>{step === 0 ? 'Back to Login' : 'Previous'}</span>
+                                    <span>Back</span>
                                 </button>
-
                                 {step < totalSteps - 1 ? (
                                     <button
-                                        onClick={() => setStep(s => s + 1)}
-                                        className="flex items-center space-x-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all"
+                                        onClick={() => setStep(s => Math.min(totalSteps - 1, s + 1))}
+                                        className={`flex items-center space-x-2 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-950 ${isFemaleTone ? 'bg-pink-500 hover:bg-pink-400' : 'bg-emerald-500 hover:bg-emerald-400'} shadow-lg transition active:scale-95`}
                                     >
-                                        <span>Continue</span>
+                                        <span>Next</span>
                                         <ChevronRight size={16} />
                                     </button>
                                 ) : (
                                     <button
                                         onClick={handleFinish}
                                         disabled={saving}
-                                        className="flex items-center space-x-2 px-8 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-800 text-slate-950 font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-[0_8px_20px_rgba(16,185,129,0.3)] transition-all"
+                                        className={`flex items-center space-x-2 px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-950 ${isFemaleTone ? 'bg-pink-500 hover:bg-pink-400' : 'bg-emerald-500 hover:bg-emerald-400'} shadow-lg transition active:scale-95 disabled:opacity-50`}
                                     >
-                                        {saving ? <span className="animate-pulse">Saving...</span> : <><Check size={16} /><span>Launch Smarty AI</span></>}
+                                        <span>{saving ? 'Saving...' : 'Complete Profile'}</span>
+                                        <Check size={16} />
                                     </button>
                                 )}
                             </div>
                         </div>
 
+                        {/* Side Info Cards */}
                         <div className="space-y-4">
                             <InfoCard
-                                title="What this unlocks"
-                                detail="Cleaner onboarding gives the planner better inputs, the report engine better baselines, and FemmeCare the right defaults."
-                                tone="cyan"
+                                title="SMART ADAPTATION"
+                                detail="Your profile is used to generate personalized calorie targets, macro splits, and customized daily workout protocols."
+                                tone={isFemaleTone ? 'pink' : 'emerald'}
                             />
-                            <InfoCard
-                                title="Privacy posture"
-                                detail="FemmeCare remains opt-in. If it is off, the rest of the app still functions normally."
-                                tone="pink"
-                            />
-                            <InfoCard
-                                title="Product quality"
-                                detail="A tighter setup flow means fewer weird defaults later and a better first impression from day one."
-                                tone="violet"
-                            />
+                            {profile.goal && (
+                                <InfoCard
+                                    title="SELECTED TARGET"
+                                    detail={`Goal: ${GOALS.find(g => g.id === profile.goal)?.label || profile.goal}. Workout intensity will adjust automatically.`}
+                                    tone={isFemaleTone ? 'pink' : 'emerald'}
+                                />
+                            )}
                         </div>
                     </div>
                 </PageFrame>

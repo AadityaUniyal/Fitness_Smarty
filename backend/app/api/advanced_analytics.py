@@ -6,8 +6,9 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, desc
+from sqlalchemy import func, and_, desc, Date
 from app import database, models
+from app.auth import get_current_user_id
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,18 +19,22 @@ router = APIRouter(prefix="/api/analytics", tags=["Advanced Analytics"])
 def get_weekly_trends(
     user_id: str,
     weeks: int = Query(4, ge=1, le=12, description="Number of weeks to analyze"),
+    current_auth_id: str = Depends(get_current_user_id),
     db: Session = Depends(database.get_db),
 ):
     """
     Get weekly aggregated trends for calories, macros, and exercise.
     Returns data suitable for line charts and trend visualization.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to requested user analytics")
+
     try:
         start_date = datetime.utcnow() - timedelta(weeks=weeks)
         
-        # Get meal data grouped by week
+        # Get meal data grouped by date
         meal_data = db.query(
-            func.strftime('%Y-%W', models.MealLog.created_at).label('week'),
+            func.cast(models.MealLog.created_at, Date).label('date'),
             func.sum(models.MealLog.total_calories).label('total_calories'),
             func.sum(models.MealLog.total_protein).label('total_protein'),
             func.sum(models.MealLog.total_carbs).label('total_carbs'),
@@ -40,7 +45,7 @@ def get_weekly_trends(
                 models.MealLog.user_id == user_id,
                 models.MealLog.created_at >= start_date
             )
-        ).group_by('week').order_by('week').all()
+        ).group_by('date').order_by('date').all()
         
         # Get workout data grouped by week
         workout_data = db.query(
@@ -101,18 +106,22 @@ def get_weekly_trends(
 def get_calorie_balance(
     user_id: str,
     days: int = Query(30, ge=7, le=90, description="Number of days to analyze"),
+    current_auth_id: str = Depends(get_current_user_id),
     db: Session = Depends(database.get_db),
 ):
     """
     Get daily calorie consumption vs burn data for visualization.
     Perfect for stacked bar charts or area charts.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to requested user analytics")
+
     try:
         start_date = datetime.utcnow() - timedelta(days=days)
         
         # Daily meal calories
         meals = db.query(
-            func.date(models.MealLog.created_at).label('date'),
+            func.cast(models.MealLog.created_at, Date).label('date'),
             func.sum(models.MealLog.total_calories).label('consumed')
         ).filter(
             and_(
@@ -123,7 +132,7 @@ def get_calorie_balance(
         
         # Daily workout calories
         workouts = db.query(
-            func.date(models.WorkoutLog.created_at).label('date'),
+            func.cast(models.WorkoutLog.created_at, Date).label('date'),
             func.sum(models.WorkoutLog.calories_burned).label('burned')
         ).filter(
             and_(
@@ -186,18 +195,22 @@ def get_calorie_balance(
 def get_macro_distribution(
     user_id: str,
     days: int = Query(30, ge=7, le=90),
+    current_auth_id: str = Depends(get_current_user_id),
     db: Session = Depends(database.get_db),
 ):
     """
     Get macronutrient distribution over time.
     Returns data for pie charts and stacked area charts.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to requested user analytics")
+
     try:
         start_date = datetime.utcnow() - timedelta(days=days)
         
         # Daily macro breakdown
         daily_macros = db.query(
-            func.date(models.MealLog.created_at).label('date'),
+            func.cast(models.MealLog.created_at, Date).label('date'),
             func.sum(models.MealLog.total_protein).label('protein'),
             func.sum(models.MealLog.total_carbs).label('carbs'),
             func.sum(models.MealLog.total_fats).label('fats')
@@ -277,18 +290,22 @@ def get_macro_distribution(
 def get_exercise_heatmap(
     user_id: str,
     weeks: int = Query(12, ge=4, le=52),
+    current_auth_id: str = Depends(get_current_user_id),
     db: Session = Depends(database.get_db),
 ):
     """
     Get exercise frequency data for calendar heatmap visualization.
     Returns workout count and intensity per day.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to requested user analytics")
+
     try:
         start_date = datetime.utcnow() - timedelta(weeks=weeks)
         
         # Get daily workout data
         workouts = db.query(
-            func.date(models.WorkoutLog.created_at).label('date'),
+            func.cast(models.WorkoutLog.created_at, Date).label('date'),
             func.count(models.WorkoutLog.id).label('workout_count'),
             func.sum(models.WorkoutLog.duration_minutes).label('total_minutes'),
             func.sum(models.WorkoutLog.calories_burned).label('total_calories')
@@ -369,12 +386,16 @@ def get_exercise_heatmap(
 def get_progress_metrics(
     user_id: str,
     days: int = Query(90, ge=30, le=365),
+    current_auth_id: str = Depends(get_current_user_id),
     db: Session = Depends(database.get_db),
 ):
     """
     Get comprehensive progress metrics including weight, body composition,
     and performance trends over time.
     """
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to requested user analytics")
+
     try:
         start_date = datetime.utcnow() - timedelta(days=days)
         

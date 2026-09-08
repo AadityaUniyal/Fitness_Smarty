@@ -6,12 +6,20 @@ from app.database import get_db
 from app.models import MenstrualCycleLog, EnhancedUser
 from app.security_encryption import encrypt_value, decrypt_value
 from app.recommendation_engine import RecommendationEngine
+from app.auth import get_current_user_id
 
 router = APIRouter(prefix="/api/female", tags=["Female Health"])
 
 @router.get("/cycle-phase/{user_id}")
-def get_cycle_phase(user_id: str, db: Session = Depends(get_db)):
+def get_cycle_phase(
+    user_id: str,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """Fetch current cycle details, phase advice, and statistics."""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to requested female health profile")
+
     # Find user
     user = db.query(EnhancedUser).filter(
         (EnhancedUser.clerk_user_id == user_id) | (EnhancedUser.id == user_id)
@@ -79,9 +87,13 @@ def log_period(
     flow_intensity: Optional[str] = None, 
     notes: Optional[str] = None,
     cycle_length_days: Optional[int] = 28,
+    current_auth_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """Log a cycle start date with optional symptoms, utilizing application-layer encryption."""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to log cycle details for another user")
+
     user = db.query(EnhancedUser).filter(
         (EnhancedUser.clerk_user_id == user_id) | (EnhancedUser.id == user_id)
     ).first()
@@ -127,9 +139,13 @@ def update_female_settings(
     menopause_mode: Optional[bool] = None,
     pregnancy_mode: Optional[bool] = None,
     local_only: Optional[bool] = None,
+    current_auth_id: str = Depends(get_current_user_id),
     db: Session = Depends(get_db)
 ):
     """Update general FemmeCare profile toggles (menopause, pregnancy, and local-only)."""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to update female settings for another user")
+
     user = db.query(EnhancedUser).filter(
         (EnhancedUser.clerk_user_id == user_id) | (EnhancedUser.id == user_id)
     ).first()
@@ -154,8 +170,15 @@ def update_female_settings(
     }}
 
 @router.get("/calendar-feed/{user_id}")
-def get_ical_calendar_feed(user_id: str, db: Session = Depends(get_db)):
+def get_ical_calendar_feed(
+    user_id: str,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """Generates a standard iCal (.ics) feed of cycle phases to sync with Google Calendar."""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to calendar feed")
+
     from fastapi.responses import Response
     from datetime import timedelta
     

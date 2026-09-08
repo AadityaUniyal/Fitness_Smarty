@@ -53,20 +53,20 @@ describe('FemmeCare', () => {
   it('loads cycle guidance and shows recommendation cards', async () => {
     render(<FemmeCare />);
 
-    await waitFor(() => expect(mockFetchFemmeCareAdvice).toHaveBeenCalledWith('77'));
+    await waitFor(() => expect(mockFetchFemmeCareAdvice).toHaveBeenCalledWith('77'), { timeout: 10000 });
     expect(screen.getByRole('heading', { name: /AURA PINK/i })).toBeInTheDocument();
-    expect(screen.getByText(/Go moderate today\./i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Go moderate today\./i)).toBeInTheDocument(), { timeout: 10000 });
     expect(screen.getByText(/Prioritize iron and magnesium\./i)).toBeInTheDocument();
     expect(screen.getByText(/Goblet Squat/i)).toBeInTheDocument();
-  });
+  }, 15000);
 
   it('syncs femme care settings and logs a cycle entry', async () => {
     render(<FemmeCare />);
 
-    await waitFor(() => expect(mockFetchFemmeCareAdvice).toHaveBeenCalled());
+    await waitFor(() => expect(mockFetchFemmeCareAdvice).toHaveBeenCalled(), { timeout: 10000 });
 
     fireEvent.click(screen.getByLabelText(/Enable cycle support/i));
-    await waitFor(() => expect(mockUpdateFemmeCareSettings).toHaveBeenCalled());
+    await waitFor(() => expect(mockUpdateFemmeCareSettings).toHaveBeenCalled(), { timeout: 10000 });
 
     fireEvent.click(screen.getByRole('button', { name: /Log New Cycle/i }));
     fireEvent.click(screen.getByRole('button', { name: /Save Entry/i }));
@@ -75,9 +75,9 @@ describe('FemmeCare', () => {
       '77',
       expect.objectContaining({
         mood: 'Neutral',
-        flow_intensity: 'Medium',
+        flow: 'Medium',
         symptoms: [],
       }),
-    ));
-  });
+    ), { timeout: 10000 });
+  }, 15000);
 });

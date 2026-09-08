@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
-export function useCurrentUserId(defaultId = '1') {
+export function useCurrentUserId(providedId?: string | number, defaultId = '1') {
   const { user } = useAuth();
-  return useMemo(() => String(user?.id || defaultId), [user?.id, defaultId]);
+  return useMemo(() => String(providedId || user?.id || defaultId), [providedId, user?.id, defaultId]);
 }

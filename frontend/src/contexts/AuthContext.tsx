@@ -3,7 +3,9 @@ import { AuthAPI, AuthTokens } from '../services/apiService';
 
 interface User {
   id: string;
+  user_id?: string;
   email: string;
+  name?: string;
   full_name?: string;
   age?: number;
   weight_kg?: number;

@@ -55,6 +55,7 @@ from app.api import (
     workout_recommendations,
 )
 from app.limiter import limiter
+from app.logging_middleware import setup_logging_middleware
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO)
@@ -129,6 +130,7 @@ app = FastAPI(
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+setup_logging_middleware(app)
 
 # CORS Configuration
 _cors_origins_default = (
@@ -249,10 +251,10 @@ def health_check():
 
 @app.get("/ready")
 def readiness_check():
-    """Readiness probe — verifies DB connectivity and external service
-    reachability.  Used by deploy platforms (Render, Railway, k8s) to
+    """Readiness probe — verifies DB connectivity and external AI service
+    reachability. Used by deploy platforms (Render, Railway, k8s) to
     decide when to route traffic to this instance."""
-    checks = {"database": "unknown", "gemini_api": "unknown"}
+    checks = {"database": "unknown", "groq_api": "unknown", "gemini_api": "unknown"}
 
     # 1. Database connectivity
     try:
@@ -268,7 +270,10 @@ def readiness_check():
     except Exception as e:
         checks["database"] = f"error: {e}"
 
-    # 2. Gemini API key presence (don't call the API, just verify config)
+    # 2. AI Multi-Provider Key Checks
+    groq_key = os.getenv("GROQ_API_KEY")
+    checks["groq_api"] = "configured" if groq_key else "not_configured"
+
     gemini_key = os.getenv("GEMINI_API_KEY")
     checks["gemini_api"] = "configured" if gemini_key else "not_configured"
 

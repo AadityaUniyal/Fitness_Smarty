@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Target, Plus, TrendingUp, Calendar, CheckCircle2, Loader2, AlertCircle, Trash2, Edit3, X, Check } from 'lucide-react';
 import { GoalsAPI, RecommendationsAPI } from '../services/apiService';
 import { useAPI } from '../hooks/useAPI';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
 const GoalManager: React.FC = () => {
+  const userId = useCurrentUserId();
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [editGoalId, setEditGoalId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -14,19 +16,19 @@ const GoalManager: React.FC = () => {
   });
 
   const { data: goalsData, loading: loadingGoals, execute: fetchGoals } = useAPI(
-    (userId: string) => GoalsAPI.getUserGoals(userId, true)
+    (uId: string) => GoalsAPI.getUserGoals(uId, true)
   );
 
   const { data: progress, execute: fetchProgress } = useAPI(
-    (userId: string) => GoalsAPI.getProgress(userId)
+    (uId: string) => GoalsAPI.getProgress(uId)
   );
 
   const { data: recommendations, execute: fetchRecommendations } = useAPI(
-    (userId: string) => RecommendationsAPI.getRecommendations(userId, { include_read: false })
+    (uId: string) => RecommendationsAPI.getRecommendations(uId, { include_read: false })
   );
 
   const { loading: creating, execute: createGoal } = useAPI(
-    (userId: string, goalData: any) => GoalsAPI.createGoal(userId, goalData)
+    (uId: string, goalData: any) => GoalsAPI.createGoal(uId, goalData)
   );
 
   const { execute: removeGoal } = useAPI(
@@ -34,13 +36,15 @@ const GoalManager: React.FC = () => {
   );
 
   useEffect(() => {
-    loadData();
-  }, []);
+    if (userId) {
+      loadData();
+    }
+  }, [userId]);
 
   const loadData = async () => {
-    await fetchGoals('user-1');
-    await fetchProgress('user-1');
-    await fetchRecommendations('user-1');
+    await fetchGoals(userId);
+    await fetchProgress(userId);
+    await fetchRecommendations(userId);
   };
 
   const handleCreateGoal = async () => {
@@ -48,7 +52,7 @@ const GoalManager: React.FC = () => {
       alert('Please fill in all fields');
       return;
     }
-    const result = await createGoal('user-1', newGoal);
+    const result = await createGoal(userId, newGoal);
     if (result) {
       setShowAddGoal(false);
       setNewGoal({ goal_type: 'weight_loss', target_value: 0, target_date: '' });

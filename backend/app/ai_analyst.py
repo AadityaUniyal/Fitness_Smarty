@@ -1,37 +1,22 @@
-
+import json
+import logging
 import os
-try:
-    from google import genai
-    _USE_GENAI_CLIENT = True
-except ImportError:
-    import google.generativeai as genai
-    _USE_GENAI_CLIENT = False
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-import json
+from app.ai_multi_provider import ai_engine
+
+logger = logging.getLogger(__name__)
 
 
 class AIAnalyst:
     """
-    Translates natural language questions into SQL queries and executes them.
+    Translates natural language questions into safe PostgreSQL queries and executes them.
+    Powered by the Multi-Provider AI Engine (Groq / Gemini / OpenRouter).
     """
     def __init__(self, db: Session):
         self.db = db
-        # Set up Gemini
-        api_key = os.getenv("GEMINI_API_KEY")
-        if api_key:
-            if _USE_GENAI_CLIENT:
-                self.model = genai.Client(api_key=api_key)
-            else:
-                genai.configure(api_key=api_key)
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
-        else:
-            self.model = None
 
     async def process_query(self, user_query: str, user_id: int):
-        if not self.model:
-            return {"error": "Gemini API key not configured"}
-
         # Define schema context for the LLM
         schema_context = """
         Tables:
@@ -43,9 +28,8 @@ class AIAnalyst:
                         calories_burned, created_at)
 
         Rules:
-        1. Only return the SQL query.
-        2. Use user_id = :user_id for all queries to filter
-           for the specific user.
+        1. Only return the raw SQL query without commentary.
+        2. Use user_id = :user_id for all queries to filter for the specific user.
         3. Only use SELECT statements.
         4. Target PostgreSQL syntax.
         """
@@ -58,33 +42,32 @@ class AIAnalyst:
         )
 
         try:
-            if _USE_GENAI_CLIENT:
-                response = self.model.models.generate_content(
-                    model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
-                    contents=prompt,
-                )
-            else:
-                response = self.model.generate_content(prompt)
+            res = await ai_engine.chat_completion(
+                messages=[{"role": "user", "content": prompt}],
+                system_prompt="You are an expert PostgreSQL database analyst. Generate only safe, valid SELECT queries.",
+                temperature=0.1,
+                max_tokens=250
+            )
+            raw_text = res.get("text", "")
             sql_query = (
-                response.text.strip()
+                raw_text.strip()
                 .replace("```sql", "")
                 .replace("```", "")
+                .strip()
             )
-            
-            # Execute query Safely
-            import logging
+
+            # Safety validations
             cleaned_query = sql_query.strip().upper()
             is_select_or_with = (
                 cleaned_query.startswith("SELECT")
                 or cleaned_query.startswith("WITH")
             )
-            
-            # Detect injection and destructive SQL patterns in any part of the query
+
             mutating_keywords = {"INSERT", "UPDATE", "DELETE", "DROP", "ALTER", "TRUNCATE", "REPLACE", "CREATE"}
             has_mutation = any(kw in cleaned_query.split() or f" {kw} " in cleaned_query or f"\n{kw} " in cleaned_query for kw in mutating_keywords)
 
             if not is_select_or_with or has_mutation or ";" in cleaned_query:
-                logging.getLogger(__name__).error(
+                logger.error(
                     f"Blocked potential destructive query or multi-statement execution attempt: {sql_query}"
                 )
                 return {"error": "Blocked potential security violation in query execution. Only safe read-only single-statement SELECT/WITH queries are allowed."}
@@ -92,25 +75,25 @@ class AIAnalyst:
             result = self.db.execute(text(sql_query), {"user_id": user_id})
             columns = result.keys()
             data = [dict(zip(columns, row)) for row in result.fetchall()]
-            
-            # Summarize results using Gemini
+
+            # Summarize results
             summary_prompt = (
                 f"Summarize these data results for the user's question: "
                 f"'{user_query}'\nData: {json.dumps(data, default=str)}\n"
-                f"Summary:"
+                f"Summary in 2 clear sentences:"
             )
-            if _USE_GENAI_CLIENT:
-                summary_response = self.model.models.generate_content(
-                    model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
-                    contents=summary_prompt,
-                )
-            else:
-                summary_response = self.model.generate_content(summary_prompt)
-            
+            summary_res = await ai_engine.chat_completion(
+                messages=[{"role": "user", "content": summary_prompt}],
+                system_prompt="You are a fitness data analyst. Provide a brief 2-sentence summary of the database query results.",
+                temperature=0.5,
+                max_tokens=150
+            )
+
             return {
                 "query": sql_query,
                 "data": data,
-                "summary": summary_response.text.strip()
+                "summary": summary_res.get("text", "Query executed successfully."),
+                "provider": res.get("provider", "multi-provider")
             }
         except Exception as e:
             return {

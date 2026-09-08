@@ -114,8 +114,69 @@ export const sendCoachMessage = async (
   profile: Record<string, unknown> = {},
   history: Array<{ role: string; text: string }> = []
 ): Promise<string> => {
-  const response = await postAI<{ text: string }>('chat', { message, profile, history });
+  const response = await postAI<{ text: string; provider?: string }>('chat', { message, profile, history });
   return response.text;
+};
+
+export interface VoiceTranscribeResponse {
+  transcript: string;
+  confidence: number;
+  provider: string;
+  parsed_meal?: {
+    meal_name: string;
+    total_calories: number;
+    total_protein: number;
+    total_carbs: number;
+    total_fats: number;
+    items?: Array<{
+      name: string;
+      quantity: string;
+      calories: number;
+      protein: number;
+      carbs: number;
+      fats: number;
+    }>;
+  } | null;
+}
+
+export const transcribeVoiceAudio = async (
+  audioBlob: Blob,
+  mode: 'general' | 'meal' | 'workout' = 'general'
+): Promise<VoiceTranscribeResponse> => {
+  const reader = new FileReader();
+  return new Promise((resolve, reject) => {
+    reader.onloadend = async () => {
+      try {
+        const base64Data = (reader.result as string).split(',')[1];
+        const res = await postAI<VoiceTranscribeResponse>('voice-transcribe', {
+          audio_base64: base64Data,
+          content_type: audioBlob.type || 'audio/webm',
+          mode: mode,
+        });
+        resolve(res);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(audioBlob);
+  });
+};
+
+export const playCoachSpeech = async (text: string): Promise<HTMLAudioElement> => {
+  const response = await fetch(`${API_BASE}/api/ai/voice-speak`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!response.ok) {
+    throw new Error('Voice playback generation failed.');
+  }
+  const blob = await response.blob();
+  const audioUrl = URL.createObjectURL(blob);
+  const audio = new Audio(audioUrl);
+  await audio.play();
+  return audio;
 };
 
 export const createChat = () => ({

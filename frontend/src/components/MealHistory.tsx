@@ -3,43 +3,47 @@ import { History, Calendar, TrendingUp, Loader2, Trash2, Check } from 'lucide-re
 import { MealAPI } from '../services/apiService';
 import { useAPI } from '../hooks/useAPI';
 
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
+
 const LOCAL_LOGS_KEY = 'smarty_meal_logs';
 
 const MealHistory: React.FC = () => {
+  const userId = useCurrentUserId();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   const { data: history, loading, execute: fetchHistory } = useAPI(
-    (userId: string, params: any) => MealAPI.getMealHistory(userId, params)
+    (uId: string, params: any) => MealAPI.getMealHistory(uId, params)
   );
 
   const { data: dailySummary, execute: fetchSummary } = useAPI(
-    (userId: string, date: string) => MealAPI.getDailySummary(userId, date)
+    (uId: string, date: string) => MealAPI.getDailySummary(uId, date)
   );
 
   useEffect(() => {
     loadData();
-  }, [selectedDate]);
+  }, [selectedDate, userId]);
 
   const loadData = async () => {
-    await fetchHistory('user-1', {
+    await fetchHistory(userId, {
       start_date: selectedDate,
       end_date: selectedDate,
       limit: 20
     });
-    await fetchSummary('user-1', selectedDate);
+    await fetchSummary(userId, selectedDate);
   };
 
-  const handleDeleteLocal = (index: number) => {
-    if (deleteConfirm === index) {
-      const logs = JSON.parse(localStorage.getItem(LOCAL_LOGS_KEY) || '[]');
-      logs.splice(index, 1);
-      localStorage.setItem(LOCAL_LOGS_KEY, JSON.stringify(logs));
+  const handleDeleteLocal = (localIndex: number) => {
+    if (deleteConfirm === localIndex) {
+      const targetItem = localLogs[localIndex];
+      if (!targetItem) return;
+      const allSavedLogs = JSON.parse(localStorage.getItem(LOCAL_LOGS_KEY) || '[]');
+      const updated = allSavedLogs.filter((l: any) => l.timestamp !== targetItem.timestamp && l.id !== targetItem.id);
+      localStorage.setItem(LOCAL_LOGS_KEY, JSON.stringify(updated));
       setDeleteConfirm(null);
-      // Force re-render by reloading
       loadData();
     } else {
-      setDeleteConfirm(index);
+      setDeleteConfirm(localIndex);
       setTimeout(() => setDeleteConfirm(null), 3000);
     }
   };

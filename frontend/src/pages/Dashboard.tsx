@@ -13,6 +13,7 @@ import DailyChecklist from '../components/DailyChecklist';
 import AnimatedNumber from '../components/AnimatedNumber';
 import { Reveal } from '../components/Reveal';
 import { useUserProfile } from '../hooks/useUserProfile';
+import { use3DTilt } from '../hooks/use3DTilt';
 
 interface WorkoutLog { name: string; duration: number; caloriesBurned: number; exercisesCompleted: number; exercisesTotal: number; timestamp: string; goal: string; }
 interface MealLog { mealName: string; totalCalories: number; totalProtein: number; totalCarbs: number; totalFats: number; mealType: string; timestamp: string; }
@@ -43,7 +44,8 @@ const ConcentricProgressRing: React.FC<{
   workoutGoalMins,
 }) => {
   const remainingCal = Math.max(0, calorieGoal - todayCalEaten + todayCalsBurned);
-  
+  const ringTilt = use3DTilt<HTMLDivElement>({ maxTilt: 10, scale: 1.01 });
+
   const calBurnedPct = Math.min(100, Math.max(0, Math.round((todayCalsBurned / calorieGoal) * 100)));
   const minutesPct = Math.min(100, Math.max(0, Math.round((todayMinutes / workoutGoalMins) * 100)));
   
@@ -56,12 +58,19 @@ const ConcentricProgressRing: React.FC<{
   const offset2 = c2 - (c2 * minutesPct) / 100;
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 bg-slate-950/60 border border-white/10 rounded-[2.5rem] backdrop-blur-xl relative overflow-hidden group">
+    <div 
+      ref={ringTilt.ref as any}
+      style={ringTilt.style}
+      onMouseMove={ringTilt.onMouseMove as any}
+      onMouseLeave={ringTilt.onMouseLeave as any}
+      className="flex flex-col items-center justify-center p-8 bg-slate-950/70 border border-white/10 rounded-[2.5rem] backdrop-blur-xl relative overflow-hidden group card-3d"
+    >
+      <div className="card-3d-shine" />
       <div className="absolute inset-0 opacity-[0.02] pointer-events-none bg-[radial-gradient(#10b981_1px,transparent_0)] bg-size-[16px_16px]"></div>
-      <div className="relative w-64 h-64">
+      <div className="relative w-64 h-64 card-3d-elevate-md">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 256 256">
           {/* Outer Ring (Emerald - Calories Burned) */}
-          <circle cx="128" cy="128" r={r1} stroke="rgba(16, 185, 129, 0.05)" strokeWidth="12" fill="none" />
+          <circle cx="128" cy="128" r={r1} stroke="rgba(16, 185, 129, 0.08)" strokeWidth="12" fill="none" />
           <circle
             cx="128"
             cy="128"
@@ -76,7 +85,7 @@ const ConcentricProgressRing: React.FC<{
           />
           
           {/* Inner Ring (Orange - Active Minutes) */}
-          <circle cx="128" cy="128" r={r2} stroke="rgba(249, 115, 22, 0.05)" strokeWidth="12" fill="none" />
+          <circle cx="128" cy="128" r={r2} stroke="rgba(249, 115, 22, 0.08)" strokeWidth="12" fill="none" />
           <circle
             cx="128"
             cy="128"
@@ -91,8 +100,8 @@ const ConcentricProgressRing: React.FC<{
           />
         </svg>
         
-        <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-500">Remaining</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center card-3d-elevate-lg">
+          <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Remaining</span>
           <span className="text-4xl font-black italic tracking-tighter text-white my-1">
             {remainingCal}
           </span>
@@ -104,14 +113,14 @@ const ConcentricProgressRing: React.FC<{
         <div className="flex items-center space-x-2.5">
           <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
           <div>
-            <span className="block text-[8px] font-black uppercase tracking-widest text-slate-500">Burned</span>
+            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400">Burned</span>
             <span className="text-xs font-black text-white">{todayCalsBurned} / {calorieGoal} kcal</span>
           </div>
         </div>
         <div className="flex items-center space-x-2.5">
           <div className="w-3 h-3 rounded-full bg-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.4)]" />
           <div>
-            <span className="block text-[8px] font-black uppercase tracking-widest text-slate-500">Active Mins</span>
+            <span className="block text-[9px] font-black uppercase tracking-widest text-slate-400">Active Mins</span>
             <span className="text-xs font-black text-white">{todayMinutes} / {workoutGoalMins} min</span>
           </div>
         </div>
@@ -161,11 +170,19 @@ const MetricCard: React.FC<{
 }> = ({ label, value, target, unit, colorName, colorHex, icon: Icon, history, subText }) => {
   const pct = Math.min(100, Math.max(0, Math.round((value / Math.max(target, 1)) * 100)));
   const colors = statColors[colorName] || statColors.emerald;
+  const tilt = use3DTilt<HTMLDivElement>({ maxTilt: 6 });
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 backdrop-blur-sm relative overflow-hidden group hover:border-white/20 transition-all duration-300">
+    <div 
+      ref={tilt.ref as any}
+      style={tilt.style}
+      onMouseMove={tilt.onMouseMove as any}
+      onMouseLeave={tilt.onMouseLeave as any}
+      className="rounded-2xl border border-white/10 bg-slate-950/70 p-5 backdrop-blur-sm relative overflow-hidden group card-3d hover:border-white/20 transition-all duration-300"
+    >
+      <div className="card-3d-shine" />
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
         <Icon size={16} className={`${colors.text}`} />
       </div>
       
@@ -174,7 +191,7 @@ const MetricCard: React.FC<{
           <span className="text-2xl font-black italic text-white">
             {value.toFixed(0)}
           </span>
-          <span className="text-[10px] text-slate-500 ml-1">
+          <span className="text-[10px] text-slate-400 ml-1">
             / {target.toFixed(0)}{unit}
           </span>
         </div>
@@ -185,7 +202,7 @@ const MetricCard: React.FC<{
 
       <MetricSparkline data={history} color={colorHex} />
       
-      <div className="mt-2.5 flex items-center justify-between text-[9px] font-bold text-slate-500 uppercase tracking-wider">
+      <div className="mt-2.5 flex items-center justify-between text-[9px] font-bold text-slate-400 uppercase tracking-wider">
         <span>{subText}</span>
       </div>
     </div>

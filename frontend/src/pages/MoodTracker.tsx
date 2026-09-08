@@ -13,19 +13,19 @@ interface MoodEntry {
 }
 
 const MOOD_OPTIONS = [
-  { value: 1, label: 'Terrible', icon: <Angry size={20} />, color: 'text-rose-400', bg: 'bg-rose-500/10' },
-  { value: 2, label: 'Bad', icon: <Frown size={20} />, color: 'text-orange-400', bg: 'bg-orange-500/10' },
-  { value: 3, label: 'Okay', icon: <Meh size={20} />, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-  { value: 4, label: 'Good', icon: <Smile size={20} />, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  { value: 5, label: 'Amazing', icon: <Heart size={20} />, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  { value: 1, label: 'Terrible', icon: <Angry size={20} />, activeClass: 'text-rose-400 bg-rose-500/10 border-rose-500/30' },
+  { value: 2, label: 'Bad', icon: <Frown size={20} />, activeClass: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
+  { value: 3, label: 'Okay', icon: <Meh size={20} />, activeClass: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+  { value: 4, label: 'Good', icon: <Smile size={20} />, activeClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
+  { value: 5, label: 'Amazing', icon: <Heart size={20} />, activeClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
 ];
 
 const ENERGY_OPTIONS = [
-  { value: 1, label: 'Exhausted', color: 'text-rose-400' },
-  { value: 2, label: 'Low', color: 'text-orange-400' },
-  { value: 3, label: 'Moderate', color: 'text-amber-400' },
-  { value: 4, label: 'High', color: 'text-emerald-400' },
-  { value: 5, label: 'Max', color: 'text-emerald-400' },
+  { value: 1, label: 'Exhausted', activeClass: 'text-rose-400 bg-rose-500/10 border-rose-500/30' },
+  { value: 2, label: 'Low', activeClass: 'text-orange-400 bg-orange-500/10 border-orange-500/30' },
+  { value: 3, label: 'Moderate', activeClass: 'text-amber-400 bg-amber-500/10 border-amber-500/30' },
+  { value: 4, label: 'High', activeClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
+  { value: 5, label: 'Max', activeClass: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30' },
 ];
 
 const MoodTracker: React.FC = () => {
@@ -99,7 +99,7 @@ const MoodTracker: React.FC = () => {
             <div className="flex space-x-3">
               {MOOD_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => setMood(opt.value)}
-                  className={`flex-1 flex flex-col items-center space-y-2 p-4 rounded-2xl border transition-all ${mood === opt.value ? `${opt.bg} ${opt.color} border-${opt.color.split('-')[1]}-500/30` : 'bg-slate-900 border-slate-800 text-slate-600 hover:text-slate-400'}`}>
+                  className={`flex-1 flex flex-col items-center space-y-2 p-4 rounded-2xl border transition-all ${mood === opt.value ? opt.activeClass : 'bg-slate-900 border-white/10 text-slate-400 hover:text-slate-200'}`}>
                   {opt.icon}
                   <span className="text-[9px] font-black uppercase tracking-widest">{opt.label}</span>
                 </button>
@@ -112,7 +112,7 @@ const MoodTracker: React.FC = () => {
             <div className="flex space-x-2">
               {ENERGY_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => setEnergy(opt.value)}
-                  className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${energy === opt.value ? `${opt.color} bg-${opt.color.split('-')[1]}-500/10 border-${opt.color.split('-')[1]}-500/30` : 'bg-slate-900 border-slate-800 text-slate-600 hover:text-slate-400'}`}>
+                  className={`flex-1 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all ${energy === opt.value ? opt.activeClass : 'bg-slate-900 border-white/10 text-slate-400 hover:text-slate-200'}`}>
                   {opt.label}
                 </button>
               ))}
@@ -189,7 +189,7 @@ const MoodTracker: React.FC = () => {
             {entries.slice(0, 20).map((entry, i) => (
               <div key={i} className="glass-panel p-5 rounded-2xl border border-white/5 card-hover flex items-start justify-between group">
                 <div className="flex items-start space-x-4">
-                  <div className={`p-2 rounded-xl ${MOOD_OPTIONS[entry.mood - 1]?.bg || 'bg-slate-800'}`}>
+                  <div className={`p-2 rounded-xl ${MOOD_OPTIONS[entry.mood - 1]?.activeClass || 'bg-slate-800'}`}>
                     {MOOD_OPTIONS[entry.mood - 1]?.icon || <Meh size={16} />}
                   </div>
                   <div>

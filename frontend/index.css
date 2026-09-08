@@ -1,12 +1,9 @@
 @import "tailwindcss";
 
-/* Global styles - already defined in index.html inline styles */
-/* This file is kept for Vite CSS pipeline compatibility */
-
 body {
   font-family: 'Inter', sans-serif;
-  background-color: #020617;
-  color: #f8fafc;
+  background-color: var(--smarty-bg-canvas, #020617);
+  color: var(--smarty-text-primary, #f8fafc);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -28,8 +25,13 @@ body {
 }
 
 @keyframes slideInFromLeft {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
+  from { transform: translateX(-100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
 
 @keyframes zoomIn {
@@ -43,22 +45,32 @@ body {
 
 .fade-in {
   animation-name: fadeIn;
+  animation-duration: 0.3s;
 }
 
 .slide-in-from-bottom-6 {
   animation-name: slideInFromBottom;
+  animation-duration: 0.4s;
 }
 
 .slide-in-from-top-4 {
   animation-name: slideInFromTop;
+  animation-duration: 0.3s;
 }
 
 .slide-in-from-left {
   animation-name: slideInFromLeft;
+  animation-duration: 0.35s;
+}
+
+.slide-in-from-right-4 {
+  animation-name: slideInFromRight;
+  animation-duration: 0.35s;
 }
 
 .zoom-in-95 {
   animation-name: zoomIn;
+  animation-duration: 0.3s;
 }
 
 /* Light Mode Overrides */
@@ -66,28 +78,39 @@ html.light body {
   background-color: #f8fafc;
   color: #0f172a;
 }
+html.light .app-shell-bg {
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.08), transparent 35%),
+    linear-gradient(180deg, #f8fafc 0%, #e2e8f0 55%, #f8fafc 100%) !important;
+}
+html.light .premium-panel {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08) !important;
+}
 html.light .glass-panel {
-  background: rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
   border: 1px solid rgba(15, 23, 42, 0.08) !important;
   box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05) !important;
 }
 html.light aside {
-  background: rgba(241, 245, 249, 0.8) !important;
+  background: rgba(241, 245, 249, 0.9) !important;
   border-right-color: rgba(15, 23, 42, 0.08) !important;
 }
 html.light header {
-  background: rgba(255, 255, 255, 0.8) !important;
+  background: rgba(255, 255, 255, 0.85) !important;
   border-bottom-color: rgba(15, 23, 42, 0.08) !important;
 }
 html.light main {
   background-color: #f8fafc !important;
 }
 html.light .bg-slate-900,
+html.light .bg-slate-950,
 html.light .bg-slate-950\/60,
 html.light .bg-slate-950\/70,
 html.light .bg-slate-950\/50,
 html.light .bg-slate-900\/60 {
-  background-color: rgba(255, 255, 255, 0.8) !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
   border-color: rgba(15, 23, 42, 0.08) !important;
 }
 html.light .text-white {
@@ -108,10 +131,7 @@ html.light .border-white\/10 {
   border-color: rgba(15, 23, 42, 0.08) !important;
 }
 html.light .bg-white\/5 {
-  background-color: rgba(15, 23, 42, 0.03) !important;
-}
-html.light .bg-orbs .orb {
-  opacity: 0.04;
+  background-color: rgba(15, 23, 42, 0.04) !important;
 }
 
 /* Femme mode remaps the shared Smarty green accent to pink after onboarding. */
@@ -172,10 +192,10 @@ html.female-theme .via-emerald-500\/20 {
 html.female-theme .ring-emerald-100 {
   --tw-ring-color: rgb(252 231 243 / 1) !important;
 }
-html.female-theme .focus\:border-emerald-400:focus {
+html.female-theme .focus\:border-emerald-400:focus,
+html.female-theme .focus\:border-emerald-500\/50:focus {
   border-color: #f472b6 !important;
 }
 html.female-theme .focus\:ring-emerald-100:focus {
   --tw-ring-color: rgb(252 231 243 / 1) !important;
 }
-

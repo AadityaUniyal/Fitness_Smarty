@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -9,10 +8,12 @@ import { fetchAnalytics } from '../services/apiService';
 import { BiometricPoint } from '../types';
 import DeepTechService from '../services/deepTechService';
 import { useUserProfile } from '../hooks/useUserProfile';
+import { useCurrentUserId } from '../hooks/useCurrentUserId';
 import { PageFrame } from '../components/PageFrame';
 
 const Analytics: React.FC = () => {
   const { profile } = useUserProfile();
+  const userId = useCurrentUserId();
   const [data, setData] = useState<BiometricPoint[]>([]);
   const [activeMetric, setActiveMetric] = useState<'steps' | 'weight' | 'heart_rate'>('steps');
   const [activeRange, setActiveRange] = useState<number>(7);
@@ -23,8 +24,7 @@ const Analytics: React.FC = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8000' : '');
-    fetchAnalytics('user-1', activeMetric, activeRange).then(async (res) => {
+    fetchAnalytics(String(userId), activeMetric, activeRange).then(async (res) => {
       setData(res);
       
       if (activeMetric === 'weight' && res.length > 0) {
@@ -39,32 +39,17 @@ const Analytics: React.FC = () => {
           const forecast = await DeepTechService.forecastWeight(history, 7);
           setForecastData(forecast.predictions);
           
-          const targetW = profile.targetWeight ? Number(profile.targetWeight) : 70;
-          const projRes = await fetch(`${API_BASE}/api/forecast/goal-projection?user_id=1&goal_weight=${targetW}`);
-          if (projRes.ok) {
-            setGoalProjection(await projRes.json());
-          }
-        } catch {
-          const lastPt = res[res.length - 1];
-          const mockForecast = Array.from({ length: 7 }, (_, i) => ({
-            date: new Date(Date.now() + (i + 1) * 86400000).toISOString().split('T')[0],
-            predicted_weight: lastPt.value - (i + 1) * 0.12,
-            confidence: 0.9 - (i * 0.05)
-          }));
-          setForecastData(mockForecast);
-          setGoalProjection({
-            current_weight: lastPt.value,
-            goal_weight: 70,
-            projected_date: new Date(Date.now() + 24 * 86400000 * 30).toLocaleDateString(),
-            days_remaining: 30,
-            achievable: true,
-            confidence: 0.85
-          });
+          const targetW = profile?.targetWeight ? Number(profile.targetWeight) : 70;
+          const proj = await DeepTechService.projectGoalDate(history, targetW);
+          setGoalProjection(proj);
+        } catch (e) {
+          console.error("Forecast failed:", e);
         }
       }
+    }).finally(() => {
       setIsLoading(false);
-    }).catch(() => { setIsLoading(false); });
-  }, [activeMetric, activeRange]);
+    });
+  }, [userId, activeMetric, activeRange, profile?.targetWeight]);
 
   const ranges = [
     { label: '7D', value: 7 },

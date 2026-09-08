@@ -89,11 +89,11 @@ class PersonalizedMealScanner:
             if hasattr(genai, "Client"):
                 self.model = _GeminiCompatModel(
                     api_key=self.api_key,
-                    model_name=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
+                    model_name=os.getenv("GEMINI_MODEL", "gemini-3.6-flash"),
                 )
             else:
                 genai.configure(api_key=self.api_key)
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
+                self.model = genai.GenerativeModel(os.getenv("GEMINI_MODEL", "gemini-3.6-flash"))
         else:
             self.model = None
             print("[!] Gemini API not configured. Using mock data.")

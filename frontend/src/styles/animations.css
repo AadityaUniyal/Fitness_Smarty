@@ -1,24 +1,72 @@
-/* ───── Page Transitions ───── */
-.page-enter {
-  opacity: 0;
-  transform: translateY(12px);
-}
-.page-enter-active {
-  opacity: 1;
-  transform: translateY(0);
-  transition: opacity 400ms ease-out, transform 400ms ease-out;
-}
-.page-exit {
-  opacity: 1;
-  transform: translateY(0);
-}
-.page-exit-active {
-  opacity: 0;
-  transform: translateY(-12px);
-  transition: opacity 250ms ease-in, transform 250ms ease-in;
+/* ───── 3D Perspective & Elevation System ───── */
+
+.card-3d {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  will-change: transform;
 }
 
-/* ───── Fade In ───── */
+.card-3d:hover {
+  box-shadow: var(--smarty-depth-shadow), var(--smarty-glow-shadow);
+}
+
+.card-3d-inner {
+  transform-style: preserve-3d;
+  height: 100%;
+}
+
+.card-3d-elevate-sm {
+  transform: translateZ(12px);
+}
+
+.card-3d-elevate-md {
+  transform: translateZ(24px);
+}
+
+.card-3d-elevate-lg {
+  transform: translateZ(40px);
+}
+
+/* Dynamic specular shine overlay driven by --mouse-x and --mouse-y */
+.card-3d-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    600px circle at calc(var(--mouse-x, 0.5) * 100%) calc(var(--mouse-y, 0.5) * 100%),
+    rgba(255, 255, 255, 0.08),
+    transparent 40%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 2;
+}
+
+.card-3d:hover .card-3d-shine {
+  opacity: 1;
+}
+
+/* ───── 3D Entrance Animations ───── */
+@keyframes entrance-3d {
+  from {
+    opacity: 0;
+    transform: perspective(1000px) rotateX(12deg) translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1000px) rotateX(0deg) translateY(0) scale(1);
+  }
+}
+
+.entrance-3d {
+  animation: entrance-3d 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ───── Fade & Scale ───── */
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -35,7 +83,6 @@
   animation: fade-in 0.4s ease-out both;
 }
 
-/* ───── Scale In ───── */
 @keyframes scale-in {
   from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1); }
@@ -61,11 +108,11 @@
   animation: slide-in-left 0.4s ease-out both;
 }
 
-/* ───── Stagger (for children) ───── */
+/* ───── Stagger Children ───── */
 .stagger-children > * {
   opacity: 0;
   transform: translateY(12px);
-  animation: fade-in-up 0.4s ease-out forwards;
+  animation: entrance-3d 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .stagger-children > *:nth-child(1) { animation-delay: 0.02s; }
 .stagger-children > *:nth-child(2) { animation-delay: 0.06s; }
@@ -78,7 +125,7 @@
 .stagger-children > *:nth-child(9) { animation-delay: 0.34s; }
 .stagger-children > *:nth-child(10) { animation-delay: 0.38s; }
 
-/* ───── Shimmer (skeleton) ───── */
+/* ───── Shimmer Skeleton ───── */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
@@ -92,14 +139,14 @@
 
 /* ───── Pulse Glow ───── */
 @keyframes pulse-glow {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
 }
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-/* ───── Count Up ───── */
+/* ───── Count Pop ───── */
 @keyframes count-pop {
   0% { transform: scale(0.5); opacity: 0; }
   70% { transform: scale(1.1); }
@@ -109,53 +156,17 @@
   animation: count-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ───── Card Hover ───── */
+/* ───── Legacy Card Hover (upgraded with depth) ───── */
 .card-hover {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 40px -8px rgba(16, 185, 129, 0.15);
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 16px 45px -8px var(--smarty-accent-glow);
 }
 
-/* ───── Progress Bar Fill ───── */
-@keyframes fill-bar {
-  from { width: 0%; }
-}
-.fill-bar-anim {
-  animation: fill-bar 1s ease-out forwards;
-}
-
-/* ───── Spin Slow ───── */
-@keyframes spin-slow {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-.animate-spin-slow {
-  animation: spin-slow 8s linear infinite;
-}
-
-/* ───── Background Float ───── */
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  33% { transform: translateY(-20px) rotate(1deg); }
-  66% { transform: translateY(10px) rotate(-1deg); }
-}
-.float {
-  animation: float 6s ease-in-out infinite;
-}
-
-/* ───── Border Glow ───── */
-@keyframes border-glow {
-  0%, 100% { border-color: rgba(16, 185, 129, 0.2); }
-  50% { border-color: rgba(16, 185, 129, 0.5); }
-}
-.border-glow {
-  animation: border-glow 3s ease-in-out infinite;
-}
-
-/* App Shell System */
+/* ───── App Shell System ───── */
 .app-shell {
   position: relative;
   isolation: isolate;
@@ -166,23 +177,9 @@
   inset: 0;
   z-index: -3;
   background:
-    radial-gradient(circle at top left, rgba(16, 185, 129, 0.15), transparent 30%),
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 28%),
-    linear-gradient(180deg, #020617 0%, #07111f 55%, #020617 100%);
-}
-
-.app-shell-femme .app-shell-bg {
-  background:
-    radial-gradient(circle at top left, rgba(244, 114, 182, 0.24), transparent 30%),
-    radial-gradient(circle at top right, rgba(251, 113, 133, 0.16), transparent 28%),
-    linear-gradient(180deg, #120716 0%, #1b0f1d 55%, #0f172a 100%);
-}
-
-.app-shell-default .app-shell-bg {
-  background:
-    radial-gradient(circle at top left, rgba(16, 185, 129, 0.15), transparent 30%),
-    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 28%),
-    linear-gradient(180deg, #020617 0%, #07111f 55%, #020617 100%);
+    radial-gradient(circle at top left, var(--smarty-accent-soft), transparent 35%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.1), transparent 30%),
+    linear-gradient(180deg, var(--smarty-bg-canvas) 0%, var(--smarty-bg-canvas-deep) 55%, var(--smarty-bg-canvas) 100%);
 }
 
 .app-shell-orb {
@@ -190,54 +187,55 @@
   width: 28rem;
   height: 28rem;
   border-radius: 9999px;
-  filter: blur(70px);
-  opacity: 0.22;
+  filter: blur(80px);
+  opacity: 0.18;
   z-index: -2;
   pointer-events: none;
-  animation: float 12s ease-in-out infinite;
+  animation: float 14s ease-in-out infinite;
 }
 
 .app-shell-orb-a {
   top: -6rem;
   left: -5rem;
-  background: rgba(16, 185, 129, 0.24);
+  background: var(--smarty-accent-primary);
 }
 
 .app-shell-orb-b {
   bottom: -7rem;
   right: -5rem;
-  background: rgba(59, 130, 246, 0.14);
+  background: #3b82f6;
   animation-delay: -4s;
 }
 
-.app-shell-femme .app-shell-orb-a {
-  background: rgba(244, 114, 182, 0.26);
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-20px) rotate(1deg); }
+  66% { transform: translateY(10px) rotate(-1deg); }
 }
-
-.app-shell-femme .app-shell-orb-b {
-  background: rgba(251, 113, 133, 0.18);
+.float {
+  animation: float 6s ease-in-out infinite;
 }
 
 .premium-panel {
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.82), rgba(2, 6, 23, 0.92));
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 24px 90px rgba(2, 6, 23, 0.45);
+  background: var(--smarty-surface-2);
+  border: 1px solid var(--smarty-border-glass);
+  box-shadow: var(--smarty-depth-shadow);
   backdrop-filter: blur(22px);
 }
 
-.app-shell-femme .premium-panel {
-  background: linear-gradient(180deg, rgba(30, 12, 24, 0.82), rgba(15, 23, 42, 0.92));
-}
-
-/* ───── Ripple Click ───── */
-@keyframes ripple {
-  to { transform: scale(4); opacity: 0; }
-}
-.ripple-effect {
-  position: absolute;
-  border-radius: 50%;
-  background: rgba(16, 185, 129, 0.3);
-  transform: scale(0);
-  animation: ripple 0.6s ease-out;
-  pointer-events: none;
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .card-3d {
+    perspective: none !important;
+    transform: none !important;
+  }
+  .app-shell-orb {
+    animation: none !important;
+  }
 }

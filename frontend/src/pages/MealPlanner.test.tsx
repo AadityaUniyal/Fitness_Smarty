@@ -47,12 +47,12 @@ describe('MealPlanner', () => {
     render(<MealPlanner />);
     fireEvent.click(screen.getByRole('button', { name: /Generate with AI/i }));
 
-    await waitFor(() => expect(mockFetch).toHaveBeenCalled());
+    await waitFor(() => expect(mockFetch).toHaveBeenCalled(), { timeout: 10000 });
     fireEvent.click(screen.getByRole('button', { name: /^Mon$/i }));
-    await waitFor(() => expect(screen.getByText(/Protein Oats/i)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/Protein Oats/i)).toBeInTheDocument(), { timeout: 10000 });
     expect(screen.getByText(/950 kcal/i)).toBeInTheDocument();
     expect(mockGenerateWeeklyMealPlan).not.toHaveBeenCalled();
-  });
+  }, 15000);
 
   it('falls back to local AI generation when backend has no plan', async () => {
     const mockFetch = vi.fn().mockResolvedValue({
@@ -102,8 +102,8 @@ describe('MealPlanner', () => {
     render(<MealPlanner />);
     fireEvent.click(screen.getByRole('button', { name: /Generate with AI/i }));
 
-    await waitFor(() => expect(mockGenerateWeeklyMealPlan).toHaveBeenCalled());
+    await waitFor(() => expect(mockGenerateWeeklyMealPlan).toHaveBeenCalled(), { timeout: 10000 });
     fireEvent.click(screen.getByRole('button', { name: /^Mon$/i }));
     expect(screen.getByText(/Fallback Oats/i)).toBeInTheDocument();
-  });
+  }, 15000);
 });

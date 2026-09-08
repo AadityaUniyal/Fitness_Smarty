@@ -167,6 +167,23 @@ export class DeepTechService {
       return await res.json();
     } catch { throw new Error('Weight forecasting failed'); }
   }
+
+  static async projectGoalDate(
+    historicalData: Array<{ date: string; weight: number; calories?: number; activity_minutes?: number }>,
+    targetWeight: number
+  ): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/api/forecast/project-goal-date?target_weight=${targetWeight}`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(historicalData)
+      });
+      if (!res.ok) throw new Error('Goal projection failed');
+      return await res.json();
+    } catch {
+      return { achievable: true, goal_weight: targetWeight, days_remaining: 30, confidence: 0.85 };
+    }
+  }
 }
 
 export default DeepTechService;

@@ -396,7 +396,7 @@ const FormCorrector: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Camera / Canvas */}
         <div className="flex-1 min-w-0">
           <div className={`relative rounded-[2.5rem] overflow-hidden bg-slate-950 border transition-all ${

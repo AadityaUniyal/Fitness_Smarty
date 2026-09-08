@@ -233,7 +233,10 @@ const TrainingDashboard: React.FC = () => {
                           orange: 'bg-orange-500 hover:bg-orange-400 text-slate-950 border border-orange-500/20',
                           purple: 'bg-purple-500 hover:bg-purple-400 text-slate-950 border border-purple-500/20',
                           cyan: 'bg-cyan-500 hover:bg-cyan-400 text-slate-950 border border-cyan-500/20',
-                        }[model.color]
+                          rose: 'bg-rose-500 hover:bg-rose-400 text-slate-950 border border-rose-500/20',
+                          amber: 'bg-amber-500 hover:bg-amber-400 text-slate-950 border border-amber-500/20',
+                          violet: 'bg-violet-500 hover:bg-violet-400 text-slate-950 border border-violet-500/20',
+                        }[model.color] || 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 border border-emerald-500/20'
                   }`}>
                   {training ? <><Loader2 size={14} className="animate-spin" /><span>Training...</span></> : <><Zap size={14} /><span>Train Model</span></>}
                 </button>

@@ -151,80 +151,75 @@ def _sqlite_engine(database_url: str):
 
 
 def ensure_compatible_schema(engine_obj) -> None:
-    """Apply lightweight additive migrations for local compatibility."""
+    """Apply lightweight additive migrations for local and production compatibility."""
     try:
         dialect = engine_obj.dialect.name
-        with engine_obj.begin() as conn:
-            if dialect == "postgresql":
-                for statement in [
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
-                    "femmecare_enabled BOOLEAN DEFAULT FALSE",
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
-                    "menopause_mode BOOLEAN DEFAULT FALSE",
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
-                    "pregnancy_mode BOOLEAN DEFAULT FALSE",
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
-                    "local_only BOOLEAN DEFAULT FALSE",
-                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS "
-                    "version INTEGER DEFAULT 1",
-                    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS "
-                    "femmecare_enabled BOOLEAN DEFAULT FALSE",
-                    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS "
-                    "menopause_mode BOOLEAN DEFAULT FALSE",
-                    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS "
-                    "pregnancy_mode BOOLEAN DEFAULT FALSE",
-                    "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS "
-                    "local_only BOOLEAN DEFAULT FALSE",
-                    "ALTER TABLE menstrual_cycle_logs "
-                    "ADD COLUMN IF NOT EXISTS "
-                    "encrypted_symptoms TEXT",
-                    "ALTER TABLE menstrual_cycle_logs "
-                    "ADD COLUMN IF NOT EXISTS "
-                    "encrypted_mood TEXT",
-                    "ALTER TABLE menstrual_cycle_logs "
-                    "ADD COLUMN IF NOT EXISTS "
-                    "encrypted_flow_intensity TEXT",
-                    "ALTER TABLE menstrual_cycle_logs "
-                    "ADD COLUMN IF NOT EXISTS "
-                    "encrypted_notes TEXT",
-                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS muscle_group TEXT",
-                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS secondary_muscles JSONB",
-                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS movement_pattern TEXT",
-                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS avg_set_duration_sec INTEGER",
-                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS avg_rest_sec INTEGER",
-                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS default_sets INTEGER",
-                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS default_reps TEXT",
-                    "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS est_calories_per_set DOUBLE PRECISION",
-                    "ALTER TABLE food_items ADD COLUMN IF NOT EXISTS prep_time_minutes INTEGER",
-                    "CREATE TABLE IF NOT EXISTS daily_progress ("
-                    "id SERIAL PRIMARY KEY,"
-                    "user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
-                    "date TIMESTAMP NOT NULL,"
-                    "calories_target DOUBLE PRECISION DEFAULT 0,"
-                    "calories_consumed DOUBLE PRECISION DEFAULT 0,"
-                    "calories_remaining DOUBLE PRECISION DEFAULT 0,"
-                    "protein_target DOUBLE PRECISION DEFAULT 0,"
-                    "protein_consumed DOUBLE PRECISION DEFAULT 0,"
-                    "protein_remaining DOUBLE PRECISION DEFAULT 0,"
-                    "carbs_target DOUBLE PRECISION DEFAULT 0,"
-                    "carbs_consumed DOUBLE PRECISION DEFAULT 0,"
-                    "carbs_remaining DOUBLE PRECISION DEFAULT 0,"
-                    "fats_target DOUBLE PRECISION DEFAULT 0,"
-                    "fats_consumed DOUBLE PRECISION DEFAULT 0,"
-                    "fats_remaining DOUBLE PRECISION DEFAULT 0,"
-                    "workout_planned_id INTEGER,"
-                    "workout_status TEXT DEFAULT 'not_started',"
-                    "sets_completed INTEGER DEFAULT 0,"
-                    "sets_planned INTEGER DEFAULT 0,"
-                    "energy_level INTEGER,"
-                    "soreness_level INTEGER,"
-                    "symptom_severity INTEGER,"
-                    "water_intake_ml INTEGER DEFAULT 0,"
-                    "water_target_ml INTEGER DEFAULT 0,"
-                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
-                    "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
-                ]:
-                    conn.execute(text(statement))
+        if dialect == "postgresql":
+            statements = [
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS femmecare_enabled BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS menopause_mode BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS pregnancy_mode BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS local_only BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS version INTEGER DEFAULT 1",
+                "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS femmecare_enabled BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS menopause_mode BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS pregnancy_mode BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS local_only BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE menstrual_cycle_logs ADD COLUMN IF NOT EXISTS encrypted_symptoms TEXT",
+                "ALTER TABLE menstrual_cycle_logs ADD COLUMN IF NOT EXISTS encrypted_mood TEXT",
+                "ALTER TABLE menstrual_cycle_logs ADD COLUMN IF NOT EXISTS encrypted_flow_intensity TEXT",
+                "ALTER TABLE menstrual_cycle_logs ADD COLUMN IF NOT EXISTS encrypted_notes TEXT",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS muscle_group TEXT",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS secondary_muscles JSONB",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS movement_pattern TEXT",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS met_value DOUBLE PRECISION DEFAULT 5.0",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS calories_per_rep DOUBLE PRECISION DEFAULT 0.15",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS follicular_suitability DOUBLE PRECISION DEFAULT 100.0",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS luteal_suitability DOUBLE PRECISION DEFAULT 80.0",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS menstrual_suitability DOUBLE PRECISION DEFAULT 60.0",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS avg_set_duration_sec INTEGER DEFAULT 40",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS avg_rest_sec INTEGER DEFAULT 60",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS default_sets INTEGER DEFAULT 3",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS default_reps TEXT DEFAULT '8-12'",
+                "ALTER TABLE exercise_items ADD COLUMN IF NOT EXISTS est_calories_per_set DOUBLE PRECISION",
+                "ALTER TABLE food_items ADD COLUMN IF NOT EXISTS prep_time_minutes INTEGER",
+                "CREATE TABLE IF NOT EXISTS daily_progress ("
+                "id SERIAL PRIMARY KEY,"
+                "user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,"
+                "date TIMESTAMP NOT NULL,"
+                "calories_target DOUBLE PRECISION DEFAULT 0,"
+                "calories_consumed DOUBLE PRECISION DEFAULT 0,"
+                "calories_remaining DOUBLE PRECISION DEFAULT 0,"
+                "protein_target DOUBLE PRECISION DEFAULT 0,"
+                "protein_consumed DOUBLE PRECISION DEFAULT 0,"
+                "protein_remaining DOUBLE PRECISION DEFAULT 0,"
+                "carbs_target DOUBLE PRECISION DEFAULT 0,"
+                "carbs_consumed DOUBLE PRECISION DEFAULT 0,"
+                "carbs_remaining DOUBLE PRECISION DEFAULT 0,"
+                "fats_target DOUBLE PRECISION DEFAULT 0,"
+                "fats_consumed DOUBLE PRECISION DEFAULT 0,"
+                "fats_remaining DOUBLE PRECISION DEFAULT 0,"
+                "workout_planned_id INTEGER,"
+                "workout_status TEXT DEFAULT 'not_started',"
+                "sets_completed INTEGER DEFAULT 0,"
+                "sets_planned INTEGER DEFAULT 0,"
+                "energy_level INTEGER,"
+                "soreness_level INTEGER,"
+                "symptom_severity INTEGER,"
+                "water_intake_ml INTEGER DEFAULT 0,"
+                "water_target_ml INTEGER DEFAULT 0,"
+                "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                "updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"
+            ]
+            with engine_obj.connect() as conn:
+                for statement in statements:
+                    try:
+                        trans = conn.begin()
+                        conn.execute(text(statement))
+                        trans.commit()
+                    except Exception as st_err:
+                        trans.rollback()
+                        logger.debug(f"Additive statement skipped: {st_err}")
     except Exception as schema_err:
         logger.warning(f"Schema compatibility migration skipped: {schema_err}")
 

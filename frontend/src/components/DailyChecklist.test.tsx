@@ -23,7 +23,7 @@ describe('DailyChecklist Component', () => {
 
     render(<DailyChecklist userId={123} />);
 
-    expect(screen.getByText(/Daily Checklist/i)).toBeInTheDocument();
+    expect(screen.getByText(/Daily Protocol/i)).toBeInTheDocument();
     
     await waitFor(() => {
       expect(screen.getByText('Drink Water')).toBeInTheDocument();
@@ -97,10 +97,8 @@ describe('DailyChecklist Component', () => {
     const input = screen.getByPlaceholderText(/Add a custom task.../i);
     fireEvent.change(input, { target: { value: 'Meditate' } });
 
-    // The add button has a Plus icon, find the button containing it or the sibling button next to input
-    const buttons = screen.getAllByRole('button');
-    const addButton = buttons.find(b => b.querySelector('svg'));
-    expect(addButton).toBeDefined();
+    const addButton = input.nextElementSibling || input.parentElement?.querySelector('button');
+    expect(addButton).not.toBeNull();
 
     if (addButton) {
       fireEvent.click(addButton);
@@ -132,10 +130,12 @@ describe('DailyChecklist Component', () => {
       expect(screen.getByText('Drink Water')).toBeInTheDocument();
     });
 
-    const deleteBtns = screen.getAllByRole('button');
-    // The delete button is the button containing the X icon
-    const deleteBtn = deleteBtns.find(btn => btn.querySelector('.lucide-x'));
-    expect(deleteBtn).toBeDefined();
+    const taskRows = screen.getAllByText('Drink Water');
+    expect(taskRows.length).toBeGreaterThan(0);
+
+    const taskRowContainer = taskRows[0].closest('.flex');
+    const deleteBtn = taskRowContainer?.querySelector('button');
+    expect(deleteBtn).not.toBeNull();
 
     if (deleteBtn) {
       fireEvent.click(deleteBtn);
@@ -158,7 +158,7 @@ describe('DailyChecklist Component', () => {
 
     await waitFor(() => {
       expect(screen.getByText("Today's Progress")).toBeInTheDocument();
-      expect(screen.getByText("Next:")).toBeInTheDocument();
+      expect(screen.getByText(/Next Target:/i)).toBeInTheDocument();
       expect(screen.getByText("Drink Water")).toBeInTheDocument();
     });
   });

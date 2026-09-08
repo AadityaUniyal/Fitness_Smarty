@@ -4,11 +4,21 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
 from app.models import DailyTask, SmartNextMove, EnhancedUser
+from app.auth import get_current_user_id
 
 router = APIRouter(prefix="/api/tasks", tags=["Daily Checklist"])
 
 @router.get("/{user_id}")
-def get_tasks(user_id: int, task_date: Optional[str] = None, category: Optional[str] = None, db: Session = Depends(get_db)):
+def get_tasks(
+    user_id: int,
+    task_date: Optional[str] = None,
+    category: Optional[str] = None,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to tasks")
+
     q = db.query(DailyTask).filter(DailyTask.user_id == user_id)
     if task_date:
         dt = datetime.fromisoformat(task_date)
@@ -29,7 +39,20 @@ def get_tasks(user_id: int, task_date: Optional[str] = None, category: Optional[
     } for t in tasks]
 
 @router.post("/{user_id}")
-def create_task(user_id: int, title: str, category: str = "general", description: str = "", priority: int = 0, is_auto: bool = False, source: str = "user", db: Session = Depends(get_db)):
+def create_task(
+    user_id: int,
+    title: str,
+    category: str = "general",
+    description: str = "",
+    priority: int = 0,
+    is_auto: bool = False,
+    source: str = "user",
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to create task")
+
     user = db.query(EnhancedUser).filter(EnhancedUser.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
@@ -40,20 +63,38 @@ def create_task(user_id: int, title: str, category: str = "general", description
     return {"id": task.id, "title": task.title, "category": task.category}
 
 @router.put("/{task_id}/toggle")
-def toggle_task(task_id: int, db: Session = Depends(get_db)):
+def toggle_task(
+    task_id: int,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     task = db.query(DailyTask).filter(DailyTask.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
+    if str(task.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     task.is_completed = not task.is_completed
     task.completed_at = datetime.utcnow() if task.is_completed else None
     db.commit()
     return {"id": task.id, "is_completed": task.is_completed}
 
 @router.put("/{task_id}")
-def update_task(task_id: int, title: Optional[str] = None, category: Optional[str] = None, priority: Optional[int] = None, sort_order: Optional[int] = None, db: Session = Depends(get_db)):
+def update_task(
+    task_id: int,
+    title: Optional[str] = None,
+    category: Optional[str] = None,
+    priority: Optional[int] = None,
+    sort_order: Optional[int] = None,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     task = db.query(DailyTask).filter(DailyTask.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
+    if str(task.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     if title is not None: task.title = title
     if category is not None: task.category = category
     if priority is not None: task.priority = priority
@@ -62,17 +103,30 @@ def update_task(task_id: int, title: Optional[str] = None, category: Optional[st
     return {"ok": True}
 
 @router.delete("/{task_id}")
-def delete_task(task_id: int, db: Session = Depends(get_db)):
+def delete_task(
+    task_id: int,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     task = db.query(DailyTask).filter(DailyTask.id == task_id).first()
     if not task:
         raise HTTPException(404, "Task not found")
+    if str(task.user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
     db.delete(task)
     db.commit()
     return {"ok": True}
 
 @router.post("/auto-generate/{user_id}")
-def auto_generate_tasks(user_id: int, db: Session = Depends(get_db)):
+def auto_generate_tasks(
+    user_id: int,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """Generate smart daily tasks based on user profile and incomplete routines"""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied")
     user = db.query(EnhancedUser).filter(EnhancedUser.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")

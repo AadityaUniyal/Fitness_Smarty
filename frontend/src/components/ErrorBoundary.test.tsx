@@ -16,7 +16,7 @@ describe('ErrorBoundary', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText(/Neural Link Disrupted/i)).toBeInTheDocument();
+    expect(screen.getByText(/Something Went Wrong/i)).toBeInTheDocument();
     expect(screen.getByText('smoke failure')).toBeInTheDocument();
 
     consoleError.mockRestore();

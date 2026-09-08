@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Trash2, Check, Image, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Camera, Trash2, Check, Image as ImageIcon, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
 
 const STORAGE_KEY = 'smarty_progress_photos';
 
@@ -9,6 +9,7 @@ interface PhotoEntry {
   dataUrl: string;
   note: string;
   timestamp: string;
+  weight?: number;
 }
 
 const ProgressPhotos: React.FC = () => {
@@ -22,7 +23,11 @@ const ProgressPhotos: React.FC = () => {
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(photos));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(photos));
+    } catch (err) {
+      console.warn('LocalStorage quota exceeded for progress photos', err);
+    }
   }, [photos]);
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -30,15 +35,41 @@ const ProgressPhotos: React.FC = () => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const entry: PhotoEntry = {
-        id: crypto.randomUUID?.() || Date.now().toString(),
-        date: new Date().toISOString().split('T')[0],
-        dataUrl: ev.target?.result as string,
-        note,
-        timestamp: new Date().toISOString(),
+      const rawUrl = ev.target?.result as string;
+      const img = document.createElement('img');
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_DIM = 800;
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_DIM) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          }
+        } else {
+          if (height > MAX_DIM) {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        const compressedUrl = canvas.toDataURL('image/jpeg', 0.75);
+
+        const entry: PhotoEntry = {
+          id: crypto.randomUUID?.() || Date.now().toString(),
+          date: new Date().toISOString().split('T')[0],
+          dataUrl: compressedUrl,
+          note,
+          timestamp: new Date().toISOString(),
+        };
+        setPhotos(prev => [entry, ...prev]);
+        setNote('');
       };
-      setPhotos(prev => [entry, ...prev]);
-      setNote('');
+      img.src = rawUrl;
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -76,7 +107,7 @@ const ProgressPhotos: React.FC = () => {
           {photos.length >= 2 && (
             <button onClick={() => setCompareMode(!compareMode)}
               className="flex items-center space-x-2 px-5 py-3 bg-amber-500/10 border border-amber-500/20 text-amber-400 rounded-2xl font-black text-[9px] uppercase tracking-widest hover:bg-amber-500/20 transition">
-              <Image size={14} />
+              <ImageIcon size={14} />
               <span>{compareMode ? 'Close Compare' : 'Compare Old vs New'}</span>
             </button>
           )}

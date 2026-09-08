@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
     Heart, Calendar, Zap, Moon, Thermometer, Flower2, ClipboardList,
@@ -24,15 +23,24 @@ const SYMPTOMS_OPTIONS = ['Cramps', 'Bloating', 'Headache', 'Back Pain', 'Mood S
 
 const CYCLE_LENGTH = 28;
 
-const computeCycleDay = (): number => {
+const CYCLE_CHART_DATA = [
+    { name: 'Menstrual', value: 5 },
+    { name: 'Follicular', value: 9 },
+    { name: 'Ovulatory', value: 4 },
+    { name: 'Luteal', value: 10 },
+];
+const CYCLE_COLORS = ['#ec4899', '#a855f7', '#f43f5e', '#d946ef'];
+
+const computeCycleDay = (userId?: string | number): number => {
     try {
-        const logs: PeriodLog[] = JSON.parse(localStorage.getItem('smarty_period_log') || '[]');
+        const key = userId ? `smarty_period_log_${userId}` : 'smarty_period_log';
+        const raw = localStorage.getItem(key) || localStorage.getItem('smarty_period_log') || '[]';
+        const logs: PeriodLog[] = JSON.parse(raw);
         if (!logs.length) return 14; // default: mid-cycle
-        const sorted = [...logs].sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
-        const lastStart = new Date(sorted[0].start_date);
-        const now = new Date();
-        const diffDays = Math.floor((now.getTime() - lastStart.getTime()) / (1000 * 60 * 60 * 24));
-        return Math.max(1, Math.min(CYCLE_LENGTH, (diffDays % CYCLE_LENGTH) + 1));
+        const lastLog = logs[0];
+        const startDate = new Date(lastLog.start_date);
+        const diffDays = Math.floor((Date.now() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+        return (diffDays % CYCLE_LENGTH) + 1;
     } catch {
         return 14;
     }
@@ -107,64 +115,33 @@ const FemmeCare: React.FC = () => {
 
     const handleLogPeriod = async () => {
         setSaving(true);
-        const entry: PeriodLog = {
-            start_date: new Date(logDate).toISOString(),
-            symptoms: logSymptoms,
-            mood: logMood,
-            flow_intensity: logFlow,
-        };
+        try {
+            await logPeriod(user?.id || 'anonymous', { logDate, mood: logMood, flow: logFlow, symptoms: logSymptoms });
+            const entry: PeriodLog = {
+                start_date: new Date(logDate).toISOString(),
+                symptoms: logSymptoms,
+                mood: logMood,
+                flow_intensity: logFlow,
+            };
 
-        // Save to localStorage
-        const storageKey = `smarty_period_log_${user?.id || 'anonymous'}`;
-        const prev: PeriodLog[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
-        localStorage.setItem(storageKey, JSON.stringify([entry, ...prev].slice(0, 24)));
-
-        // Submit to backend ONLY if localOnlyMode is false
-        if (!localOnlyMode) {
-            await logPeriod(user.id || 'anonymous', entry);
+            const storageKey = `smarty_period_log_${user?.id || 'anonymous'}`;
+            const prev: PeriodLog[] = JSON.parse(localStorage.getItem(storageKey) || '[]');
+            localStorage.setItem(storageKey, JSON.stringify([entry, ...prev].slice(0, 24)));
+            setSaveSuccess(true);
+            setTimeout(() => {
+                setShowLogModal(false);
+                setSaveSuccess(false);
+                loadData();
+            }, 1000);
+        } catch (e) {
+            console.error("Failed to log period:", e);
+        } finally {
+            setSaving(false);
         }
-
-        // Recompute cycle day
-        setCycleDay(computeCycleDay());
-
-        setSaving(false);
-        setSaveSuccess(true);
-        setTimeout(() => {
-            setSaveSuccess(false);
-            setShowLogModal(false);
-            loadData();
-        }, 1200);
-    };
-
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-96">
-                <div className="relative">
-                    <div className="w-16 h-16 border-4 border-pink-500/20 border-t-pink-500 rounded-full animate-spin"></div>
-                    <Heart className="absolute inset-0 m-auto text-pink-500 animate-pulse" size={20} />
-                </div>
-            </div>
-        );
-    }
-
-    const currentCycleLimit = advice?.learned_cycle_length || CYCLE_LENGTH;
-    const data = [
-        { name: 'Completed', value: cycleDay },
-        { name: 'Remaining', value: Math.max(0, currentCycleLimit - cycleDay) },
-    ];
-    const COLORS = ['#db2777', '#fbcfe8'];
-
-    const phaseColors: Record<string, string> = {
-        'Menstrual': 'text-rose-400 bg-rose-400/10 border-rose-400/20',
-        'Follicular': 'text-pink-400 bg-pink-400/10 border-pink-400/20',
-        'Ovulatory': 'text-purple-400 bg-purple-400/10 border-purple-400/20',
-        'Luteal': 'text-fuchsia-400 bg-fuchsia-400/10 border-fuchsia-400/20',
-        'all': 'text-slate-400 bg-slate-400/10 border-slate-400/20'
     };
 
     return (
         <div className="space-y-8 pb-10">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 rounded-[2.5rem] border border-pink-500/15 bg-linear-to-br from-rose-950/30 via-slate-950 to-fuchsia-950/20 p-6 md:p-8 shadow-[0_20px_80px_rgba(190,24,93,0.12)]">
                 <div>
                     <div className="flex items-center space-x-2 mb-2">
@@ -234,7 +211,7 @@ const FemmeCare: React.FC = () => {
                         <>
                             <button
                                 onClick={() => {
-                                    const feedUrl = `${window.location.origin}/api/female/calendar-feed/${user.id || 'anonymous'}`;
+                                    const feedUrl = `${window.location.origin}/api/female/calendar-feed/${user?.id || 'anonymous'}`;
                                     navigator.clipboard.writeText(feedUrl);
                                     alert("Google Calendar Sync URL copied to clipboard!\n\nTo link with Google:\n1. Open calendar.google.com\n2. Next to 'Other calendars' click '+' then 'From URL'\n3. Paste this link.");
                                 }}
@@ -271,7 +248,7 @@ const FemmeCare: React.FC = () => {
                         <ResponsiveContainer width="100%" height="100%" minWidth={240} minHeight={240}>
                             <PieChart>
                                 <Pie
-                                    data={data}
+                                    data={CYCLE_CHART_DATA}
                                     cx="50%"
                                     cy="50%"
                                     innerRadius={80}
@@ -282,21 +259,17 @@ const FemmeCare: React.FC = () => {
                                     startAngle={90}
                                     endAngle={-270}
                                 >
-                                    {data.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                    {CYCLE_CHART_DATA.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={CYCLE_COLORS[index % CYCLE_COLORS.length]} />
                                     ))}
                                 </Pie>
                             </PieChart>
                         </ResponsiveContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Day</span>
                             <span className="text-5xl font-black text-white italic">{menopauseMode ? "—" : cycleDay}</span>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-pink-500">of {menopauseMode ? "—" : currentCycleLimit}</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-pink-500">of {menopauseMode ? "—" : CYCLE_LENGTH}</span>
                         </div>
-                    </div>
-
-                    <div className={`mt-8 px-4 py-3 rounded-2xl border text-center ${phaseColors[advice?.phase || 'all']}`}>
-                        <span className="text-xs font-black uppercase tracking-widest">{advice?.phase || 'Tracking'} Phase</span>
                     </div>
 
                     {/* Rolling Statistics Display */}

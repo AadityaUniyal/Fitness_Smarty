@@ -50,13 +50,13 @@ const MealAdvisor: React.FC<MealAdvisorProps> = ({ feedback, strategy }) => {
 
                         <div className="grid grid-cols-3 gap-4">
                             {[
-                                { label: 'Protein', pct: feedback.distribution.protein, color: 'blue' },
-                                { label: 'Carbs', pct: feedback.distribution.carbs, color: 'amber' },
-                                { label: 'Fats', pct: feedback.distribution.fats, color: 'purple' },
+                                { label: 'Protein', pct: feedback.distribution.protein, textClass: 'text-blue-400' },
+                                { label: 'Carbs', pct: feedback.distribution.carbs, textClass: 'text-amber-400' },
+                                { label: 'Fats', pct: feedback.distribution.fats, textClass: 'text-purple-400' },
                             ].map(m => (
                                 <div key={m.label} className="text-center">
                                     <p className="text-[9px] font-black text-slate-500 uppercase mb-1">{m.label}</p>
-                                    <p className={`text-sm font-black text-${m.color}-400`}>{m.pct}%</p>
+                                    <p className={`text-sm font-black ${m.textClass}`}>{m.pct}%</p>
                                 </div>
                             ))}
                         </div>

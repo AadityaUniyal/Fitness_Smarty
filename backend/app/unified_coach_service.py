@@ -555,11 +555,8 @@ class UnifiedCoachService:
         }
 
     def _generate_gemini_narration(self, user_profile: Dict, today_metrics: Dict, workout_rec: Dict, meal_rec: Dict, next_action: Dict) -> str:
-        api_key = os.getenv("GEMINI_API_KEY", "")
         fallback = f"Ready for today's focus? Today's workout focuses on {workout_rec.get('reasoning')}. Your next meal should target remaining macros."
-        if not api_key:
-            return fallback
-
+        
         prompt = f"""
 You are SMARTY AI, an expert, concise personal coach.
 Given the structured plan made by local algorithms below, output a short (exactly 2 sentences) natural language daily coach briefing for the user's dashboard.
@@ -586,13 +583,43 @@ Plan Decisions:
 Concise daily summary:
 """
         try:
-            from google import genai
-            client = genai.Client(api_key=api_key)
-            response = client.models.generate_content(
-                model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
-                contents=prompt,
-            )
-            txt = response.text or ""
-            return txt.strip()
+            import asyncio
+            from app.ai_multi_provider import ai_engine
+            
+            try:
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    import concurrent.futures
+                    with concurrent.futures.ThreadPoolExecutor() as executor:
+                        res = executor.submit(
+                            asyncio.run,
+                            ai_engine.chat_completion(
+                                messages=[{"role": "user", "content": prompt}],
+                                system_prompt="You are Smarty AI, an elite fitness coach. Keep it exactly 2 sentences, crisp and encouraging.",
+                                temperature=0.6,
+                                max_tokens=150
+                            )
+                        ).result()
+                else:
+                    res = loop.run_until_complete(
+                        ai_engine.chat_completion(
+                            messages=[{"role": "user", "content": prompt}],
+                            system_prompt="You are Smarty AI, an elite fitness coach. Keep it exactly 2 sentences, crisp and encouraging.",
+                            temperature=0.6,
+                            max_tokens=150
+                        )
+                    )
+            except Exception:
+                res = asyncio.run(
+                    ai_engine.chat_completion(
+                        messages=[{"role": "user", "content": prompt}],
+                        system_prompt="You are Smarty AI, an elite fitness coach. Keep it exactly 2 sentences, crisp and encouraging.",
+                        temperature=0.6,
+                        max_tokens=150
+                    )
+                )
+            
+            txt = res.get("text", "")
+            return txt.strip() if txt.strip() else fallback
         except Exception:
             return fallback

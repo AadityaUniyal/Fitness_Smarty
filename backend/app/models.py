@@ -85,6 +85,9 @@ class ExerciseItem(Base):
     est_calories_per_set = Column(Float, nullable=True)
     calories_per_min = Column(Float, default=5.0)
     calories_per_rep = Column(Float, default=0.1)  # New: Burn per rep
+    met_value = Column(Float, default=5.0)  # Metabolic Equivalent of Task
+    follicular_suitability = Column(Float, default=1.0)
+    luteal_suitability = Column(Float, default=0.8)
     description = Column(Text, nullable=True)
     fitness_goal = Column(String, nullable=True)  # fat_loss, muscle_gain, athletic, maintenance
     

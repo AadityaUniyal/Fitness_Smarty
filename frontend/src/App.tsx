@@ -1,4 +1,3 @@
-
 import React, { useState, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -16,11 +15,12 @@ import NotificationScheduler from './components/NotificationScheduler';
 import ErrorBoundary from './components/ErrorBoundary';
 import ToastContainer from './components/ToastContainer';
 import PageTransition from './components/PageTransition';
+import CommandPalette from './components/CommandPalette';
 import { useToast } from './hooks/useToast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { i18n } from './i18n';
 import { useUserProfile } from './hooks/useUserProfile';
-
+import { use3DTilt } from './hooks/use3DTilt';
 
 // Lazy-loaded page components
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -87,6 +87,8 @@ const DashboardShell: React.FC = () => {
   const { toasts, dismissToast } = useToast();
   const { user: authUser, logout } = useAuth();
   const { user, profile } = useUserProfile();
+  const logoTilt = use3DTilt<HTMLDivElement>({ maxTilt: 12 });
+  
   const activeUser = authUser || user;
   const isFemaleExperience =
     String(profile.gender || authUser?.gender || '').toLowerCase() === 'female' ||
@@ -148,42 +150,65 @@ const DashboardShell: React.FC = () => {
     return () => document.documentElement.classList.remove('female-theme');
   }, [isFemaleExperience]);
 
-  const navItems = [
-    { path: '/dashboard', label: 'My Coach', icon: LayoutDashboard, exact: true },
-    { path: '/dashboard/food-scanner', label: 'Food Scanner', icon: Camera },
-    { path: '/dashboard/workout', label: 'Workouts', icon: Dumbbell },
-    { path: '/dashboard/exercises', label: 'Exercise Library', icon: BookOpen },
-    { path: '/dashboard/quick', label: 'Quick Workout', icon: Zap },
-    { path: '/dashboard/activity', label: 'Activity', icon: Footprints },
-    { path: '/dashboard/photos', label: 'Progress Photos', icon: Image },
-    { path: '/dashboard/sleep', label: 'Sleep', icon: Moon },
-    { path: '/dashboard/meal-planner', label: 'Meal Plan', icon: CalendarDays },
-    { path: '/dashboard/reminders', label: 'Reminders', icon: Bell },
-    { path: '/dashboard/export', label: 'Export', icon: Download },
-    { path: '/dashboard/social', label: 'Social', icon: Users },
-    { path: '/dashboard/wearables', label: 'Wearables', icon: Watch },
-    { path: '/dashboard/form-coach', label: 'Form Coach', icon: Move },
-    { path: '/dashboard/history', label: 'History', icon: Clock },
-    { path: '/dashboard/nutrition', label: 'Nutrition', icon: Utensils },
-    { path: '/dashboard/progress', label: 'Progress', icon: TrendingUp },
-    { path: '/dashboard/body', label: 'Measurements', icon: Activity },
-    { path: '/dashboard/achievements', label: 'Achievements', icon: Trophy },
-    { path: '/dashboard/mood', label: 'Mood & Energy', icon: Heart },
-    { path: '/dashboard/weekly', label: 'Weekly Review', icon: Calendar },
-    { path: '/dashboard/bio', label: 'Profile', icon: Fingerprint },
-    { path: '/dashboard/coach', label: 'Voice Coach', icon: Mic },
-    { path: '/dashboard/hydration', label: 'Hydration', icon: Droplets },
-    ...(isFemaleExperience ? [
-      { path: '/dashboard/femmecare', label: 'FemmeCare', icon: Heart },
-      { path: '/dashboard/female', label: 'Femme Hub', icon: Heart },
-    ] : []),
-    { path: '/dashboard/training', label: 'Training', icon: Brain },
-    { path: '/dashboard/interpreter', label: 'AI Interpreter', icon: BrainCircuit },
-    { path: '/dashboard/feedback', label: 'Feedback', icon: MessageCircle },
-    { path: '/contact', label: 'Contact', icon: Phone },
+  // Grouped Navigation Items
+  const navGroups = [
+    {
+      title: 'CORE ACTIONS',
+      items: [
+        { path: '/dashboard', label: 'My Coach', icon: LayoutDashboard, exact: true },
+        { path: '/dashboard/food-scanner', label: 'Food Scanner', icon: Camera },
+        { path: '/dashboard/workout', label: 'Workouts', icon: Dumbbell },
+        { path: '/dashboard/quick', label: 'Quick Workout', icon: Zap },
+      ]
+    },
+    {
+      title: 'TRACKING & DIET',
+      items: [
+        { path: '/dashboard/nutrition', label: 'Nutrition', icon: Utensils },
+        { path: '/dashboard/meal-planner', label: 'Meal Plan', icon: CalendarDays },
+        { path: '/dashboard/hydration', label: 'Hydration', icon: Droplets },
+        { path: '/dashboard/activity', label: 'Activity', icon: Footprints },
+        { path: '/dashboard/sleep', label: 'Sleep', icon: Moon },
+        { path: '/dashboard/mood', label: 'Mood & Energy', icon: Heart },
+        { path: '/dashboard/body', label: 'Measurements', icon: Activity },
+        { path: '/dashboard/photos', label: 'Progress Photos', icon: Image },
+      ]
+    },
+    {
+      title: 'ANALYTICS & COMMUNITY',
+      items: [
+        { path: '/dashboard/progress', label: 'Progress', icon: TrendingUp },
+        { path: '/dashboard/weekly', label: 'Weekly Review', icon: Calendar },
+        { path: '/dashboard/achievements', label: 'Achievements', icon: Trophy },
+        { path: '/dashboard/history', label: 'History', icon: Clock },
+        { path: '/dashboard/social', label: 'Social', icon: Users },
+        { path: '/dashboard/exercises', label: 'Exercise Library', icon: BookOpen },
+        { path: '/dashboard/form-coach', label: 'Form Coach', icon: Move },
+        { path: '/dashboard/coach', label: 'Voice Coach', icon: Mic },
+      ]
+    },
+    {
+      title: 'SYSTEM & TOOLS',
+      items: [
+        ...(isFemaleExperience ? [
+          { path: '/dashboard/femmecare', label: 'FemmeCare', icon: Heart },
+          { path: '/dashboard/female', label: 'Femme Hub', icon: Heart },
+        ] : []),
+        { path: '/dashboard/wearables', label: 'Wearables', icon: Watch },
+        { path: '/dashboard/bio', label: 'Profile', icon: Fingerprint },
+        { path: '/dashboard/reminders', label: 'Reminders', icon: Bell },
+        { path: '/dashboard/export', label: 'Export', icon: Download },
+        { path: '/dashboard/training', label: 'Training', icon: Brain },
+        { path: '/dashboard/interpreter', label: 'AI Interpreter', icon: BrainCircuit },
+        { path: '/dashboard/feedback', label: 'Feedback', icon: MessageCircle },
+        { path: '/contact', label: 'Contact', icon: Phone },
+      ]
+    }
   ];
 
-  const isActive = (item: typeof navItems[0]) => {
+  const allNavItems = navGroups.flatMap(g => g.items);
+
+  const isActive = (item: { path: string; exact?: boolean }) => {
     if (item.exact) return location.pathname === item.path;
     return location.pathname.startsWith(item.path);
   };
@@ -207,58 +232,70 @@ const DashboardShell: React.FC = () => {
       <aside className="w-72 border-r border-white/5 flex-col hidden lg:flex premium-panel relative shrink-0">
         <div className={`absolute top-0 right-0 w-px h-full bg-linear-to-b from-transparent ${accent.lineVia} to-transparent`} />
 
-        <div className="p-8">
-          <div className="flex items-center space-x-4 group cursor-pointer" onClick={() => navigate('/dashboard')}>
-            <div className={`w-11 h-11 ${accent.bg} rounded-2xl flex items-center justify-center text-slate-950 ${accent.glow} transition-all group-hover:scale-110 rotate-3`}>
+        <div className="p-6">
+          <div 
+            ref={logoTilt.ref as any}
+            style={logoTilt.style}
+            onMouseMove={logoTilt.onMouseMove as any}
+            onMouseLeave={logoTilt.onMouseLeave as any}
+            className="flex items-center space-x-3.5 group cursor-pointer card-3d p-2 rounded-2xl" 
+            onClick={() => navigate('/dashboard')}
+          >
+            <div className={`w-11 h-11 ${accent.bg} rounded-2xl flex items-center justify-center text-slate-950 ${accent.glow} transition-all group-hover:scale-110 shadow-lg card-3d-elevate-sm`}>
               <Zap size={22} className="fill-slate-950" />
             </div>
             <div>
               <h1 className="text-xl font-black italic tracking-tighter text-white">SMARTY <span className={accent.text}>AI</span></h1>
-              <p className="text-[7px] font-black uppercase tracking-[0.4em] text-slate-500">
-                {isFemaleExperience ? 'Femme Fitness v4.0' : 'Neural Fitness v4.0'}
+              <p className="text-[8px] font-black uppercase tracking-[0.35em] text-slate-500">
+                TRAIN INTELLIGENTLY
               </p>
             </div>
           </div>
 
           {/* User pill */}
           {activeUser?.name && (
-            <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+            <div className="mt-4 p-3.5 bg-white/5 border border-white/10 rounded-2xl card-3d">
               <div className="flex items-center space-x-3">
-                <div className={`w-9 h-9 ${accent.bgSofter} rounded-xl flex items-center justify-center`}>
-                  <User size={16} className={accent.text} />
+                <div className={`w-8 h-8 ${accent.bgSofter} rounded-xl flex items-center justify-center`}>
+                  <User size={15} className={accent.text} />
                 </div>
-                <div>
-                  <p className="text-xs font-black text-white">{profile.name || activeUser?.name}</p>
-                  {goalLabel && <p className="text-[9px] text-slate-500 mt-0.5">{goalLabel}</p>}
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black text-white truncate">{profile.name || activeUser?.name}</p>
+                  {goalLabel && <p className="text-[9px] text-slate-400 mt-0.5 truncate">{goalLabel}</p>}
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        <nav className="flex-1 px-5 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
-            const active = isActive(item);
-            return (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`w-full flex items-center space-x-3 px-5 py-3.5 rounded-2xl transition-all relative group ${active
-                  ? `${accent.bgSoft} ${accent.text} border ${accent.border} shadow-inner`
-                  : 'text-slate-500 hover:text-slate-200 hover:bg-white/5 border border-transparent'}`}
-              >
-                <item.icon size={18} className={active ? accent.text : `transition-colors group-hover:${accent.name === 'pink' ? 'text-pink-400' : 'text-emerald-400'}`} />
-                <span className="font-black uppercase tracking-[0.12em] text-[10px]">{item.label}</span>
-                {active && <div className={`absolute right-4 w-1.5 h-1.5 rounded-full ${accent.bg} ${accent.dotGlow}`} />}
-              </button>
-            );
-          })}
+        <nav className="flex-1 px-4 space-y-4 overflow-y-auto custom-scrollbar">
+          {navGroups.map((group, gIdx) => (
+            <div key={gIdx} className="space-y-1">
+              <p className="px-4 text-[8px] font-black uppercase tracking-[0.25em] text-slate-600 mb-1.5">{group.title}</p>
+              {group.items.map((item) => {
+                const active = isActive(item);
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
+                    className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-xl transition-all relative group ${active
+                      ? `${accent.bgSoft} ${accent.text} border ${accent.border} shadow-sm font-bold`
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-white/5 border border-transparent'}`}
+                  >
+                    <item.icon size={16} className={active ? accent.text : 'text-slate-500 group-hover:text-slate-300'} />
+                    <span className="font-bold uppercase tracking-[0.1em] text-[10px]">{item.label}</span>
+                    {active && <div className={`absolute right-3 w-1.5 h-1.5 rounded-full ${accent.bg} ${accent.dotGlow}`} />}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
-        <div className="p-5 border-t border-white/5">
+        <div className="p-4 border-t border-white/5">
           <button
             onClick={handleSignOut}
-            className="w-full flex items-center space-x-3 px-5 py-3.5 text-rose-500/60 hover:text-rose-400 hover:bg-rose-500/5 rounded-2xl transition-colors"
+            className="w-full flex items-center space-x-3 px-4 py-3 text-rose-400/80 hover:text-rose-400 hover:bg-rose-500/10 rounded-2xl transition-colors"
           >
             <LogOut size={16} />
             <span className="font-black uppercase tracking-widest text-[9px]">Sign Out</span>
@@ -272,33 +309,33 @@ const DashboardShell: React.FC = () => {
         <header className="h-20 border-b border-white/5 flex items-center justify-between px-6 md:px-10 bg-slate-950/50 backdrop-blur-3xl sticky top-0 z-40 shrink-0 premium-panel">
           <div className="flex items-center space-x-4">
             <button 
-              className="lg:hidden p-2.5 text-slate-400 bg-white/5 rounded-xl" 
+              className="lg:hidden p-2.5 text-slate-400 bg-white/5 rounded-xl hover:bg-white/10" 
               onClick={() => setSidebarOpen(true)}
               aria-label="Open mobile navigation menu"
             >
               <Menu size={20} />
             </button>
             <div className="hidden sm:block">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-600">Current</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-500">Current</p>
               <p className={`text-sm font-black ${accent.text} uppercase tracking-widest`}>
-                {navItems.find(n => isActive(n))?.label || 'Dashboard'}
+                {allNavItems.find(n => isActive(n))?.label || 'Dashboard'}
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <div className={`hidden xl:flex items-center space-x-2 px-4 py-2 rounded-xl border ${accent.border} ${accent.bgSoft}`}>
+          <div className="flex items-center space-x-3">
+            <div className={`hidden xl:flex items-center space-x-2 px-3.5 py-1.5 rounded-xl border ${accent.border} ${accent.bgSoft}`}>
               <div className={`w-2 h-2 rounded-full ${accent.bg} ${accent.dotGlow}`} />
-              <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${accent.text}`}>Live sync</span>
+              <span className={`text-[9px] font-black uppercase tracking-[0.2em] ${accent.text}`}>Live</span>
             </div>
             {goalLabel && (
-              <div className={`hidden md:flex items-center space-x-2 px-4 py-2 ${accent.bgSoft} border ${accent.border} rounded-xl`}>
-                <span className={`text-[9px] font-black uppercase tracking-widest ${accent.text}`}>Goal: {goalLabel}</span>
+              <div className={`hidden md:flex items-center space-x-2 px-3.5 py-1.5 ${accent.bgSoft} border ${accent.border} rounded-xl`}>
+                <span className={`text-[9px] font-black uppercase tracking-widest ${accent.text}`}>{goalLabel}</span>
               </div>
             )}
             {isFemaleExperience && (
               <button
                 onClick={() => navigate('/dashboard/femmecare')}
-                className="hidden md:flex items-center space-x-2 px-4 py-2 bg-pink-500/10 border border-pink-500/20 rounded-xl text-pink-400 hover:bg-pink-500/15 transition"
+                className="hidden md:flex items-center space-x-2 px-3.5 py-1.5 bg-pink-500/10 border border-pink-500/20 rounded-xl text-pink-400 hover:bg-pink-500/20 transition"
               >
                 <Heart size={14} />
                 <span className="text-[9px] font-black uppercase tracking-widest">Femme mode</span>
@@ -310,7 +347,7 @@ const DashboardShell: React.FC = () => {
                 i18n.setLanguage(nextLang);
                 window.location.reload();
               }}
-              className={`px-3 py-2 text-xs font-black uppercase rounded-2xl border border-white/10 hover:border-white/20 bg-slate-900 text-slate-400 ${accent.hoverText} transition-colors`}
+              className={`px-3 py-2 text-xs font-black uppercase rounded-xl border border-white/10 hover:border-white/20 bg-slate-900 text-slate-300 ${accent.hoverText} transition-colors`}
               title="Change Language / भाषा बदलें"
               aria-label="Change translation locale language"
             >
@@ -318,23 +355,21 @@ const DashboardShell: React.FC = () => {
             </button>
             <button
               onClick={toggleTheme}
-              className={`w-11 h-11 rounded-2xl border border-white/10 hover:border-white/20 bg-slate-900 flex items-center justify-center text-slate-400 ${accent.hoverText} transition-colors`}
+              className={`w-10 h-10 rounded-xl border border-white/10 hover:border-white/20 bg-slate-900 flex items-center justify-center text-slate-300 ${accent.hoverText} transition-all active:scale-95`}
               title="Toggle Theme"
               aria-label="Toggle light and dark color themes"
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>
-            <div className="w-11 h-11 rounded-2xl border border-white/20 bg-slate-900 flex items-center justify-center" aria-label="User avatar profile placeholder">
+            <div className="w-10 h-10 rounded-xl border border-white/20 bg-slate-900 flex items-center justify-center" aria-label="User avatar profile placeholder">
               <User size={18} className={accent.text} />
             </div>
           </div>
-
-
         </header>
 
-        {/* Content area */}
+        {/* Content area - Added pb-24 md:pb-0 to prevent mobile content occlusion by fixed bottom bar */}
         <NotificationScheduler />
-        <div className="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10 relative">
+        <div className="flex-1 overflow-y-auto p-5 md:p-8 lg:p-10 pb-24 md:pb-8 relative custom-scrollbar">
           <div className="absolute inset-0 opacity-[0.018] pointer-events-none" style={{ backgroundImage: accent.grid, backgroundSize: '88px 88px' }} />
           <div className="relative z-10">
             <Suspense fallback={<div className="flex items-center justify-center min-h-[60vh]"><div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" /></div>}>
@@ -362,13 +397,14 @@ const DashboardShell: React.FC = () => {
                   <Route path="achievements" element={<Achievements />} />
                   <Route path="mood" element={<MoodTracker />} />
                   <Route path="training" element={<TrainingDashboard />} />
-                  <Route path="interpreter" element={<AiInterpreter />} />
                   <Route path="bio" element={<BioLink />} />
                   <Route path="coach" element={<LiveCoach />} />
                   <Route path="hydration" element={<div className="max-w-2xl mx-auto pt-6"><HydrationHub /></div>} />
                   <Route path="femmecare" element={<FemmeCare />} />
                   <Route path="female" element={<FemaleDashboard />} />
                   <Route path="feedback" element={<FeedbackPage />} />
+                  <Route path="interpreter" element={<AiInterpreter />} />
+                  <Route path="admin" element={<AdminWorkspace />} />
                 </Routes>
               </PageTransition>
             </Suspense>
@@ -379,31 +415,81 @@ const DashboardShell: React.FC = () => {
       {/* Toast Notifications */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
+      {/* Global Command Palette (Cmd+K) */}
+      <CommandPalette />
+
+      {/* Mobile Bottom Bar (< 768px) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-slate-950/90 backdrop-blur-xl border-t border-slate-800/80 px-4 py-2 flex items-center justify-around">
+        <button 
+          onClick={() => navigate('/dashboard')}
+          className={`flex flex-col items-center space-y-1 ${location.pathname === '/dashboard' ? accent.text : 'text-slate-400'}`}
+        >
+          <LayoutDashboard size={20} />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Home</span>
+        </button>
+        <button 
+          onClick={() => navigate('/dashboard/workout')}
+          className={`flex flex-col items-center space-y-1 ${location.pathname.includes('/workout') ? accent.text : 'text-slate-400'}`}
+        >
+          <Dumbbell size={20} />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Workouts</span>
+        </button>
+        <button 
+          onClick={() => navigate('/dashboard/food-scanner')}
+          className={`-mt-6 w-14 h-14 ${accent.bg} text-slate-950 rounded-full flex items-center justify-center shadow-lg ${accent.glow} active:scale-90 transition-all card-3d`}
+          aria-label="Scan Food Camera"
+        >
+          <Camera size={24} />
+        </button>
+        <button 
+          onClick={() => navigate('/dashboard/nutrition')}
+          className={`flex flex-col items-center space-y-1 ${location.pathname.includes('/nutrition') ? accent.text : 'text-slate-400'}`}
+        >
+          <Utensils size={20} />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Meals</span>
+        </button>
+        <button 
+          onClick={() => navigate('/dashboard/bio')}
+          className={`flex flex-col items-center space-y-1 ${location.pathname.includes('/bio') ? accent.text : 'text-slate-400'}`}
+        >
+          <User size={20} />
+          <span className="text-[9px] font-bold uppercase tracking-wider">Profile</span>
+        </button>
+      </div>
+
       {/* Mobile Menu */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
           <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md" onClick={() => setSidebarOpen(false)} />
-          <aside className={`absolute top-0 left-0 bottom-0 w-72 border-r border-white/10 p-6 flex flex-col premium-panel ${isFemaleExperience ? 'app-shell-femme' : 'app-shell-default'}`}>
-            <div className="flex items-center justify-between mb-8">
-              <span className="text-xl font-black italic text-white">SMARTY <span className="text-emerald-400">AI</span></span>
-              <button onClick={() => setSidebarOpen(false)} className="p-2 text-slate-500"><X size={20} /></button>
+          <aside className={`absolute top-0 left-0 bottom-0 w-80 border-r border-white/10 p-6 flex flex-col premium-panel ${isFemaleExperience ? 'app-shell-femme' : 'app-shell-default'}`}>
+            <div className="flex items-center justify-between mb-6">
+              <span className="text-xl font-black italic text-white">SMARTY <span className={accent.text}>AI</span></span>
+              <button onClick={() => setSidebarOpen(false)} className="p-2 text-slate-400 hover:text-white"><X size={20} /></button>
             </div>
             {activeUser?.name && (
-              <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-2xl">
+              <div className="mb-4 p-4 bg-white/5 border border-white/10 rounded-2xl">
                 <p className="text-sm font-black text-white">{profile.name || activeUser?.name}</p>
-                {goalLabel && <p className="text-[10px] text-slate-500">{goalLabel}</p>}
+                {goalLabel && <p className="text-[10px] text-slate-400 mt-0.5">{goalLabel}</p>}
               </div>
             )}
-            <nav className="flex-1 space-y-2 overflow-y-auto">
-              {navItems.map((item) => (
-                <button key={item.path} onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                  className={`w-full flex items-center space-x-3 p-4 rounded-2xl ${isActive(item) ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'text-slate-500'}`}>
-                  <item.icon size={18} />
-                  <span className="font-black text-[10px] uppercase tracking-widest">{item.label}</span>
-                </button>
+            <nav className="flex-1 space-y-4 overflow-y-auto custom-scrollbar">
+              {navGroups.map((group, gIdx) => (
+                <div key={gIdx} className="space-y-1">
+                  <p className="px-3 text-[8px] font-black uppercase tracking-[0.25em] text-slate-500 mb-1">{group.title}</p>
+                  {group.items.map((item) => (
+                    <button 
+                      key={item.path} 
+                      onClick={() => { navigate(item.path); setSidebarOpen(false); }}
+                      className={`w-full flex items-center space-x-3 p-3.5 rounded-xl text-left ${isActive(item) ? `${accent.bgSoft} ${accent.text} border ${accent.border} font-bold` : 'text-slate-400 hover:text-slate-200'}`}
+                    >
+                      <item.icon size={18} />
+                      <span className="font-bold text-[10px] uppercase tracking-widest">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
               ))}
             </nav>
-            <button onClick={handleSignOut} className="flex items-center space-x-3 p-4 text-rose-400 mt-4">
+            <button onClick={handleSignOut} className="flex items-center space-x-3 p-4 text-rose-400 mt-4 border-t border-white/5">
               <LogOut size={16} />
               <span className="font-black text-[10px] uppercase tracking-widest">Sign Out</span>
             </button>

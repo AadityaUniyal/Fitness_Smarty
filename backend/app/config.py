@@ -37,9 +37,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
-    # ── AI / ML ─────────────────────────────────────────────────────────
+    # ── AI / ML Multi-Provider ──────────────────────────────────────────
     GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-2.0-flash"
+    GEMINI_MODEL: str = "gemini-3.6-flash"
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "groq/compound-mini"
+    OPENROUTER_API_KEY: Optional[str] = None
+    OPENROUTER_MODEL: str = "openrouter/auto"
+    DEEPGRAM_API_KEY: Optional[str] = None
+    DEEPGRAM_VOICE: str = "aura-asteria-en"
 
     # ── FemmeCare Encryption ────────────────────────────────────────────
     FEMME_SECRET_KEY: Optional[str] = None

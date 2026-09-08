@@ -29,18 +29,18 @@ describe('OnboardingPage', () => {
   it('walks through setup and saves profile data', async () => {
     render(<OnboardingPage />);
 
-    expect(screen.getByRole('heading', { name: /Set the System Up Right/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Welcome to SMARTY/i })).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText(/Alex/i), { target: { value: 'Alex Morgan' } });
     fireEvent.change(screen.getByPlaceholderText(/25/i), { target: { value: '29' } });
     fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'Female' } });
     fireEvent.change(screen.getByPlaceholderText(/70/i), { target: { value: '68' } });
     fireEvent.change(screen.getByPlaceholderText(/175/i), { target: { value: '172' } });
 
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /Launch Smarty AI/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Complete Profile/i }));
 
     await waitFor(() => expect(mockUpdateProfile).toHaveBeenCalled());
     expect(localStorage.getItem('smarty_profile')).toContain('Alex Morgan');

@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 interface RevealProps {
   children: React.ReactNode;
   className?: string;
-  animation?: 'fade-in-up' | 'fade-in' | 'scale-in' | 'slide-in-right' | 'slide-in-left';
+  animation?: 'entrance-3d' | 'fade-in-up' | 'fade-in' | 'scale-in' | 'slide-in-right' | 'slide-in-left';
   delay?: number;
   threshold?: number;
   as?: 'div' | 'span';
@@ -12,7 +12,7 @@ interface RevealProps {
 const Reveal: React.FC<RevealProps> = ({
   children,
   className = '',
-  animation = 'fade-in-up',
+  animation = 'entrance-3d',
   delay = 0,
   threshold = 0.1,
   as = 'div',
@@ -26,7 +26,7 @@ const Reveal: React.FC<RevealProps> = ({
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          setTimeout(() => setVisible(true), delay);
+          setVisible(true);
           observer.disconnect();
         }
       },
@@ -34,13 +34,13 @@ const Reveal: React.FC<RevealProps> = ({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [delay, threshold]);
+  }, [threshold]);
 
   const Tag = as as keyof JSX.IntrinsicElements;
   return React.createElement(Tag, {
     ref,
     className: `${className} ${visible ? animation : 'opacity-0'}`,
-    style: { animationDelay: visible ? `${delay}ms` : undefined } as React.CSSProperties,
+    style: { animationDelay: visible && delay > 0 ? `${delay}ms` : undefined } as React.CSSProperties,
   }, children);
 };
 
@@ -83,7 +83,7 @@ const Stagger: React.FC<StaggerProps> = ({
       {children.map((child, i) => (
         <div
           key={i}
-          className={`${itemClassName} ${visible ? 'fade-in-up' : 'opacity-0'}`}
+          className={`${itemClassName} ${visible ? 'entrance-3d' : 'opacity-0'}`}
           style={{ animationDelay: visible ? `${baseDelay + i * staggerDelay}ms` : undefined }}
         >
           {child}

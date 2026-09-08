@@ -3,6 +3,8 @@ import { Zap, Clock, Dumbbell, PlayCircle, CheckCircle2, Circle, Timer, StopCirc
 import { logWorkoutSetProgress } from '../services/apiService';
 import { useCurrentUserId } from '../hooks/useCurrentUserId';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 interface QuickExercise {
   name: string;
   reps: string;
@@ -35,7 +37,6 @@ const TEMPLATES: WorkoutTemplate[] = [
     id: 'fullbody_30', name: 'Full Body', description: 'Complete full body workout', duration: 30, difficulty: 'Intermediate', goal: 'general',
     icon: 'Zap', exercises: [
       { name: 'Bodyweight Squats', reps: '20', sets: 3, muscle: 'Legs' },
-      { name: 'Push-ups', reps: '15', sets: 3, muscle: 'Chest' },
       { name: 'Lunges', reps: '12 each', sets: 3, muscle: 'Legs' },
       { name: 'Diamond Push-ups', reps: '10', sets: 3, muscle: 'Triceps' },
       { name: 'Bicycle Crunches', reps: '20', sets: 3, muscle: 'Core' },

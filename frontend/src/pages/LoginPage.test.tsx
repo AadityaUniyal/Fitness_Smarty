@@ -57,7 +57,7 @@ describe('LoginPage Component', () => {
 
     expect(screen.getByPlaceholderText(/Email Address/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/Password/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Access Hub/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Sign In/i })).toBeInTheDocument();
   });
 
   it('toggles to registration form', () => {
@@ -69,11 +69,11 @@ describe('LoginPage Component', () => {
       </BrowserRouter>
     );
 
-    const toggleBtn = screen.getByRole('button', { name: /Create Account/i });
+    const toggleBtn = screen.getAllByRole('button', { name: /Create Account/i })[0];
     fireEvent.click(toggleBtn);
 
     expect(screen.getByPlaceholderText(/Full Name/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Register/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Register Account/i })).toBeInTheDocument();
   });
 
   it('allows guest access', async () => {
@@ -85,7 +85,7 @@ describe('LoginPage Component', () => {
       </BrowserRouter>
     );
 
-    const guestBtn = screen.getByText(/Guest Mode/i);
+    const guestBtn = screen.getByText(/Explore as Guest/i);
     fireEvent.click(guestBtn);
 
     await waitFor(() => {
@@ -106,7 +106,7 @@ describe('LoginPage Component', () => {
 
     fireEvent.change(screen.getByPlaceholderText(/Email Address/i), { target: { value: 'demo@example.com' } });
     fireEvent.change(screen.getByPlaceholderText(/Password/i), { target: { value: 'secret123' } });
-    fireEvent.click(screen.getByRole('button', { name: /Access Hub/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
 
     await waitFor(() => expect(mockLogin).toHaveBeenCalledWith('demo@example.com', 'secret123'));
     expect(mockNavigate).toHaveBeenCalledWith('/onboarding');
@@ -125,7 +125,7 @@ describe('LoginPage Component', () => {
 
     fireEvent.change(screen.getByPlaceholderText(/Email Address/i), { target: { value: 'bad@example.com' } });
     fireEvent.change(screen.getByPlaceholderText(/Password/i), { target: { value: 'wrongpass' } });
-    fireEvent.click(screen.getByRole('button', { name: /Access Hub/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
 
     await waitFor(() => expect(screen.getByText(/Invalid credentials/i)).toBeInTheDocument());
     expect(mockNavigate).not.toHaveBeenCalled();
@@ -142,7 +142,7 @@ describe('LoginPage Component', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByRole('button', { name: /Syncing.../i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Connecting.../i })).toBeDisabled();
   });
 
   it('routes admins to the admin dashboard after auth', async () => {
@@ -160,7 +160,7 @@ describe('LoginPage Component', () => {
 
     fireEvent.change(screen.getByPlaceholderText(/Email Address/i), { target: { value: 'admin@smarty.ai' } });
     fireEvent.change(screen.getByPlaceholderText(/Password/i), { target: { value: 'secret123' } });
-    fireEvent.click(screen.getByRole('button', { name: /Access Hub/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
 
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/admin'));
   });
@@ -174,15 +174,15 @@ describe('LoginPage Component', () => {
       </BrowserRouter>
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Create Account/i }));
+    fireEvent.click(screen.getAllByRole('button', { name: /Create Account/i })[0]);
     fireEvent.change(screen.getByPlaceholderText(/Full Name/i), { target: { value: 'New User' } });
     fireEvent.change(screen.getByPlaceholderText(/Email Address/i), { target: { value: 'new@example.com' } });
     fireEvent.change(screen.getByPlaceholderText(/Password/i), { target: { value: 'StrongPass123' } });
 
-    const registerBtn = screen.getByRole('button', { name: /Register/i });
+    const registerBtn = screen.getByRole('button', { name: /Register Account/i });
     expect(registerBtn).toBeDisabled();
 
-    fireEvent.click(screen.getByLabelText(/I understand that Smarty AI provides fitness and nutritional guides/i));
+    fireEvent.click(screen.getByLabelText(/I understand that Smarty AI provides fitness and nutritional guidance/i));
     expect(registerBtn).not.toBeDisabled();
 
     fireEvent.click(registerBtn);

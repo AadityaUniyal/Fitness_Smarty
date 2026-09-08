@@ -80,7 +80,7 @@ const createAchievements = (): Achievement[] => [
   {
     id: 'profile_set', title: 'Identified', description: 'Complete your bio profile', category: 'Milestones',
     icon: <Target size={20} />, color: 'emerald',
-    check: () => Boolean(profile.weight || profile.weight_kg) && Boolean(profile.height || profile.height_cm) && Boolean(profile.goal || profile.primary_goal)
+    check: () => { try { const p = JSON.parse(localStorage.getItem('smarty_user_profile') || '{}'); return Boolean(p.weight || p.weight_kg || p.dailyCalorieTarget || p.goal); } catch { return false; } }
   },
   {
     id: 'measurement_3', title: 'Tracked', description: 'Log 3 body measurements', category: 'Milestones',

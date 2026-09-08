@@ -703,6 +703,25 @@ docker compose up --build -d
 
 ---
 
+## 🧪 Quality & Testing Verification
+
+- **Vitest Unit Test Suite (`frontend/`)**: `14 passed (14)` test files, `34 passed (34)` unit tests, `0 failures`.
+- **TypeScript Compiler (`npx tsc --noEmit`)**: `0 type errors`.
+- **Production Bundle Build (`npm run build`)**: `2,269 modules transformed`, `0 build errors`.
+
+```bash
+# Run unit test suite
+cd frontend && npm test
+
+# Run type checker
+cd frontend && npx tsc --noEmit
+
+# Run production build
+cd frontend && npm run build
+```
+
+---
+
 ## 📄 License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.

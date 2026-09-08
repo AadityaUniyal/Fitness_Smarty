@@ -145,7 +145,39 @@ class ExerciseService:
         return {'easier': easier, 'harder': harder}
 
     @staticmethod
-    def recommend_exercises(db: Session, user_experience_level: str, target_muscle_groups: List[str], available_equipment: Optional[List[str]] = None, limit: int = 10) -> List[ExerciseItem]:
+    def calculate_set_calories(
+        met_value: float,
+        user_weight_kg: float,
+        duration_sec: int,
+        reps: int = 10,
+        load_kg: float = 0.0,
+        calories_per_rep: float = 0.15
+    ) -> float:
+        """Calculate precise calorie burn for an exercise set based on MET, weight, reps, and external load."""
+        weight = user_weight_kg if user_weight_kg and user_weight_kg > 0 else 70.0
+        met = met_value if met_value and met_value > 0 else 5.0
+        dur_min = duration_sec / 60.0 if duration_sec and duration_sec > 0 else 0.67
+        
+        # Base MET expenditure formula: (MET * 3.5 * weight_kg / 200) * duration_minutes
+        base_met_calories = (met * 3.5 * weight / 200.0) * dur_min
+        
+        # Rep mechanical energy cost with load scaling factor
+        load_factor = 1.0 + (load_kg / 100.0) * 0.10 if load_kg > 0 else 1.0
+        rep_calories = (reps * calories_per_rep) * load_factor
+        
+        total = round(base_met_calories + rep_calories, 2)
+        return max(total, 0.5)
+
+    @staticmethod
+    def recommend_exercises(
+        db: Session,
+        user_experience_level: str,
+        target_muscle_groups: List[str],
+        available_equipment: Optional[List[str]] = None,
+        fitness_goal: Optional[str] = None,
+        cycle_phase: Optional[str] = None,
+        limit: int = 10
+    ) -> List[ExerciseItem]:
         if not ExerciseService.validate_difficulty_level(user_experience_level):
             raise ValueError(f"Invalid experience level: {user_experience_level}")
         query = db.query(ExerciseItem).filter(
@@ -159,6 +191,21 @@ class ExerciseService:
             eq_filter.append(ExerciseItem.equipment == '')
             eq_filter.append(ExerciseItem.equipment.ilike('bodyweight'))
             query = query.filter(or_(*eq_filter))
+        if fitness_goal:
+            query = query.filter(
+                or_(
+                    func.lower(ExerciseItem.fitness_goal) == fitness_goal.lower(),
+                    ExerciseItem.fitness_goal.is_(None)
+                )
+            )
+        if cycle_phase:
+            phase = cycle_phase.lower()
+            if phase in ('follicular', 'ovulatory'):
+                query = query.filter(ExerciseItem.follicular_suitability >= 70.0)
+            elif phase == 'luteal':
+                query = query.filter(ExerciseItem.luteal_suitability >= 70.0)
+            elif phase == 'menstrual':
+                query = query.filter(ExerciseItem.menstrual_suitability >= 60.0)
         return query.limit(limit).all()
 
     @staticmethod

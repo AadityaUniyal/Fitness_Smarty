@@ -9,6 +9,7 @@ from app.barcode_service import lookup_barcode
 from app.nlp_parser import parse_meal_text
 from app.wearable_importer import import_wearable_csv
 from app.scheduler_service import scheduler, send_hydration_reminder
+from app.auth import get_current_user_id
 
 router = APIRouter(prefix="/api/extensions", tags=["Backend Extensions"])
 
@@ -24,8 +25,8 @@ def schedule_reminder(user_id: str, interval_seconds: int = 3600):
 def cancel_reminder(user_id: str):
     """Cancel a scheduled reminder job."""
     job_id = f"reminder_{user_id}"
-    scheduler.remove_job(job_id)
-    return {"ok": True}
+    res = scheduler.remove_job(job_id)
+    return res
 
 # 2. 10.7 Barcode Lookup OFF API
 @router.get("/barcode/{code}")
@@ -43,8 +44,14 @@ def parse_meal(text: str, db: Session = Depends(get_db)):
 
 # 4. 10.9 GDPR Data Export & Account Deletion
 @router.get("/export/{user_id}")
-def export_user_data(user_id: str, db: Session = Depends(get_db)):
+def export_user_data(
+    user_id: str,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """GDPR compliance: export all user logs and profiles in JSON format."""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to requested user export")
     user = db.query(EnhancedUser).filter(
         (EnhancedUser.clerk_user_id == user_id) | (EnhancedUser.id == user_id)
     ).first()
@@ -97,8 +104,15 @@ def export_user_data(user_id: str, db: Session = Depends(get_db)):
     }
 
 @router.delete("/delete/{user_id}")
-def delete_user_account(user_id: str, db: Session = Depends(get_db)):
+def delete_user_account(
+    user_id: str,
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """GDPR compliance: clean delete user account and all matching logs from DB."""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to delete user account")
+
     user = db.query(EnhancedUser).filter(
         (EnhancedUser.clerk_user_id == user_id) | (EnhancedUser.id == user_id)
     ).first()
@@ -116,8 +130,15 @@ def delete_user_account(user_id: str, db: Session = Depends(get_db)):
 
 # 5. 10.10 Wearable Data Import API
 @router.post("/import-wearable/{user_id}")
-async def import_wearable_file(user_id: str, file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def import_wearable_file(
+    user_id: str,
+    file: UploadFile = File(...),
+    current_auth_id: str = Depends(get_current_user_id),
+    db: Session = Depends(get_db)
+):
     """Ingest CSV Google Fit / Health Connect exports and save as biometrics."""
+    if str(user_id) != str(current_auth_id):
+        raise HTTPException(status_code=403, detail="Access denied to import wearable data")
     user = db.query(EnhancedUser).filter(
         (EnhancedUser.clerk_user_id == user_id) | (EnhancedUser.id == user_id)
     ).first()

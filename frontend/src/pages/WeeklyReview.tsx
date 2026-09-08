@@ -52,7 +52,7 @@ const WeeklyReview: React.FC = () => {
     const dayMeals = mealLogs.filter(m => new Date(m.timestamp).toDateString() === ds);
     return {
       date: shortDates[i],
-      caloriesBurned: serverDaily[i]?.calories_consumed ?? dayWorkouts.reduce((s, w) => s + (w.caloriesBurned || 0), 0),
+      caloriesBurned: serverDaily[i]?.calories_burned ?? dayWorkouts.reduce((s, w) => s + (w.caloriesBurned || 0), 0),
       caloriesEaten: serverDaily[i]?.calories_consumed ?? dayMeals.reduce((s, m) => s + (m.totalCalories || 0), 0),
       protein: serverDaily[i]?.protein_consumed ?? dayMeals.reduce((s, m) => s + (m.totalProtein || 0), 0),
       workouts: serverDaily[i]?.sets_completed ? 1 : dayWorkouts.length,

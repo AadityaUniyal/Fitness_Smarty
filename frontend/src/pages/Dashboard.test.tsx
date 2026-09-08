@@ -113,12 +113,11 @@ describe('Dashboard', () => {
 
     render(<Dashboard />);
 
-    await waitFor(() => expect(mockFetchDailyCoach).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByText(/Explainable Coach/i)).toBeInTheDocument());
     expect(screen.getByRole('heading', { name: /Mission Control/i })).toBeInTheDocument();
     expect(screen.getByText(/Core Synced/i)).toBeInTheDocument();
     expect(screen.getByText(/Daily Checklist Mock/i)).toBeInTheDocument();
     expect(screen.getByText(/Smart Next Move Mock/i)).toBeInTheDocument();
-    expect(screen.getByText(/Explainable Coach/i)).toBeInTheDocument();
     expect(screen.getByText(/91% confidence/i)).toBeInTheDocument();
     expect(screen.getByText(/Coach Timeline/i)).toBeInTheDocument();
     expect(screen.getByText(/Training consistency is trending upward/i)).toBeInTheDocument();

@@ -53,7 +53,6 @@ const Reminders: React.FC = () => {
   }, []);
 
   const resetDefaults = () => {
-    const { getReminders } = require('../services/notificationService');
     setReminders(getReminders());
   };
 

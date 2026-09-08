@@ -723,7 +723,7 @@ export const fetchMissionBriefing = async (): Promise<any> => {
   }
 };
 
-export const fetchDailyCoach = async (payload?: any): Promise<any> => {
+export const fetchDailyCoach = async (payload?: any, _fallback?: any): Promise<any> => {
   try {
     return await apiRequest<any>('/api/coach/daily');
   } catch (e) {
