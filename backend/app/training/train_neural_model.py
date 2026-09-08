@@ -7,17 +7,33 @@ Uses PyTorch for production-grade neural network training
 
 import json
 from datetime import datetime
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from pathlib import Path
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-import joblib
+
+
+try:
+    import torch
+    import torch.nn as nn
+    import torch.optim as optim
+    from torch.utils.data import Dataset, DataLoader
+    TORCH_AVAILABLE = True
+except ImportError:
+    TORCH_AVAILABLE = False
+    nn = type('nn', (), {'Module': object})
+    Dataset = object
+
+try:
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    import joblib
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+    print("[!] scikit-learn not available")
+
 from app.database import get_training_db
 from app.models import FoodTrainingSample
+
 
 
 
