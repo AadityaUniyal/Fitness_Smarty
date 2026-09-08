@@ -25,8 +25,9 @@ def schedule_reminder(user_id: str, interval_seconds: int = 3600):
 def cancel_reminder(user_id: str):
     """Cancel a scheduled reminder job."""
     job_id = f"reminder_{user_id}"
-    res = scheduler.remove_job(job_id)
-    return res
+    scheduler.remove_job(job_id)
+    return {"ok": True, "job_id": job_id}
+
 
 # 2. 10.7 Barcode Lookup OFF API
 @router.get("/barcode/{code}")

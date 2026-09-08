@@ -5,7 +5,9 @@ from sqlalchemy.orm import sessionmaker
 
 from main import app
 from app.database import Base, get_db
+from app.auth import get_current_user_id
 from app.models import EnhancedUser
+
 from app.nlp_parser import parse_meal_text
 from app.wearable_importer import import_wearable_csv
 from app import models
@@ -105,16 +107,21 @@ def test_scheduler_api():
     assert response.json()["ok"] is True
 
 def test_gdpr_export_and_delete_api():
-    # Test export
-    response = client.get("/api/extensions/export/user_test_ext")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["user_profile"]["email"] == "test@smarty.com"
+    app.dependency_overrides[get_current_user_id] = lambda: "user_test_ext"
+    try:
+        # Test export
+        response = client.get("/api/extensions/export/user_test_ext")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user_profile"]["email"] == "test@smarty.com"
 
-    # Test delete
-    response = client.delete("/api/extensions/delete/user_test_ext")
-    assert response.status_code == 200
-    assert response.json()["ok"] is True
+        # Test delete
+        response = client.delete("/api/extensions/delete/user_test_ext")
+        assert response.status_code == 200
+        assert response.json()["ok"] is True
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)
+
 
 def test_wearable_importer_parser():
     csv_data = """date,steps,calories burned,weight (kg)

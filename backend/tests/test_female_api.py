@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from main import app
 from app.database import Base, get_db
+from app.auth import get_current_user_id
 from app import models
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_female_api.db"
@@ -56,6 +57,7 @@ def seed_user_and_cycle():
 
 
 def test_cycle_phase_returns_phase_and_advice():
+    app.dependency_overrides[get_current_user_id] = lambda: "1"
     seed_user_and_cycle()
     resp = client.get("/api/female/cycle-phase/1")
     assert resp.status_code == 200, resp.text
@@ -66,6 +68,7 @@ def test_cycle_phase_returns_phase_and_advice():
 
 
 def test_toggle_femmecare_updates_user_state():
+    app.dependency_overrides[get_current_user_id] = lambda: "2"
     db = TestingSessionLocal()
     user = models.EnhancedUser(
         id=2,
@@ -83,3 +86,4 @@ def test_toggle_femmecare_updates_user_state():
     assert resp.status_code == 200, resp.text
     data = resp.json()
     assert data["settings"]["femmecare_enabled"] is True
+
