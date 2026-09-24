@@ -13,9 +13,9 @@ from datetime import datetime, timedelta
 try:
     from prophet import Prophet
     PROPHET_AVAILABLE = True
-except ImportError:
+except Exception as e:
     PROPHET_AVAILABLE = False
-    print("[!] Prophet not available. Install with: pip install prophet")
+    print(f"[!] Prophet not available: {e}. Using mock mode.")
 
 
 class ProphetTrendAnalyzer:

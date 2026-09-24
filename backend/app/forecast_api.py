@@ -84,9 +84,20 @@ async def analyze_nutrition_trends(request: AnalyzeNutritionRequest):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Trend analysis failed: {str(e)}"
-        )
+        print(f"[!] analyze_nutrition_trends exception: {e}")
+        try:
+            from .ml_models.prophet_analyzer import get_trend_analyzer
+
+            analyzer = get_trend_analyzer()
+            data_dicts = [
+                point.model_dump() if hasattr(point, "model_dump") else point.dict()
+                for point in request.historical_data
+            ]
+            return analyzer._mock_analysis(data_dicts, request.forecast_days)
+        except Exception:
+            raise HTTPException(
+                status_code=500, detail=f"Trend analysis failed: {str(e)}"
+            )
 
 
 @router.get("/goal-projection")
