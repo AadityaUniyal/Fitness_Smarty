@@ -48,7 +48,10 @@ async def predict_future_weight(request: PredictWeightRequest):
 
         predictor = get_weight_predictor()
 
-        data_dicts = [point.model_dump() for point in request.historical_data]
+        data_dicts = [
+            point.model_dump() if hasattr(point, "model_dump") else point.dict()
+            for point in request.historical_data
+        ]
 
         results = predictor.predict_weight(data_dicts, request.days_ahead)
         return results
@@ -67,7 +70,10 @@ async def analyze_nutrition_trends(request: AnalyzeNutritionRequest):
 
         analyzer = get_trend_analyzer()
 
-        data_dicts = [point.model_dump() for point in request.historical_data]
+        data_dicts = [
+            point.model_dump() if hasattr(point, "model_dump") else point.dict()
+            for point in request.historical_data
+        ]
 
         results = analyzer.analyze_nutrition_trends(
             data_dicts, request.forecast_days

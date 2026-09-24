@@ -168,6 +168,8 @@ class ProphetTrendAnalyzer:
         """Mock analysis for development"""
         avg_calories = float(np.mean([d.get('calories', 2000) for d in data[-7:]])) if data else 2000.0
         avg_protein = float(np.mean([d.get('protein_g', 80) for d in data[-7:]])) if data else 80.0
+        avg_carbs = float(np.mean([d.get('carbs_g', 200) for d in data[-7:]])) if data else 200.0
+        avg_fat = float(np.mean([d.get('fat_g', 60) for d in data[-7:]])) if data else 60.0
         
         forecast = []
         for day in range(forecast_days):
@@ -194,6 +196,20 @@ class ProphetTrendAnalyzer:
                 'recent_avg': round(float(avg_protein), 1),
                 'forecast_avg': round(float(avg_protein), 1),
                 'change_percent': -1.2
+            },
+            'carbs_trend': {
+                'metric': 'carbs_g',
+                'trend': 'stable',
+                'recent_avg': round(float(avg_carbs), 1),
+                'forecast_avg': round(float(avg_carbs), 1),
+                'change_percent': 0.0
+            },
+            'fat_trend': {
+                'metric': 'fat_g',
+                'trend': 'stable',
+                'recent_avg': round(float(avg_fat), 1),
+                'forecast_avg': round(float(avg_fat), 1),
+                'change_percent': 0.0
             },
             'insights': [
                 "[CHART] Your nutrition is stable over the past week",
