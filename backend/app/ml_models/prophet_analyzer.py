@@ -83,53 +83,95 @@ class ProphetTrendAnalyzer:
         metric: str,
         forecast_days: int
     ) -> Dict[str, Any]:
-        """Analyze single metric with Prophet"""
-        # Prepare DataFrame
-        df = pd.DataFrame([
-            {
-                'ds': datetime.strptime(d['date'], '%Y-%m-%d') if isinstance(d['date'], str) else d['date'],
-                'y': d.get(metric, 0)
-            }
-            for d in data
-        ])
-        
-        # Fit Prophet model
-        model = Prophet(
-            daily_seasonality=False,
-            weekly_seasonality=True,
-            yearly_seasonality=False
-        )
-        model.fit(df)
-        
-        # Make forecast
-        future = model.make_future_dataframe(periods=forecast_days)
-        forecast = model.predict(future)
-        
-        # Extract key info
-        recent_actual = df['y'].tail(7).mean()
-        forecast_avg = forecast['yhat'].tail(forecast_days).mean()
-        trend = 'increasing' if forecast_avg > recent_actual else 'decreasing' if forecast_avg < recent_actual else 'stable'
-        
-        # Get forecast values
-        forecast_values = []
-        for idx in range(-forecast_days, 0):
-            forecast_values.append({
-                'date': str(forecast.iloc[idx]['ds'].strftime('%Y-%m-%d')),
-                'predicted': round(float(forecast.iloc[idx]['yhat']), 1),
-                'lower_bound': round(float(forecast.iloc[idx]['yhat_lower']), 1),
-                'upper_bound': round(float(forecast.iloc[idx]['yhat_upper']), 1)
-            })
-        
-        recent_val = float(recent_actual)
-        forecast_val = float(forecast_avg)
-        change_pct = float((forecast_val - recent_val) / recent_val * 100) if recent_val != 0 else 0.0
+        """Analyze single metric with Prophet, with fallback for constant/zero-variance data or Stan failures"""
+        try:
+            # Prepare DataFrame
+            df = pd.DataFrame([
+                {
+                    'ds': datetime.strptime(d['date'], '%Y-%m-%d') if isinstance(d['date'], str) else d['date'],
+                    'y': float(d.get(metric, 0))
+                }
+                for d in data
+            ])
+            
+            # Check if variance is near 0 or data length small
+            if df['y'].std() < 1e-5:
+                return self._fallback_metric_analysis(df, metric, forecast_days)
 
+            # Fit Prophet model
+            model = Prophet(
+                daily_seasonality=False,
+                weekly_seasonality=True,
+                yearly_seasonality=False
+            )
+            model.fit(df)
+            
+            # Make forecast
+            future = model.make_future_dataframe(periods=forecast_days)
+            forecast = model.predict(future)
+            
+            # Extract key info
+            recent_actual = float(df['y'].tail(7).mean())
+            forecast_avg = float(forecast['yhat'].tail(forecast_days).mean())
+            trend = 'increasing' if forecast_avg > recent_actual + 1e-3 else 'decreasing' if forecast_avg < recent_actual - 1e-3 else 'stable'
+            
+            # Get forecast values
+            forecast_values = []
+            for idx in range(-forecast_days, 0):
+                forecast_values.append({
+                    'date': str(forecast.iloc[idx]['ds'].strftime('%Y-%m-%d')),
+                    'predicted': round(float(forecast.iloc[idx]['yhat']), 1),
+                    'lower_bound': round(float(forecast.iloc[idx]['yhat_lower']), 1),
+                    'upper_bound': round(float(forecast.iloc[idx]['yhat_upper']), 1)
+                })
+            
+            change_pct = float((forecast_avg - recent_actual) / recent_actual * 100) if recent_actual != 0 else 0.0
+
+            return {
+                'metric': metric,
+                'trend': trend,
+                'recent_avg': round(recent_actual, 1),
+                'forecast_avg': round(forecast_avg, 1),
+                'change_percent': round(change_pct, 1),
+                'forecast': forecast_values
+            }
+        except Exception as e:
+            print(f"[!] Prophet _analyze_metric fallback for {metric}: {e}")
+            df = pd.DataFrame([
+                {
+                    'ds': datetime.strptime(d['date'], '%Y-%m-%d') if isinstance(d['date'], str) else d['date'],
+                    'y': float(d.get(metric, 0))
+                }
+                for d in data
+            ])
+            return self._fallback_metric_analysis(df, metric, forecast_days)
+
+    def _fallback_metric_analysis(
+        self,
+        df: pd.DataFrame,
+        metric: str,
+        forecast_days: int
+    ) -> Dict[str, Any]:
+        """Fallback analysis for constant values or Prophet fitting failures"""
+        recent_avg = float(df['y'].tail(7).mean()) if not df.empty else 0.0
+        last_date = df['ds'].iloc[-1] if not df.empty else datetime.now()
+        
+        forecast_values = []
+        for i in range(forecast_days):
+            pred_date = last_date + timedelta(days=i+1)
+            forecast_values.append({
+                'date': pred_date.strftime('%Y-%m-%d'),
+                'predicted': round(recent_avg, 1),
+                'lower_bound': round(recent_avg * 0.95, 1),
+                'upper_bound': round(recent_avg * 1.05, 1)
+            })
+            
         return {
             'metric': metric,
-            'trend': trend,
-            'recent_avg': round(recent_val, 1),
-            'forecast_avg': round(forecast_val, 1),
-            'change_percent': round(change_pct, 1),
+            'trend': 'stable',
+            'recent_avg': round(recent_avg, 1),
+            'forecast_avg': round(recent_avg, 1),
+            'change_percent': 0.0,
             'forecast': forecast_values
         }
     
