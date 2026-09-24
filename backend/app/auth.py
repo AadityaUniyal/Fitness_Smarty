@@ -42,15 +42,41 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 # Token blacklist set (stores JTI or token hash for revoked tokens)
-_token_blacklist: set = set()
+_redis_client = None
+try:
+    import redis  # type: ignore
+    _redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    _client = redis.from_url(_redis_url, socket_timeout=1.0)
+    _client.ping()
+    _redis_client = _client
+except Exception:
+    _redis_client = None
+
+_local_token_blacklist: set = set()
+_local_reset_tokens: dict = {}
 
 
 def revoke_token(token: str) -> None:
-    _token_blacklist.add(token)
+    if _redis_client:
+        try:
+            _redis_client.setex(
+                f"revoked:{token}",
+                timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+                "1"
+            )
+            return
+        except Exception:
+            pass
+    _local_token_blacklist.add(token)
 
 
 def is_token_revoked(token: str) -> bool:
-    return token in _token_blacklist
+    if _redis_client:
+        try:
+            return bool(_redis_client.exists(f"revoked:{token}"))
+        except Exception:
+            pass
+    return token in _local_token_blacklist
 
 
 # In-memory password reset tokens: email -> token
@@ -58,15 +84,49 @@ _reset_tokens: dict = {}
 
 
 def store_reset_token(email: str, token: str) -> None:
-    _reset_tokens[email] = token
+    if _redis_client:
+        try:
+            _redis_client.setex(f"reset:{email}", timedelta(minutes=15), token)
+            return
+        except Exception:
+            pass
+    import time
+    _local_reset_tokens[email] = (token, time.time() + 900)
 
 
 def verify_reset_token(email: str, token: str) -> bool:
-    return _reset_tokens.get(email) == token
+    if _redis_client:
+        try:
+            stored = _redis_client.get(f"reset:{email}")
+            if stored is not None:
+                val = (
+                    stored.decode("utf-8")
+                    if isinstance(stored, bytes)
+                    else str(stored)
+                )
+                return val == token
+            return False
+        except Exception:
+            pass
+    import time
+    record = _local_reset_tokens.get(email)
+    if not record:
+        return False
+    stored_token, expiry = record
+    if time.time() > expiry:
+        _local_reset_tokens.pop(email, None)
+        return False
+    return stored_token == token
 
 
 def consume_reset_token(email: str) -> None:
-    _reset_tokens.pop(email, None)
+    if _redis_client:
+        try:
+            _redis_client.delete(f"reset:{email}")
+            return
+        except Exception:
+            pass
+    _local_reset_tokens.pop(email, None)
 
 
 # HTTP Bearer token scheme
@@ -469,7 +529,11 @@ async def get_current_user(
     token = credentials.credentials
     token_data = JWTHandler.decode_token(token)
     try:
-        user_id = int(token_data.user_id) if token_data.user_id is not None else None
+        user_id = (
+            int(token_data.user_id)
+            if token_data.user_id is not None
+            else None
+        )
     except (TypeError, ValueError):
         user_id = token_data.user_id
 

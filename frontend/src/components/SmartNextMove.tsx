@@ -55,7 +55,7 @@ export default function SmartNextMove({
   }, [userId, propAction]);
 
   if (loading) return (
-    <div className="glass-panel rounded-[2rem] border border-white/10 p-6 flex items-center justify-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
+    <div className="glass-panel rounded-4xl border border-white/10 p-6 flex items-center justify-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-wider">
       <Loader2 size={16} className="animate-spin text-emerald-400" /> Analyzing current telemetry...
     </div>
   );

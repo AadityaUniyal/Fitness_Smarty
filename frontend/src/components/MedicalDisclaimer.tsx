@@ -33,7 +33,7 @@ const MedicalDisclaimer: React.FC<MedicalDisclaimerProps> = ({
 
   if (variant === 'modal') {
     return (
-      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-[65] animate-in fade-in">
+      <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-65 animate-in fade-in">
         <div className="glass-panel p-8 rounded-[2.5rem] max-w-md w-full border border-rose-500/20 shadow-2xl space-y-4 card-3d">
           <div className="card-3d-shine" />
           <div className="flex items-center space-x-3 text-rose-400">

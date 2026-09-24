@@ -4,7 +4,7 @@ def test_resnet_classification(client):
         files={"file": ("test.jpg", b"fake_image_data", "image/jpeg")},
         params={"top_k": 3}
     )
-    assert response.status_code in {200, 400, 500} # Models might be un-initialized, but route should exist
+    assert response.status_code in {200, 400, 422}
 
 
 def test_maskrcnn_portions(client):
@@ -13,7 +13,7 @@ def test_maskrcnn_portions(client):
         files={"file": ("test.jpg", b"fake_image_data", "image/jpeg")},
         params={"food_labels": "chicken,rice,broccoli"}
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_ensemble_detection(client):
@@ -22,7 +22,7 @@ def test_ensemble_detection(client):
         files={"file": ("test.jpg", b"fake_image_data", "image/jpeg")},
         params={"use_all_models": True}
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_updated_models_status(client):

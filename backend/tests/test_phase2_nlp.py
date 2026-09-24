@@ -14,7 +14,7 @@ def test_bert_recipe_analysis(client):
             "estimate_nutrition": True
         }
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_clip_text_search(client):
@@ -22,7 +22,7 @@ def test_clip_text_search(client):
         "/api/nlp/search-by-text",
         params={"query": "high protein meal", "top_k": 3}
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_clip_image_search(client):
@@ -31,7 +31,7 @@ def test_clip_image_search(client):
         files={"file": ("test.jpg", b"fake_image_data", "image/jpeg")},
         params={"top_k": 5}
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_ingredient_extraction(client):
@@ -40,7 +40,7 @@ def test_ingredient_extraction(client):
         "/api/nlp/extract-ingredients",
         params={"recipe_text": recipe}
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_nlp_models_status(client):

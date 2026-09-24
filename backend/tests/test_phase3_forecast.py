@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 
+
 def test_lstm_weight_prediction(client):
     historical_data = []
     for i in range(14):
@@ -18,7 +19,7 @@ def test_lstm_weight_prediction(client):
             "days_ahead": 7
         }
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_prophet_nutrition_trends(client):
@@ -40,7 +41,7 @@ def test_prophet_nutrition_trends(client):
             "forecast_days": 14
         }
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_goal_projection(client):
@@ -51,7 +52,7 @@ def test_goal_projection(client):
             "goal_weight": 75.0
         }
     )
-    assert response.status_code in {200, 400, 500}
+    assert response.status_code in {200, 400, 422}
 
 
 def test_forecast_models_status(client):

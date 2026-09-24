@@ -13,31 +13,33 @@ from .database import Base
 class EnhancedUser(Base):
     """Enhanced user model with Clerk authentication"""
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     clerk_user_id = Column(String, unique=True, index=True, nullable=True)
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String, nullable=True)
     full_name = Column(String, nullable=True)
-    
+
     # Profile
     age = Column(Integer, nullable=True)
     weight_kg = Column(Float, nullable=True)
     height_cm = Column(Float, nullable=True)
     gender = Column(String, nullable=True)
     activity_level = Column(String, nullable=True)
-    primary_goal = Column(String, nullable=True)  # weight_loss, muscle_gain, maintenance
+    # weight_loss, muscle_gain, maintenance
+    primary_goal = Column(String, nullable=True)
     femmecare_enabled = Column(Boolean, default=False, nullable=True)
     menopause_mode = Column(Boolean, default=False, nullable=True)
     pregnancy_mode = Column(Boolean, default=False, nullable=True)
     local_only = Column(Boolean, default=False, nullable=True)
     is_admin = Column(Boolean, default=False, nullable=True)
-    
+
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
+
     # Versioning for optimistic locking
     version = Column(Integer, default=1, nullable=False)
     __mapper_args__ = {
@@ -52,11 +54,11 @@ class EnhancedUser(Base):
 class ExerciseCategory(Base):
     """Exercise categories"""
     __tablename__ = "exercise_categories"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     description = Column(Text, nullable=True)
-    
+
     exercises = relationship("ExerciseItem", back_populates="category")
 
     @property
@@ -68,7 +70,7 @@ class ExerciseCategory(Base):
 class ExerciseItem(Base):
     """Individual exercises"""
     __tablename__ = "exercise_items"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("exercise_categories.id"))
     name = Column(String, index=True)
@@ -89,19 +91,20 @@ class ExerciseItem(Base):
     follicular_suitability = Column(Float, default=1.0)
     luteal_suitability = Column(Float, default=0.8)
     description = Column(Text, nullable=True)
-    fitness_goal = Column(String, nullable=True)  # fat_loss, muscle_gain, athletic, maintenance
-    
+    # fat_loss, muscle_gain, athletic, maintenance
+    fitness_goal = Column(String, nullable=True)
+
     category = relationship("ExerciseCategory", back_populates="exercises")
 
 
 class FoodCategory(Base):
     """Food categories"""
     __tablename__ = "food_categories"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, index=True)
     description = Column(Text, nullable=True)
-    
+
     foods = relationship("FoodItem", back_populates="category")
 
     @property
@@ -113,7 +116,7 @@ class FoodCategory(Base):
 class FoodItem(Base):
     """Individual food items"""
     __tablename__ = "food_items"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("food_categories.id"))
     name = Column(String, index=True)
@@ -125,7 +128,7 @@ class FoodItem(Base):
     target_muscle_group = Column(String, nullable=True)
     recommended_for_goal = Column(String, nullable=True)
     prep_time_minutes = Column(Integer, nullable=True)
-    
+
     category = relationship("FoodCategory", back_populates="foods")
 
     @property
@@ -137,7 +140,7 @@ class FoodItem(Base):
 class MealLog(Base):
     """Meal logging"""
     __tablename__ = "meal_logs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     meal_name = Column(String, nullable=True)
@@ -151,7 +154,7 @@ class MealLog(Base):
     is_good_for_user = Column(Boolean, nullable=True)
     user_feedback = Column(Boolean, nullable=True)  # thumbs up/down
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     user = relationship("EnhancedUser", back_populates="meal_logs")
 
     @property
@@ -162,9 +165,10 @@ class MealLog(Base):
 class FoodDetection(Base):
     """YOLOv8 and computer vision detection results"""
     __tablename__ = "food_detections"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    user_id = Column(Integer, ForeignKey(
+        "users.id"), index=True, nullable=True)
     image_path = Column(String)
     yolo_detections = Column(JSON, nullable=True)  # YOLOv8 results
     gemini_detections = Column(JSON, nullable=True)  # Gemini results
@@ -176,7 +180,7 @@ class FoodDetection(Base):
 class WorkoutLog(Base):
     """Workout logging"""
     __tablename__ = "workout_logs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     workout_name = Column(String, nullable=True)
@@ -184,7 +188,7 @@ class WorkoutLog(Base):
     calories_burned = Column(Float)
     exercises_data = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+
     user = relationship("EnhancedUser", back_populates="workout_logs")
 
     @property
@@ -195,7 +199,7 @@ class WorkoutLog(Base):
 class BiometricReading(Base):
     """Biometric data"""
     __tablename__ = "biometric_readings"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     weight_kg = Column(Float, nullable=True)
@@ -210,7 +214,7 @@ class BiometricReading(Base):
 class ProgressSnapshot(Base):
     """Progress tracking"""
     __tablename__ = "progress_snapshots"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     date = Column(DateTime, default=datetime.utcnow)
@@ -234,134 +238,153 @@ class WorkoutSchedule(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     week_start_date = Column(DateTime, nullable=False)
     day_of_week = Column(Integer, nullable=False)  # 0=Monday ... 6=Sunday
-    planned_exercises = Column(JSON, nullable=False)  # list of exercise IDs with sets/reps
+    # list of exercise IDs with sets/reps
+    planned_exercises = Column(JSON, nullable=False)
     status = Column(String, default="planned")  # planned/completed/skipped
 
     user = relationship("EnhancedUser", backref="workout_schedules")
+
 
 class UserBanditState(Base):
     """Per-user Thompson Sampling bandit state for personalization"""
     __tablename__ = "user_bandit_state"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     unique=True, nullable=False)
     alpha = Column(Float, default=1.0)  # success count
     beta = Column(Float, default=1.0)   # failure count
-    last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_updated = Column(DateTime, default=datetime.utcnow,
+                          onupdate=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="bandit_state")
+
 
 class UserStreak(Base):
     """User activity streaks"""
     __tablename__ = "user_streaks"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    streak_type = Column(String, nullable=False)  # workout, nutrition, hydration, login
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
+    # workout, nutrition, hydration, login
+    streak_type = Column(String, nullable=False)
     current_streak = Column(Integer, default=0)
     longest_streak = Column(Integer, default=0)
     last_activity_date = Column(DateTime, nullable=True)
     started_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
 
 class Achievement(Base):
     """Achievement definitions (global templates)"""
     __tablename__ = "achievements"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     description = Column(Text, nullable=False)
-    category = Column(String, nullable=False)  # workout, nutrition, social, streak, milestone
-    achievement_type = Column(String, nullable=False)  # count, streak, goal, special
+    # workout, nutrition, social, streak, milestone
+    category = Column(String, nullable=False)
+    # count, streak, goal, special
+    achievement_type = Column(String, nullable=False)
     icon = Column(String, nullable=True)  # emoji or icon identifier
     rarity = Column(String, default="common")  # common, rare, epic, legendary
     points = Column(Integer, default=10)
-    
+
     # Criteria (JSON with flexible conditions)
     criteria = Column(JSON, nullable=False)
     # Example: {"type": "workout_count", "target": 50}
     # Example: {"type": "streak_days", "streak_type": "workout", "target": 7}
     # Example: {"type": "calories_burned", "target": 10000}
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class UserAchievement(Base):
     """User's earned achievements"""
     __tablename__ = "user_achievements"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    achievement_id = Column(Integer, ForeignKey("achievements.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
+    achievement_id = Column(Integer, ForeignKey(
+        "achievements.id"), nullable=False)
     progress = Column(Float, default=0.0)  # 0-100 percentage
     is_completed = Column(Boolean, default=False)
     completed_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
+
     achievement = relationship("Achievement", foreign_keys=[achievement_id])
 
 
 class Badge(Base):
     """Badge definitions (special awards)"""
     __tablename__ = "badges"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
     description = Column(Text, nullable=False)
     icon = Column(String, nullable=True)
-    tier = Column(String, default="bronze")  # bronze, silver, gold, platinum, diamond
-    category = Column(String, nullable=False)  # strength, cardio, nutrition, consistency
+    # bronze, silver, gold, platinum, diamond
+    tier = Column(String, default="bronze")
+    # strength, cardio, nutrition, consistency
+    category = Column(String, nullable=False)
     points = Column(Integer, default=25)
-    
+
     # Requirements (more specific than achievements)
     requirements = Column(JSON, nullable=False)
     # Example: {"exercise_type": "strength", "total_reps": 1000}
     # Example: {"meal_logs": 100, "protein_avg": 150}
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class UserBadge(Base):
     """User's earned badges"""
     __tablename__ = "user_badges"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
     badge_id = Column(Integer, ForeignKey("badges.id"), nullable=False)
     earned_at = Column(DateTime, default=datetime.utcnow)
     is_equipped = Column(Boolean, default=False)  # Display on profile
-    
+
     badge = relationship("Badge", foreign_keys=[badge_id])
 
 
 class UserPoints(Base):
     """User point tracking and leaderboard"""
     __tablename__ = "user_points"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     unique=True, nullable=False)
     total_points = Column(Integer, default=0)
     level = Column(Integer, default=1)
     experience_points = Column(Integer, default=0)  # XP within current level
-    
+
     # Point sources breakdown
     workout_points = Column(Integer, default=0)
     nutrition_points = Column(Integer, default=0)
     social_points = Column(Integer, default=0)
     streak_points = Column(Integer, default=0)
     achievement_points = Column(Integer, default=0)
-    
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
 
 class UserProfile(Base):
     """Extended user profile for recommendations"""
     __tablename__ = "user_profiles"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), unique=True, index=True)
+    user_id = Column(Integer, ForeignKey(
+        "users.id", ondelete="CASCADE"), unique=True, index=True)
     age = Column(Integer, nullable=True)
     weight_kg = Column(Float, nullable=True)
     height_cm = Column(Float, nullable=True)
@@ -379,7 +402,8 @@ class UserProfile(Base):
     pregnancy_mode = Column(Boolean, default=False, nullable=True)
     local_only = Column(Boolean, default=False, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="profile")
 
@@ -395,9 +419,10 @@ class UserProfile(Base):
 class UserGoal(Base):
     """User fitness/nutrition goals"""
     __tablename__ = "user_goals"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    user_id = Column(Integer, ForeignKey(
+        "users.id", ondelete="CASCADE"), index=True)
     goal_type = Column(String)  # weight_loss, muscle_gain, maintenance, etc.
     target_value = Column(Float, nullable=True)
     current_value = Column(Float, nullable=True)
@@ -406,7 +431,8 @@ class UserGoal(Base):
     is_active = Column(Boolean, default=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="goals")
 
@@ -414,7 +440,7 @@ class UserGoal(Base):
 class SocialActivity(Base):
     """Social feed activity"""
     __tablename__ = "social_activities"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), index=True)
     activity_type = Column(String)  # workout, achievement, milestone
@@ -427,9 +453,10 @@ class SocialActivity(Base):
 class BiometricRecord(Base):
     """General biometric tracking records"""
     __tablename__ = "biometric_records"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    user_id = Column(Integer, ForeignKey(
+        "users.id", ondelete="CASCADE"), index=True)
     category = Column(String)  # steps, heart_rate, sleep, etc.
     value = Column(Float)
     unit = Column(String, nullable=True)
@@ -444,7 +471,7 @@ class FoodTrainingSample(Base):
     Stores synthetic and real verfied food data for ML training.
     """
     __tablename__ = "food_training_dataset"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     image_signature = Column(String, nullable=True)  # Vector hash or S3 path
     label = Column(String, index=True)
@@ -452,7 +479,8 @@ class FoodTrainingSample(Base):
     protein = Column(Float, nullable=True)
     carbs = Column(Float, nullable=True)
     fats = Column(Float, nullable=True)
-    source = Column(String)  # 'synthetic', 'user_correction', 'verified_upload'
+    # 'synthetic', 'user_correction', 'verified_upload'
+    source = Column(String)
     verified = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -460,43 +488,49 @@ class FoodTrainingSample(Base):
 class FemaleExerciseItem(Base):
     """Specialized exercises for women"""
     __tablename__ = "female_exercise_items"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     category_id = Column(Integer, ForeignKey("exercise_categories.id"))
     name = Column(String, index=True)
     targeted_muscle = Column(String, nullable=True)
-    difficulty = Column(String, nullable=True) # Beginner, Intermediate, Advanced
+    # Beginner, Intermediate, Advanced
+    difficulty = Column(String, nullable=True)
     equipment = Column(String, nullable=True)
     calories_per_min = Column(Float, default=5.0)
     calories_per_rep = Column(Float, default=0.1)
-    suitable_cycle_phase = Column(String, default="all") # Menstrual, Follicular, Ovulatory, Luteal, all
+    # Menstrual, Follicular, Ovulatory, Luteal, all
+    suitable_cycle_phase = Column(String, default="all")
     description = Column(Text, nullable=True)
-    
+
     category = relationship("ExerciseCategory")
 
 
 class MenstrualCycleLog(Base):
     """Menstrual cycle tracking for female users"""
     __tablename__ = "menstrual_cycle_logs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True) # Unified with integer user id
+    # Unified with integer user id
+    user_id = Column(Integer, ForeignKey(
+        "users.id", ondelete="CASCADE"), index=True)
     start_date = Column(DateTime, nullable=False)
     end_date = Column(DateTime, nullable=True)
     cycle_length_days = Column(Integer, default=28)
-    
+
     # Store encrypted text format at application level to safeguard health data privacy
-    symptoms = Column(JSON, nullable=True) # Or encrypted string representation
-    mood = Column(String, nullable=True) # Or encrypted string representation
-    flow_intensity = Column(String, nullable=True) # Or encrypted string representation
-    notes = Column(Text, nullable=True) # Or encrypted string representation
-    
+    # Or encrypted string representation
+    symptoms = Column(JSON, nullable=True)
+    mood = Column(String, nullable=True)  # Or encrypted string representation
+    # Or encrypted string representation
+    flow_intensity = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)  # Or encrypted string representation
+
     # Explicit application-layer encrypted fields columns (stores full cipher text)
     encrypted_symptoms = Column(Text, nullable=True)
     encrypted_mood = Column(Text, nullable=True)
     encrypted_flow_intensity = Column(Text, nullable=True)
     encrypted_notes = Column(Text, nullable=True)
-    
+
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="menstrual_cycle_logs")
@@ -507,7 +541,8 @@ class UserFeedback(Base):
     __tablename__ = "user_feedback"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey(
+        "users.id", ondelete="CASCADE"), index=True, nullable=False)
 
     # Rating: 1–5 stars
     rating = Column(Integer, nullable=False)
@@ -519,7 +554,8 @@ class UserFeedback(Base):
     message = Column(Text, nullable=False)
 
     # Optional: which page/module the feedback is about
-    module = Column(String, nullable=True)  # e.g. "workout", "nutrition", "ai_chat"
+    # e.g. "workout", "nutrition", "ai_chat"
+    module = Column(String, nullable=True)
 
     # Sentiment: positive | neutral | negative (auto-computed or AI)
     sentiment = Column(String, nullable=True)
@@ -537,7 +573,8 @@ class UserFeedback(Base):
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
 
 class DailyProgress(Base):
@@ -545,8 +582,10 @@ class DailyProgress(Base):
     __tablename__ = "daily_progress"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False)
-    date = Column(DateTime, default=datetime.utcnow, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey(
+        "users.id", ondelete="CASCADE"), index=True, nullable=False)
+    date = Column(DateTime, default=datetime.utcnow,
+                  index=True, nullable=False)
 
     calories_target = Column(Float, default=0)
     calories_consumed = Column(Float, default=0)
@@ -577,7 +616,8 @@ class DailyProgress(Base):
     water_target_ml = Column(Integer, default=0)
 
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
 
 class DailyTask(Base):
@@ -585,7 +625,8 @@ class DailyTask(Base):
     __tablename__ = "daily_tasks"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
     date = Column(DateTime, default=datetime.utcnow)
 
     title = Column(String(200), nullable=False)
@@ -601,7 +642,8 @@ class DailyTask(Base):
     recurrence_pattern = Column(String(20), nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="daily_tasks")
 
@@ -611,7 +653,8 @@ class SmartNextMove(Base):
     __tablename__ = "smart_next_moves"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
 
     tasks_completed_today = Column(Integer, default=0)
     tasks_pending_today = Column(Integer, default=0)
@@ -638,7 +681,8 @@ class FemaleCycleEntry(Base):
     __tablename__ = "female_cycle_entries"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
     date = Column(DateTime, default=datetime.utcnow)
 
     phase = Column(String(30), nullable=True)
@@ -660,17 +704,21 @@ class SocialPost(Base):
     __tablename__ = "social_posts"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
     text = Column(Text, nullable=False)
-    post_type = Column(String, default="status")  # status, workout, achievement, progress
+    # status, workout, achievement, progress
+    post_type = Column(String, default="status")
     workout_data = Column(JSON, nullable=True)
     achievement_data = Column(JSON, nullable=True)
     image_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="social_posts")
-    comments = relationship("SocialComment", back_populates="post", cascade="all, delete-orphan")
-    likes = relationship("SocialLike", back_populates="post", cascade="all, delete-orphan")
+    comments = relationship(
+        "SocialComment", back_populates="post", cascade="all, delete-orphan")
+    likes = relationship("SocialLike", back_populates="post",
+                         cascade="all, delete-orphan")
 
 
 class SocialComment(Base):
@@ -717,8 +765,10 @@ class ActivitySession(Base):
     __tablename__ = "activity_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    activity_type = Column(String, default="running")  # running, walking, hiking
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
+    # running, walking, hiking
+    activity_type = Column(String, default="running")
     duration_seconds = Column(Integer, default=0)
     distance_km = Column(Float, default=0.0)
     calories = Column(Integer, default=0)
@@ -729,7 +779,8 @@ class ActivitySession(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="activity_sessions")
-    route_points = relationship("ActivityRoutePoint", back_populates="session", cascade="all, delete-orphan")
+    route_points = relationship(
+        "ActivityRoutePoint", back_populates="session", cascade="all, delete-orphan")
 
 
 class ActivityRoutePoint(Base):
@@ -737,7 +788,8 @@ class ActivityRoutePoint(Base):
     __tablename__ = "activity_route_points"
 
     id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(Integer, ForeignKey("activity_sessions.id"), nullable=False)
+    session_id = Column(Integer, ForeignKey(
+        "activity_sessions.id"), nullable=False)
     lat = Column(Float, nullable=False)
     lng = Column(Float, nullable=False)
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -752,14 +804,17 @@ class MealPlan(Base):
     __tablename__ = "meal_plans"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
     week_start = Column(DateTime, nullable=False)
     week_end = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="meal_plans")
-    entries = relationship("MealPlanEntry", back_populates="plan", cascade="all, delete-orphan")
+    entries = relationship(
+        "MealPlanEntry", back_populates="plan", cascade="all, delete-orphan")
 
 
 class MealPlanEntry(Base):
@@ -769,7 +824,8 @@ class MealPlanEntry(Base):
     id = Column(Integer, primary_key=True, index=True)
     plan_id = Column(Integer, ForeignKey("meal_plans.id"), nullable=False)
     day_of_week = Column(Integer, nullable=False)  # 0=Monday .. 6=Sunday
-    meal_slot = Column(String, nullable=False)  # breakfast, lunch, dinner, snack
+    # breakfast, lunch, dinner, snack
+    meal_slot = Column(String, nullable=False)
     food_name = Column(String, nullable=False)
     serving_size = Column(String, nullable=True)
     calories = Column(Float, default=0)
@@ -789,15 +845,18 @@ class FormCoachSession(Base):
     __tablename__ = "form_coach_sessions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    exercise = Column(String, nullable=False)  # squat, pushup, plank, lunge, curl
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
+    # squat, pushup, plank, lunge, curl
+    exercise = Column(String, nullable=False)
     duration_seconds = Column(Integer, default=0)
     rep_count = Column(Integer, default=0)
     feedback_summary = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="form_coach_sessions")
-    feedback_logs = relationship("FormFeedbackLog", back_populates="session", cascade="all, delete-orphan")
+    feedback_logs = relationship(
+        "FormFeedbackLog", back_populates="session", cascade="all, delete-orphan")
 
 
 class FormFeedbackLog(Base):
@@ -805,7 +864,8 @@ class FormFeedbackLog(Base):
     __tablename__ = "form_feedback_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    session_id = Column(Integer, ForeignKey("form_coach_sessions.id"), nullable=False)
+    session_id = Column(Integer, ForeignKey(
+        "form_coach_sessions.id"), nullable=False)
     message = Column(Text, nullable=False)
     feedback_type = Column(String, default="info")  # good, bad, info
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -820,18 +880,22 @@ class WearableConnection(Base):
     __tablename__ = "wearable_connections"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    device_id = Column(String, nullable=False)  # apple_health, garmin, fitbit, whoop, oura
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
+    # apple_health, garmin, fitbit, whoop, oura
+    device_id = Column(String, nullable=False)
     device_name = Column(String, nullable=False)
     connected = Column(Boolean, default=True)
     access_token = Column(String, nullable=True)
     refresh_token = Column(String, nullable=True)
     last_sync = Column(DateTime, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="wearable_connections")
-    metrics = relationship("WearableMetric", back_populates="connection", cascade="all, delete-orphan")
+    metrics = relationship(
+        "WearableMetric", back_populates="connection", cascade="all, delete-orphan")
 
 
 class WearableMetric(Base):
@@ -839,8 +903,10 @@ class WearableMetric(Base):
     __tablename__ = "wearable_metrics"
 
     id = Column(Integer, primary_key=True, index=True)
-    connection_id = Column(Integer, ForeignKey("wearable_connections.id"), nullable=False)
-    metric_type = Column(String, nullable=False)  # steps, heart_rate, sleep, hrv, spo2, calories
+    connection_id = Column(Integer, ForeignKey(
+        "wearable_connections.id"), nullable=False)
+    # steps, heart_rate, sleep, hrv, spo2, calories
+    metric_type = Column(String, nullable=False)
     value = Column(Float, nullable=False)
     unit = Column(String, nullable=True)
     recorded_at = Column(DateTime, default=datetime.utcnow)
@@ -855,7 +921,8 @@ class Reminder(Base):
     __tablename__ = "reminders"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
     label = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     time = Column(String, nullable=False)  # HH:MM format
@@ -863,7 +930,8 @@ class Reminder(Base):
     enabled = Column(Boolean, default=True)
     icon = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     user = relationship("EnhancedUser", backref="reminders")
 
@@ -873,7 +941,8 @@ class NotificationLog(Base):
     __tablename__ = "notification_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
     title = Column(String, nullable=False)
     body = Column(Text, nullable=True)
     icon = Column(String, nullable=True)
@@ -903,15 +972,19 @@ class UserSubscription(Base):
     __tablename__ = "user_subscriptions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=False)
-    plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"),
+                     index=True, nullable=False)
+    plan_id = Column(Integer, ForeignKey(
+        "subscription_plans.id"), nullable=False)
     stripe_subscription_id = Column(String, nullable=True)
-    status = Column(String, default="trialing")  # active, past_due, canceled, unpaid
+    # active, past_due, canceled, unpaid
+    status = Column(String, default="trialing")
     current_period_start = Column(DateTime, nullable=True)
     current_period_end = Column(DateTime, nullable=True)
     cancel_at_period_end = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)
 
     plan = relationship("SubscriptionPlan")
     user = relationship("EnhancedUser", backref="subscriptions")
@@ -922,7 +995,8 @@ class PaymentTransaction(Base):
     __tablename__ = "payment_transactions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    user_id = Column(Integer, ForeignKey(
+        "users.id"), index=True, nullable=True)
     stripe_payment_intent = Column(String, nullable=True)
     stripe_charge_id = Column(String, nullable=True)
     amount_cents = Column(Integer, nullable=False)
@@ -937,7 +1011,8 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), index=True, nullable=True)
+    user_id = Column(Integer, ForeignKey(
+        "users.id"), index=True, nullable=True)
     stripe_invoice_id = Column(String, nullable=True)
     amount_due_cents = Column(Integer, nullable=True)
     paid = Column(Boolean, default=False)
@@ -953,7 +1028,8 @@ class ActivityEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=False)
-    event_type = Column(String, nullable=False) # "meal_log", "workout_completed", "app_login"
+    # "meal_log", "workout_completed", "app_login"
+    event_type = Column(String, nullable=False)
     local_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
     timezone_offset_minutes = Column(Integer, default=0, nullable=False)
 
@@ -975,7 +1051,7 @@ class FreezeLog(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=False)
-    date_missed = Column(String, nullable=False) # e.g. "2026-07-02"
+    date_missed = Column(String, nullable=False)  # e.g. "2026-07-02"
     timestamp_spent = Column(DateTime, default=datetime.utcnow)
 
 
@@ -985,7 +1061,8 @@ class Entitlement(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=False)
-    feature_code = Column(String, index=True, nullable=False) # e.g. "RULE_TRACE", "PROGRESSIVE_OVERLOAD"
+    # e.g. "RULE_TRACE", "PROGRESSIVE_OVERLOAD"
+    feature_code = Column(String, index=True, nullable=False)
     granted = Column(Boolean, default=False, nullable=False)
 
 
@@ -995,7 +1072,8 @@ class ProductEvent(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=False)
-    event_name = Column(String, index=True, nullable=False) # e.g. "onboarding_start", "onboarding_complete"
+    # e.g. "onboarding_start", "onboarding_complete"
+    event_name = Column(String, index=True, nullable=False)
     properties_json = Column(JSON, nullable=True)
     timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
 
@@ -1003,15 +1081,25 @@ class ProductEvent(Base):
 class CoachFeedback(Base):
     """Feedback for workouts, meals, or general daily plans"""
     __tablename__ = "coach_feedbacks"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(String, index=True, nullable=False)
-    domain = Column(String, nullable=False)  # "exercise" | "meal" | "daily_plan"
-    item_id = Column(String, nullable=False)  # exercise_id or meal_log_id or plan_date
+    # "exercise" | "meal" | "daily_plan"
+    domain = Column(String, nullable=False)
+    # exercise_id or meal_log_id or plan_date
+    item_id = Column(String, nullable=False)
     rating = Column(Integer, nullable=False)  # 1-5 or boolean (1/0)
-    context_json = Column(JSON, nullable=True)  # profile snapshot at feedback time
+    # profile snapshot at feedback time
+    context_json = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class SystemConfig(Base):
+    """Dynamic System Configuration for Web App Control"""
+    __tablename__ = "system_configs"
 
-
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String, unique=True, index=True, nullable=False)
+    value = Column(JSON, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow,
+                        onupdate=datetime.utcnow)

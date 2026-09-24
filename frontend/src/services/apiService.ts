@@ -175,8 +175,12 @@ export const MealAPI = {
     formData.append('meal_type', mealType);
     formData.append('image_file', imageFile);
 
+    const token = getToken();
     const response = await fetch(`${API_BASE}/api/meals/analyze`, {
       method: 'POST',
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: formData,
     });
 
@@ -1014,3 +1018,27 @@ export const fetchUserAchievements = async (userId: string) => {
     return null;
   }
 };
+
+export interface SystemConfigData {
+  ai_provider: string;
+  ai_temperature: number;
+  ai_system_prompt: string;
+  feature_flags: Record<string, boolean>;
+  gamification: Record<string, number>;
+}
+
+export const AdminControlAPI = {
+  async getSystemConfig(): Promise<SystemConfigData> {
+    return apiRequest<SystemConfigData>('/api/admin/system-config');
+  },
+  async updateSystemConfig(payload: Partial<SystemConfigData>): Promise<{ success: boolean; config: SystemConfigData }> {
+    return apiRequest('/api/admin/system-config', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    });
+  },
+  async getTelemetry(): Promise<any> {
+    return apiRequest('/api/admin/telemetry');
+  },
+};
+

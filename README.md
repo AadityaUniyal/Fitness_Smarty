@@ -4,13 +4,13 @@
   <img src="https://img.shields.io/badge/React_18-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" />
   <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" alt="TypeScript" />
   <img src="https://img.shields.io/badge/Gemini_AI-886FBF?style=for-the-badge&logo=google&logoColor=white" alt="Gemini" />
-  <img src="https://img.shields.io/badge/YOLOv8-FF6F00?style=for-the-badge&logo=yolo&logoColor=white" alt="YOLOv8" />
+  <img src="https://img.shields.io/badge/Free_Tier-100%25_Compatible-brightgreen?style=for-the-badge" alt="100% Free Tier Compatible" />
   <img src="https://img.shields.io/badge/MIT-green?style=for-the-badge" alt="MIT License" />
 </p>
 
 # ⚡ SMARTY AI — Neural Fitness Platform
 
-> **AI-powered full-stack fitness, nutrition & wellness platform** with real-time coaching, computer vision food scanning, FemmeCare-aware support, gamification, and 30+ dashboard screens.
+> **AI-powered full-stack fitness, nutrition & wellness platform** with real-time coaching, computer vision food scanning, FemmeCare-aware support, gamification, **Dynamic Web Control Hub**, and 30+ dashboard screens. Fully controllable via Web UI and 100% free-tier compatible.
 
 ---
 
@@ -406,6 +406,12 @@ erDiagram
 - **AI Chat** — Natural language fitness Q&A powered by Gemini
 - **Smart Next Move** — Context-aware action suggestions
 - **NLP Food Logger** — Log meals with natural language
+
+### 🎛️ Dynamic Web Control Hub (Admin Panel)
+- **AI Provider Switcher** — Real-time Web UI provider selection (Google Gemini 2.0 Flash, Groq API, Ollama Local, DeepSeek) without code changes
+- **Prompt Studio** — Live customization of coach persona, advice strictness, and prompt templates stored directly in database (`SystemConfig`)
+- **Real-Time Feature Flags** — Dynamic toggle for FemmeCare, Vision Food Scanner, Gamification, and Pose Form Analysis
+- **Telemetry & Diagnostics** — Instant system metrics, DB latency, active provider status (`/api/admin/telemetry`)
 
 ### 💗 FemmeCare
 - **Menstrual Cycle Tracking** — Period, flow, symptom logging
