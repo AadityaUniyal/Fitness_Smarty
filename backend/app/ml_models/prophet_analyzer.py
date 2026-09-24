@@ -162,33 +162,33 @@ class ProphetTrendAnalyzer:
     
     def _mock_analysis(self, data: List[Dict], forecast_days: int) -> Dict[str, Any]:
         """Mock analysis for development"""
-        avg_calories = np.mean([d.get('calories', 2000) for d in data[-7:]]) if data else 2000
-        avg_protein = np.mean([d.get('protein_g', 80) for d in data[-7:]]) if data else 80
+        avg_calories = float(np.mean([d.get('calories', 2000) for d in data[-7:]])) if data else 2000.0
+        avg_protein = float(np.mean([d.get('protein_g', 80) for d in data[-7:]])) if data else 80.0
         
         forecast = []
         for day in range(forecast_days):
             pred_date = datetime.now() + timedelta(days=day+1)
             forecast.append({
                 'date': pred_date.strftime('%Y-%m-%d'),
-                'predicted': round(avg_calories + (day * 5), 1),
-                'lower_bound': round(avg_calories - 50, 1),
-                'upper_bound': round(avg_calories + 50, 1)
+                'predicted': round(float(avg_calories + (day * 5)), 1),
+                'lower_bound': round(float(avg_calories - 50), 1),
+                'upper_bound': round(float(avg_calories + 50), 1)
             })
         
         return {
             'calories_trend': {
                 'metric': 'calories',
                 'trend': 'stable',
-                'recent_avg': avg_calories,
-                'forecast_avg': avg_calories,
+                'recent_avg': round(float(avg_calories), 1),
+                'forecast_avg': round(float(avg_calories), 1),
                 'change_percent': 0.5,
                 'forecast': forecast
             },
             'protein_trend': {
                 'metric': 'protein_g',
                 'trend': 'stable',
-                'recent_avg': avg_protein,
-                'forecast_avg': avg_protein,
+                'recent_avg': round(float(avg_protein), 1),
+                'forecast_avg': round(float(avg_protein), 1),
                 'change_percent': -1.2
             },
             'insights': [

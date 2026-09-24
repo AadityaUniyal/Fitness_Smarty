@@ -68,15 +68,13 @@ async def search_meals_by_text(
     
     Searches through user's meal history using semantic similarity
     """
+    if not query or not query.strip():
+        raise HTTPException(status_code=400, detail="Query string cannot be empty")
+        
     try:
         # Get CLIP search
         from app.ml_models.clip_search import get_clip_search
         clip = get_clip_search()
-        if clip.mock_mode:
-            raise HTTPException(
-                status_code=503,
-                detail="Semantic search is temporarily unavailable: CLIP model could not be loaded."
-            )
         
         # In production, load meal embeddings from database
         # For now, use mock data
@@ -107,9 +105,12 @@ async def search_meals_by_text(
         return {
             'query': query,
             'results': results,
-            'total_found': len(results)
+            'total_found': len(results),
+            'mock_mode': clip.mock_mode
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
@@ -140,11 +141,6 @@ async def search_similar_meals(
         # Get CLIP search
         from app.ml_models.clip_search import get_clip_search
         clip = get_clip_search()
-        if clip.mock_mode:
-            raise HTTPException(
-                status_code=503,
-                detail="Similar meal search is temporarily unavailable: CLIP model could not be loaded."
-            )
         
         # Mock meal embeddings (in production, load from database)
         mock_meal_embeddings = {
@@ -174,9 +170,14 @@ async def search_similar_meals(
         return {
             'query_image': filename,
             'results': results,
-            'total_found': len(results)
+            'total_found': len(results),
+            'mock_mode': clip.mock_mode
         }
         
+    except HTTPException:
+        raise
+    except (OSError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image file format: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Similar meal search failed: {str(e)}")
 

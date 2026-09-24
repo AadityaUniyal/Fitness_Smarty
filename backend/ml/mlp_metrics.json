@@ -1,14 +1,14 @@
 {
-  "accuracy": 82.5,
-  "precision": 0.8141,
-  "recall": 0.756,
-  "f1_score": 0.784,
-  "train_loss": 0.380114,
-  "val_loss": 0.30838,
-  "epochs": 2,
-  "batch_size": 64,
+  "accuracy": 75.0,
+  "precision": 0.0,
+  "recall": 0.0,
+  "f1_score": 0.0,
+  "train_loss": 0.677362,
+  "val_loss": 0.671722,
+  "epochs": 1,
+  "batch_size": 32,
   "input_size": 20,
-  "num_samples": 10000,
+  "num_samples": 16,
   "status": "success",
-  "updated_at": "2026-09-24T23:08:49.769794"
+  "updated_at": "2026-09-24T23:28:35.919812"
 }

@@ -32,10 +32,10 @@ class CLIPSearch:
         """
         self.model = None
         self.preprocess = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.mock_mode = False
         
         if CLIP_AVAILABLE:
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
             try:
                 self.model, self.preprocess = clip.load(model_name, device=self.device)
                 print(f"[OK] Loaded CLIP model: {model_name} on {self.device}")
@@ -43,6 +43,7 @@ class CLIPSearch:
                 print(f"[!] Could not load CLIP: {e}")
                 self.mock_mode = True
         else:
+            self.device = "cpu"
             print("[!] CLIP not installed. Using mock mode.")
             self.mock_mode = True
     

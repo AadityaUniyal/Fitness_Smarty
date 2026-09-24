@@ -1,11 +1,11 @@
 {
-  "mae": 0.1728,
-  "rmse": 0.2165,
-  "train_loss": 0.000631,
-  "val_loss": 0.000542,
+  "mae": 0.1908,
+  "rmse": 0.2361,
+  "train_loss": 0.00078,
+  "val_loss": 0.000575,
   "epochs": 10,
   "seq_length": 14,
   "num_samples": 4560,
   "status": "success",
-  "updated_at": "2026-09-24T23:08:47.671776"
+  "updated_at": "2026-09-24T23:24:55.015432"
 }

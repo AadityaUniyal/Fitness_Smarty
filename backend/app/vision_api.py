@@ -199,6 +199,10 @@ async def classify_with_resnet(
         
         return results
         
+    except HTTPException:
+        raise
+    except (OSError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image file format: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ResNet18 classification failed: {str(e)}")
 
@@ -329,6 +333,10 @@ async def detect_ensemble(
         
         return results
         
+    except HTTPException:
+        raise
+    except (OSError, ValueError) as e:
+        raise HTTPException(status_code=400, detail=f"Invalid image file format: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Ensemble detection failed: {str(e)}")
 

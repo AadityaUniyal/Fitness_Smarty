@@ -137,6 +137,7 @@ class ResNetFoodClassifier:
                 'top_prediction': top_match['food_label'],
                 'top_class': top_match['class_name'],
                 'confidence': top_match['confidence'],
+                'top_confidence': top_match['confidence'],
                 'all_predictions': predictions,
                 'model': 'resnet18_fine_tuned',
                 'status': 'active',
@@ -146,6 +147,9 @@ class ResNetFoodClassifier:
         except Exception as e:
             print(f"[!] ResNet classification failure: {e}")
             return self._mock_classify(top_k)
+
+    # Alias for API compatibility
+    classify = classify_image
 
     def _load_image(self, image_input: Any) -> Image.Image:
         """Helper to load PIL Image from path, bytes, or PIL Image object."""
@@ -178,6 +182,7 @@ class ResNetFoodClassifier:
             'top_prediction': predictions[0]['food_label'],
             'top_class': predictions[0]['class_name'],
             'confidence': predictions[0]['confidence'],
+            'top_confidence': predictions[0]['confidence'],
             'all_predictions': predictions,
             'model': 'resnet_planned_fallback',
             'status': 'Planned / In Progress',
