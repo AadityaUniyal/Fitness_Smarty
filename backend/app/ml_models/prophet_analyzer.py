@@ -114,18 +114,22 @@ class ProphetTrendAnalyzer:
         forecast_values = []
         for idx in range(-forecast_days, 0):
             forecast_values.append({
-                'date': forecast.iloc[idx]['ds'].strftime('%Y-%m-%d'),
-                'predicted': round(forecast.iloc[idx]['yhat'], 1),
-                'lower_bound': round(forecast.iloc[idx]['yhat_lower'], 1),
-                'upper_bound': round(forecast.iloc[idx]['yhat_upper'], 1)
+                'date': str(forecast.iloc[idx]['ds'].strftime('%Y-%m-%d')),
+                'predicted': round(float(forecast.iloc[idx]['yhat']), 1),
+                'lower_bound': round(float(forecast.iloc[idx]['yhat_lower']), 1),
+                'upper_bound': round(float(forecast.iloc[idx]['yhat_upper']), 1)
             })
         
+        recent_val = float(recent_actual)
+        forecast_val = float(forecast_avg)
+        change_pct = float((forecast_val - recent_val) / recent_val * 100) if recent_val != 0 else 0.0
+
         return {
             'metric': metric,
             'trend': trend,
-            'recent_avg': round(recent_actual, 1),
-            'forecast_avg': round(forecast_avg, 1),
-            'change_percent': round(((forecast_avg - recent_actual) / recent_actual * 100), 1),
+            'recent_avg': round(recent_val, 1),
+            'forecast_avg': round(forecast_val, 1),
+            'change_percent': round(change_pct, 1),
             'forecast': forecast_values
         }
     

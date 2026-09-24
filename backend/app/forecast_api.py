@@ -75,6 +75,8 @@ async def analyze_nutrition_trends(request: AnalyzeNutritionRequest):
 
         return results
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Trend analysis failed: {str(e)}"

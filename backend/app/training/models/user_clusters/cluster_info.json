@@ -1,83 +1,83 @@
 [
   {
     "cluster_id": 0,
-    "size": 7,
+    "size": 15,
     "centroid": [
-      42.0,
-      87.57142639160156,
-      162.14285278320312,
-      33.25714111328125,
-      0.5714285969734192,
-      1.8571428060531616,
-      1.1428571939468384,
-      1613.0,
-      2240.571533203125
+      40.20000076293945,
+      68.93333435058594,
+      164.60000610351562,
+      25.426666259765625,
+      0.0666666328907013,
+      1.7999999523162842,
+      1.2666666507720947,
+      1367.066650390625,
+      1938.066650390625
     ],
     "feature_importance": {},
-    "label": "Male / Muscle Gain / Light",
-    "description": "Age ~42, BMI 33.3 | Goal: muscle gain | High-protein, calorie-surplus oriented",
+    "label": "Female / Muscle Gain / Light",
+    "description": "Age ~40, BMI 25.4 | Goal: muscle gain | High-protein, calorie-surplus oriented",
     "typical_user": {
-      "age": 42,
-      "gender": "Male",
-      "weight_kg": 87.6,
-      "height_cm": 162.1,
-      "bmi": 33.3,
+      "age": 40,
+      "gender": "Female",
+      "weight_kg": 68.9,
+      "height_cm": 164.6,
+      "bmi": 25.4,
       "goal": "muscle_gain",
       "activity": "light"
     }
   },
   {
     "cluster_id": 1,
-    "size": 12,
+    "size": 10,
     "centroid": [
-      37.166664123535156,
-      62.5,
-      158.0,
-      25.383333206176758,
-      0.0,
-      2.0833334922790527,
-      2.0833332538604736,
-      1265.5833740234375,
-      1970.1666259765625
+      29.5,
+      69.9000015258789,
+      177.1999969482422,
+      22.450000762939453,
+      1.0,
+      0.5000000596046448,
+      1.1999999284744263,
+      1664.0999755859375,
+      2337.699951171875
     ],
     "feature_importance": {},
-    "label": "Female / Muscle Gain / Moderate",
-    "description": "Age ~37, BMI 25.4 | Goal: muscle gain | High-protein, calorie-surplus oriented",
+    "label": "Male / Maintenance / Light",
+    "description": "Age ~29, BMI 22.5 | Goal: maintenance | Balanced nutrition focus",
     "typical_user": {
-      "age": 37,
-      "gender": "Female",
-      "weight_kg": 62.5,
-      "height_cm": 158.0,
-      "bmi": 25.4,
-      "goal": "muscle_gain",
-      "activity": "moderate"
+      "age": 30,
+      "gender": "Male",
+      "weight_kg": 69.9,
+      "height_cm": 177.2,
+      "bmi": 22.5,
+      "goal": "maintenance",
+      "activity": "light"
     }
   },
   {
     "cluster_id": 2,
-    "size": 11,
+    "size": 5,
     "centroid": [
-      38.0,
-      73.81818389892578,
-      177.18182373046875,
-      23.399999618530273,
-      1.0,
-      1.3636363744735718,
-      1.6363636255264282,
-      1660.54541015625,
-      2465.54541015625
+      49.599998474121094,
+      86.4000015258789,
+      169.60000610351562,
+      30.040000915527344,
+      0.800000011920929,
+      1.2000000476837158,
+      3.6000001430511475,
+      1647.5999755859375,
+      3017.0
     ],
     "feature_importance": {},
-    "label": "Male / Maintenance / Moderate",
-    "description": "Age ~38, BMI 23.4 | Goal: maintenance | Balanced nutrition focus",
+    "label": "Male / Maintenance / Very_Active",
+    "description": "Age ~49, BMI 30.0 | Goal: maintenance | Balanced nutrition focus | High activity \u2014 needs energy-dense foods",
     "typical_user": {
-      "age": 38,
+      "age": 50,
       "gender": "Male",
-      "weight_kg": 73.8,
-      "height_cm": 177.2,
-      "bmi": 23.4,
+      "weight_kg": 86.4,
+      "height_cm": 169.6,
+      "bmi": 30.0,
       "goal": "maintenance",
-      "activity": "moderate"
+      "activity": "very_active"
     }
   }
 ]
