@@ -6,16 +6,21 @@ Time-series trend analysis and forecasting using Facebook Prophet
 
 import os
 from typing import Dict, List, Any, Optional
-import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 
 try:
+    import numpy as np
+except ImportError:
+    np = None
+
+try:
+    import pandas as pd
     from prophet import Prophet
     PROPHET_AVAILABLE = True
 except Exception as e:
+    pd = None
     PROPHET_AVAILABLE = False
-    print(f"[!] Prophet not available: {e}. Using mock mode.")
+    print(f"[!] Prophet/pandas not available: {e}. Using mock mode.")
 
 
 class ProphetTrendAnalyzer:
@@ -148,7 +153,7 @@ class ProphetTrendAnalyzer:
 
     def _fallback_metric_analysis(
         self,
-        df: pd.DataFrame,
+        df: Any,
         metric: str,
         forecast_days: int
     ) -> Dict[str, Any]:
@@ -208,10 +213,16 @@ class ProphetTrendAnalyzer:
     
     def _mock_analysis(self, data: List[Dict], forecast_days: int) -> Dict[str, Any]:
         """Mock analysis for development"""
-        avg_calories = float(np.mean([d.get('calories', 2000) for d in data[-7:]])) if data else 2000.0
-        avg_protein = float(np.mean([d.get('protein_g', 80) for d in data[-7:]])) if data else 80.0
-        avg_carbs = float(np.mean([d.get('carbs_g', 200) for d in data[-7:]])) if data else 200.0
-        avg_fat = float(np.mean([d.get('fat_g', 60) for d in data[-7:]])) if data else 60.0
+        def _get_avg(key: str, default: float) -> float:
+            vals = [float(d.get(key, default)) for d in data[-7:]] if data else [default]
+            if np is not None:
+                return float(np.mean(vals))
+            return float(sum(vals) / max(1, len(vals)))
+
+        avg_calories = _get_avg('calories', 2000.0)
+        avg_protein = _get_avg('protein_g', 80.0)
+        avg_carbs = _get_avg('carbs_g', 200.0)
+        avg_fat = _get_avg('fat_g', 60.0)
         
         forecast = []
         for day in range(forecast_days):

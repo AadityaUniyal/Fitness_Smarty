@@ -64,22 +64,19 @@ async def predict_future_weight(request: PredictWeightRequest):
 
 @router.post("/analyze-nutrition-trends")
 async def analyze_nutrition_trends(request: AnalyzeNutritionRequest):
+    data_dicts = [
+        point.model_dump() if hasattr(point, "model_dump") else point.dict()
+        for point in request.historical_data
+    ]
+
     try:
         # Get Prophet analyzer
         from .ml_models.prophet_analyzer import get_trend_analyzer
 
         analyzer = get_trend_analyzer()
-
-        data_dicts = [
-            point.model_dump() if hasattr(point, "model_dump") else point.dict()
-            for point in request.historical_data
-        ]
-
-        results = analyzer.analyze_nutrition_trends(
+        return analyzer.analyze_nutrition_trends(
             data_dicts, request.forecast_days
         )
-
-        return results
 
     except HTTPException:
         raise
@@ -89,15 +86,59 @@ async def analyze_nutrition_trends(request: AnalyzeNutritionRequest):
             from .ml_models.prophet_analyzer import get_trend_analyzer
 
             analyzer = get_trend_analyzer()
-            data_dicts = [
-                point.model_dump() if hasattr(point, "model_dump") else point.dict()
-                for point in request.historical_data
-            ]
             return analyzer._mock_analysis(data_dicts, request.forecast_days)
-        except Exception:
-            raise HTTPException(
-                status_code=500, detail=f"Trend analysis failed: {str(e)}"
+        except Exception as inner_e:
+            print(f"[!] Fallback mock analysis exception: {inner_e}")
+            from datetime import datetime, timedelta
+
+            avg_cal = (
+                sum(float(d.get("calories", 2000.0)) for d in data_dicts[-7:])
+                / max(1, len(data_dicts[-7:]))
+                if data_dicts
+                else 2000.0
             )
+            forecast = [
+                {
+                    "date": (datetime.now() + timedelta(days=i + 1)).strftime("%Y-%m-%d"),
+                    "predicted": round(avg_cal + (i * 5), 1),
+                    "lower_bound": round(avg_cal - 50, 1),
+                    "upper_bound": round(avg_cal + 50, 1),
+                }
+                for i in range(request.forecast_days)
+            ]
+            return {
+                "calories_trend": {
+                    "metric": "calories",
+                    "trend": "stable",
+                    "recent_avg": round(avg_cal, 1),
+                    "forecast_avg": round(avg_cal, 1),
+                    "change_percent": 0.0,
+                    "forecast": forecast,
+                },
+                "protein_trend": {
+                    "metric": "protein_g",
+                    "trend": "stable",
+                    "recent_avg": 80.0,
+                    "forecast_avg": 80.0,
+                    "change_percent": 0.0,
+                },
+                "carbs_trend": {
+                    "metric": "carbs_g",
+                    "trend": "stable",
+                    "recent_avg": 200.0,
+                    "forecast_avg": 200.0,
+                    "change_percent": 0.0,
+                },
+                "fat_trend": {
+                    "metric": "fat_g",
+                    "trend": "stable",
+                    "recent_avg": 60.0,
+                    "forecast_avg": 60.0,
+                    "change_percent": 0.0,
+                },
+                "insights": ["[CHART] Nutrition trend analysis (fallback mode)"],
+                "model": "fallback",
+            }
 
 
 @router.get("/goal-projection")
